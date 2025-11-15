@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateAvatar } from '../src/utils/generateAvatar.js';
@@ -21,6 +21,10 @@ app.use(express.json({ limit: '10mb' }));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Explicitly configure dotenv to load .env from the project root
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 
 // --- ENV & SETUP CHECK ---
 const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME && process.env.ENCRYPTION_KEY;
