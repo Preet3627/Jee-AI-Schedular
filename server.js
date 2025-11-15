@@ -409,6 +409,48 @@ apiRouter.post('/doubts/:id/solutions', authMiddleware, async (req, res) => {
     }
 });
 
+// --- MESSAGING ENDPOINTS ---
+apiRouter.get('/messages/:studentSid', authMiddleware, async (req, res) => {
+    const studentSid = req.params.studentSid;
+    const userSid = req.userSid;
+    const adminSid = 'ADMIN'; 
+
+    let targetSid = '';
+    if (req.userRole === 'admin') {
+        targetSid = studentSid;
+    } else {
+        targetSid = adminSid; // Students can only message admin for now
+    }
+
+    try {
+        const [messages] = await pool.query(
+            'SELECT * FROM messages WHERE (sender_sid = ? AND recipient_sid = ?) OR (sender_sid = ? AND recipient_sid = ?) ORDER BY created_at ASC',
+            [userSid, targetSid, targetSid, userSid]
+        );
+        res.json(messages);
+    } catch (error) {
+        console.error("Error fetching messages:", error);
+        res.status(500).json({ error: "Failed to fetch messages." });
+    }
+});
+
+apiRouter.post('/messages', authMiddleware, async (req, res) => {
+    const { recipient_sid, content } = req.body;
+    const sender_sid = req.userSid;
+    try {
+        const [result] = await pool.query(
+            'INSERT INTO messages (sender_sid, recipient_sid, content) VALUES (?, ?, ?)',
+            [sender_sid, recipient_sid, content]
+        );
+        const [[newMessage]] = await pool.query('SELECT * FROM messages WHERE id = ?', [result.insertId]);
+        res.status(201).json(newMessage);
+    } catch (error) {
+        console.error("Error sending message:", error);
+        res.status(500).json({ error: "Failed to send message." });
+    }
+});
+
+
 // --- AI ENDPOINTS ---
 apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
     const { prompt, imageBase64, apiKey } = req.body;
@@ -495,10 +537,18 @@ app.get('*', (req, res) => {
 });
 
 // --- SERVER START ---
-const PORT = process.env.PORT || 3001;
+// This async IIFE will run when the module is loaded.
 (async () => {
     if (isConfigured && pool) {
-        await loadAppSettings();
+        await loadAppSettings(); // This needs to run in both environments
     }
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}. Configured: ${isConfigured}`));
+
+    // Vercel provides the `VERCEL` env var. If it's not present, we're likely local.
+    if (!process.env.VERCEL) {
+        const PORT = process.env.PORT || 3001;
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}. Configured: ${isConfigured}`));
+    }
 })();
+
+// Export the app for Vercel's serverless environment
+export default app;

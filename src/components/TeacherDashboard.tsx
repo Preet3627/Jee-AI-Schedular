@@ -71,7 +71,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
             </div>
 
             {messagingStudent && (
-                <MessagingModal student={messagingStudent} onClose={() => setMessagingStudent(null)} />
+                <MessagingModal student={messagingStudent} onClose={() => setMessagingStudent(null)} isDemoMode={false} />
             )}
             {isBroadcastModalOpen && (
                 <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} />

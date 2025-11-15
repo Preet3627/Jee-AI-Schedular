@@ -59,22 +59,26 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
+            const responseText = await res.text();
+            
             if (!res.ok) {
-                const errorText = await res.text().catch(() => 'Registration failed.');
                 try {
-                    const errorJson = JSON.parse(errorText);
+                    const errorJson = JSON.parse(responseText);
                     throw new Error(errorJson.error || 'Registration failed.');
                 } catch {
-                    throw new Error(errorText || 'Registration failed.');
+                    throw new Error(responseText || 'Registration failed.');
                 }
             }
-            const data = await res.json();
 
-            // If mailer is not configured, server auto-registers and returns token
-            if (data.token) {
-                await onRegister(data);
-            } else {
-                setStep('verify');
+            try {
+                const data = JSON.parse(responseText);
+                if (data.token) {
+                    await onRegister(data);
+                } else {
+                    setStep('verify');
+                }
+            } catch {
+                throw new Error('Failed to read server response for registration.');
             }
         } catch (err: any) {
             setError(err.message || 'Registration failed.');
@@ -93,17 +97,23 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sid: formData.sid, code })
             });
+            const responseText = await res.text();
+
             if (!res.ok) {
-                const errorText = await res.text().catch(() => 'Verification failed.');
                 try {
-                    const errorJson = JSON.parse(errorText);
+                    const errorJson = JSON.parse(responseText);
                     throw new Error(errorJson.error || 'Verification failed.');
                 } catch {
-                    throw new Error(errorText || 'Verification failed.');
+                    throw new Error(responseText || 'Verification failed.');
                 }
             }
-            const data = await res.json();
-            await onRegister(data);
+            
+            try {
+                const data = JSON.parse(responseText);
+                await onRegister(data);
+            } catch {
+                 throw new Error('Failed to read server response for verification.');
+            }
         } catch (err: any) {
             setError(err.message || 'Verification failed.');
         } finally {

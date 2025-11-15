@@ -85,7 +85,6 @@ export const studentDatabase: StudentData[] = [
             { date: '2024-07-24', duration: 3600, questions_solved: 20, questions_skipped: [] },
             { date: '2024-07-25', duration: 2700, questions_solved: 15, questions_skipped: [] }
         ],
-// FIX: Add missing DOUBTS property to align with StudentData interface.
         DOUBTS: []
     },
     {
@@ -144,7 +143,6 @@ export const studentDatabase: StudentData[] = [
         ],
         EXAMS: [],
         STUDY_SESSIONS: [],
-// FIX: Add missing DOUBTS property to align with StudentData interface.
         DOUBTS: []
     }
 ];

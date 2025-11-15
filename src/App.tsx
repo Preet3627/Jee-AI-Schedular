@@ -292,32 +292,44 @@ const App: React.FC = () => {
     
     const handleLogin = async (sid: string, password: string) => {
         const res = await fetch(`${API_URL}/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid, password }) });
+        const responseText = await res.text();
+
         if (!res.ok) {
-            const errorText = await res.text().catch(() => 'Login failed');
             try {
-                const errorJson = JSON.parse(errorText);
+                const errorJson = JSON.parse(responseText);
                 throw new Error(errorJson.error || 'Login failed');
             } catch {
-                throw new Error(errorText || 'Login failed');
+                throw new Error(responseText || 'Login failed');
             }
         }
-        const data = await res.json();
-        await handleLoginSuccess(data);
+        
+        try {
+            const data = JSON.parse(responseText);
+            await handleLoginSuccess(data);
+        } catch {
+            throw new Error('Failed to read server response.');
+        }
     };
 
     const handleGoogleLogin = async (credential: string) => {
         const res = await fetch(`${API_URL}/auth/google`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ credential }) });
+        const responseText = await res.text();
+
         if (!res.ok) {
-            const errorText = await res.text().catch(() => 'Google login failed');
             try {
-                const errorJson = JSON.parse(errorText);
+                const errorJson = JSON.parse(responseText);
                 throw new Error(errorJson.error || 'Google login failed');
             } catch {
-                throw new Error(errorText || 'Google login failed');
+                throw new Error(responseText || 'Google login failed');
             }
         }
-        const data = await res.json();
-        await handleLoginSuccess(data);
+        
+        try {
+            const data = JSON.parse(responseText);
+            await handleLoginSuccess(data);
+        } catch {
+            throw new Error('Failed to read server response for Google login.');
+        }
     };
 
     const optimisticUpdate = (updateFn: (user: StudentData) => StudentData) => {

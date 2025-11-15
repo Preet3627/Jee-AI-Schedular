@@ -1,13 +1,8 @@
-// FIX: Add declarations for Buffer and module to satisfy TypeScript compiler
-// in a browser-only environment where Node.js globals are not defined.
-// These are used for Node.js compatibility when this file is imported by the server.
-declare var Buffer: any;
-declare var module: any;
-
 const COLORS = [ '#0891b2', '#7c3aed', '#16a34a', '#db2777', '#ca8a04', '#d97706', '#6d28d9', '#0d9488', '#be185d' ];
 
-const btoaNode = (str: string) => Buffer.from(str).toString('base64');
-const _btoa = typeof window !== 'undefined' ? window.btoa : btoaNode;
+const _btoa = typeof window !== 'undefined' 
+    ? window.btoa 
+    : (str: string) => Buffer.from(str).toString('base64');
 
 export const generateAvatar = (name: string): string => {
     if (!name) {
@@ -31,8 +26,3 @@ export const generateAvatar = (name: string): string => {
 
     return `data:image/svg+xml;base64,${_btoa(svg)}`;
 };
-
-// For Node.js compatibility in server.js
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { generateAvatar };
-}
