@@ -1,57 +1,56 @@
-# JEE Scheduler Pro - Client-Side PWA
+# JEE Scheduler Pro - Full Stack Edition
 
-This is a secure, multilingual (EN/GU), **fully client-side** Student Management System (SMS) PWA tailored for JEE preparation. It replaces the need for manual scheduling by leveraging a universal CSV (Comma-Separated Values) format for personalized academic planning. All data is stored securely in your browser's `localStorage`.
+This is a secure, multilingual (EN/GU), full-stack Student Management System (SMS) PWA tailored for JEE preparation. It features a robust Node.js backend with a MySQL database and a modern React frontend.
 
 ## Features
 
-- **Futuristic UI:** Clean, futuristic, card-based interface with glassmorphism effects and vibrant gradients.
-- **Role-Based Dashboards:** Separate, secure dashboards for Students and Admins (Teachers), running entirely on local data.
-- **Full Offline Functionality:** As a client-side PWA, the app works entirely offline. It uses a network-first caching strategy, ensuring you always have the latest data when online, while seamlessly switching to cached data when the network is unavailable.
-- **Forced Offline Mode:** A setting allows users to force the app to use only local data, perfect for saving mobile data or working on unstable connections.
-- **Full Screen Mode:** An immersive, distraction-free full screen mode can be toggled from the settings menu.
-- **Community Hub with Images:** A collaborative space where students can post questions and solutions, now with **image upload support** for complex problems.
-- **Universal CSV Imports:** A robust CSV guide and discoverability features (`robots.txt`) allow AI chatbots (like Gemini) to learn the syntax and assist teachers and students with bulk schedule, exam, and performance metric creation.
-- **PWA Functionality:** Fully installable Progressive Web App with offline support via a service worker and automated, time-based reminders using the Web Notifications API.
-- **Add to Calendar:** A universal feature to download schedule items as `.ics` files, compatible with Google, Apple, and other calendar apps.
-- **Multilingual Support:** Full support for English (EN) and Gujarati (GU).
-
-## A Note on PWA Widgets
-This application declares a "widget" in its `manifest.json` file. This is part of an emerging web standard that allows PWAs to display information on host operating system surfaces, like a home screen. 
-
-**This is different from a native Android Home Screen Widget.** Creating native widgets requires separate Android-specific code. The PWA widget feature is currently supported by a limited number of browsers and operating systems. By including the declaration, this app is future-ready for when the feature becomes more widely adopted.
+- **Full-Stack Architecture:** A secure Node.js/Express backend handles all data, authentication, and business logic, communicating with a MySQL database.
+- **Role-Based Dashboards:** Separate, secure dashboards for Students and Admins, powered by live data from the backend.
+- **PWA with Offline Sync:** As an installable PWA, the app caches data for offline viewing. Any changes made offline are queued and automatically synced with the server upon reconnection.
+- **Google Integration:** Seamless Google Sign-In/Sign-Up, with features for backing up data to Google Drive and syncing schedules with Google Calendar.
+- **Admin Broadcast:** Administrators can create and broadcast tasks (schedules, homework) to all students simultaneously.
+- **Community Hub:** A collaborative forum where students can post questions and solutions, with support for image uploads.
+- **AI-Powered Imports:** Leverage the Gemini API to parse schedules from unstructured text or timetable images directly into the app.
+- **Secure & Configurable:** All sensitive keys and credentials are managed on the backend via environment variables, ensuring the frontend code is secure.
 
 ## Tech Stack
 
 - **Frontend:** React, Vite, TypeScript, Tailwind CSS
-- **Storage:** Browser `localStorage`
+- **Backend:** Node.js, Express.js
+- **Database:** MySQL
+- **Authentication:** JWT (JSON Web Tokens), Google OAuth2
 
-## Project Setup
+## Project Setup (Local Development)
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <your-repository-url>
-    cd jee-scheduler-pro-fullstack
-    ```
-
-2.  **Install Dependencies:**
+1.  **Clone the repository.**
+2.  **Setup Database:** Import the provided SQL schema into your MySQL database.
+3.  **Configure Environment:** Create a `.env` file in the project root. You can copy the contents from `public/.env.example.txt` and fill in your actual database credentials and a secret string for `JWT_SECRET`.
+4.  **Install Dependencies:**
     ```bash
     npm install
     ```
-
-3.  **Run in Development Mode:**
-    This command starts the Vite development server. It will automatically open in your browser at `http://localhost:5173` (or another port).
+5.  **Run in Development Mode:**
+    This command starts both the backend and frontend servers concurrently with hot-reloading.
     ```bash
     npm run dev
     ```
 
-4.  **Build for Production:**
-    This command will build the optimized frontend application into the `/dist` folder.
-    ```bash
-    npm run build
-    ```
+## Deployment to Vercel
 
-5.  **Preview Production Build:**
-    After building, you can preview the production version locally.
-    ```bash
-    npm run preview
-    ```
+This project is configured for seamless deployment on Vercel.
+
+1.  **Push to GitHub:** Ensure your project is pushed to a GitHub repository.
+2.  **Create Vercel Project:** Import your GitHub repository into Vercel.
+3.  **Build & Development Settings:** Vercel should automatically detect the Vite frontend and use the following settings. You typically don't need to change these.
+    - **Framework Preset:** `Vite`
+    - **Build Command:** `npm run build` or `vite build`
+    - **Output Directory:** `dist`
+    - **Install Command:** `npm install`
+4.  **Configure Environment Variables:** This is the most important step. In your Vercel project's settings, go to the "Environment Variables" section and add the following secrets:
+    - `DB_HOST`: Your MySQL database host.
+    - `DB_USER`: Your MySQL database username.
+    - `DB_PASSWORD`: Your MySQL database password.
+    - `DB_NAME`: Your MySQL database name.
+    - `JWT_SECRET`: A long, random, secure string for signing tokens.
+
+5.  **Deploy:** Trigger a new deployment from the Vercel dashboard. Vercel will build the frontend and set up the `server.js` file as a Serverless Function to handle all `/api` requests.
