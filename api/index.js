@@ -146,7 +146,6 @@ const adminMiddleware = (req, res, next) => {
 
 // --- API ROUTES ---
 const apiRouter = express.Router();
-apiRouter.use(configurationCheckMiddleware);
 
 // --- HELPERS ---
 const getUserData = async (userId) => {
@@ -184,6 +183,16 @@ const getUserData = async (userId) => {
     };
 };
 
+// PUBLIC STATUS ROUTE (no middleware)
+apiRouter.get('/status', (req, res) => {
+    if (!isConfigured || !pool) {
+        return res.status(200).json({ status: 'misconfigured' });
+    }
+    res.status(200).json({ status: 'online' });
+});
+
+// Apply configuration check for all subsequent routes
+apiRouter.use(configurationCheckMiddleware);
 
 // --- AUTH ENDPOINTS ---
 apiRouter.post('/register', async (req, res) => {
@@ -374,7 +383,6 @@ apiRouter.delete('/schedule-items/:id', authMiddleware, async (req, res) => {
 
 apiRouter.post('/config', authMiddleware, async (req, res) => {
     try {
-        // FIX: Handle partial updates to both settings and other config properties.
         const updates = req.body;
         const [[userConfig]] = await pool.query("SELECT config FROM user_configs WHERE user_id = ?", [req.userId]);
         const currentConfig = userConfig?.config ? JSON.parse(decrypt(userConfig.config)) : {};
@@ -409,7 +417,6 @@ apiRouter.post('/user-data/full-sync', authMiddleware, async (req, res) => {
     try {
         const { userData } = req.body;
         
-        // FIX: Reconstruct the config object from the flattened frontend data structure.
         const { SCHEDULE_ITEMS, id, sid, email, fullName, profilePhoto, isVerified, role, RESULTS, EXAMS, STUDY_SESSIONS, DOUBTS, CONFIG } = userData;
 
         // 1. Update the main config blob
@@ -595,13 +602,8 @@ apiRouter.post('/admin/broadcast-task', authMiddleware, adminMiddleware, async (
 });
 
 // --- PUBLIC & API ROUTE SETUP ---
-app.get('/api/status', (req, res) => {
-    if (!isConfigured || !pool) {
-        return res.status(503).json({ status: 'misconfigured', error: 'Server environment variables are not set.' });
-    }
-    res.json({ status: 'online' });
-});
-
+// Mount the entire API router at the root. 
+// The '/api' prefix is handled by the proxy.
 app.use('/api', apiRouter);
 
 // Serve frontend files from one level up from the 'api' directory

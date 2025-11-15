@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -38,8 +40,7 @@ const App: React.FC = () => {
     };
 
     const handleUpdateSettings = async (settings: Partial<Config['settings']>) => {
-        // FIX: Renamed api.updateSettings to api.updateConfig and adjusted payload
-        await api.updateConfig({ settings });
+        await api.updateConfig({ settings: { ...currentUser!.CONFIG.settings, ...settings } });
         refreshUser();
     };
     
@@ -47,7 +48,6 @@ const App: React.FC = () => {
         // This logic should be on the backend, but for now we mimic it on the client
         if (!currentUser) return;
         const newSession = { ...session, date: new Date().toISOString().split('T')[0] };
-        // FIX: STUDY_SESSIONS is a top-level property on StudentData now
         const updatedUser = {...currentUser, STUDY_SESSIONS: [...currentUser.STUDY_SESSIONS, newSession]};
         await api.fullSync(updatedUser);
         refreshUser();
@@ -55,7 +55,6 @@ const App: React.FC = () => {
     
     const onLogResult = async (result: ResultData) => {
         if (!currentUser) return;
-        // FIX: RESULTS is a top-level property on StudentData now
         const updatedUser = { ...currentUser, RESULTS: [...currentUser.RESULTS, result], CONFIG: {...currentUser.CONFIG, SCORE: result.SCORE, WEAK: [...new Set([...currentUser.CONFIG.WEAK, ...result.MISTAKES])] } };
         await api.fullSync(updatedUser);
         refreshUser();
@@ -63,7 +62,6 @@ const App: React.FC = () => {
 
     const onAddExam = async (exam: ExamData) => {
         if (!currentUser) return;
-        // FIX: EXAMS is a top-level property on StudentData now
         const updatedUser = { ...currentUser, EXAMS: [...currentUser.EXAMS, exam] };
         await api.fullSync(updatedUser);
         refreshUser();
@@ -71,7 +69,6 @@ const App: React.FC = () => {
 
     const onUpdateExam = async (exam: ExamData) => {
          if (!currentUser) return;
-        // FIX: EXAMS is a top-level property on StudentData now
         const updatedUser = { ...currentUser, EXAMS: currentUser.EXAMS.map(e => e.ID === exam.ID ? exam : e) };
         await api.fullSync(updatedUser);
         refreshUser();
@@ -79,7 +76,6 @@ const App: React.FC = () => {
 
     const onDeleteExam = async (examId: string) => {
         if (!currentUser) return;
-        // FIX: EXAMS is a top-level property on StudentData now
         const updatedUser = { ...currentUser, EXAMS: currentUser.EXAMS.filter(e => e.ID !== examId) };
         await api.fullSync(updatedUser);
         refreshUser();
@@ -110,11 +106,8 @@ const App: React.FC = () => {
             // This syncs the non-sensitive parts of the user data
             const backupData = {
                 SCHEDULE_ITEMS: currentUser.SCHEDULE_ITEMS,
-                // FIX: RESULTS is a top-level property on StudentData now
                 RESULTS: currentUser.RESULTS,
-                // FIX: EXAMS is a top-level property on StudentData now
                 EXAMS: currentUser.EXAMS,
-                // FIX: STUDY_SESSIONS is a top-level property on StudentData now
                 STUDY_SESSIONS: currentUser.STUDY_SESSIONS,
                 // CONFIG excludes sensitive settings
                 CONFIG: {
@@ -124,7 +117,6 @@ const App: React.FC = () => {
             const fileId = await gdrive.uploadData(JSON.stringify(backupData), currentUser.CONFIG.googleDriveFileId);
             const syncTime = new Date().toISOString();
             // We only update the sync time and fileId, not the whole config
-            // FIX: Use api.updateConfig for updating top-level config properties
             await api.updateConfig({ googleDriveFileId: fileId, driveLastSync: syncTime });
             refreshUser();
             alert('Backup successful!');
@@ -150,7 +142,7 @@ const App: React.FC = () => {
 
     const checkBackend = useCallback(async () => {
         try {
-            const res = await fetch(`${API_URL}/status`, { signal: AbortSignal.timeout(5000) });
+            const res = await fetch(`/api/status`, { signal: AbortSignal.timeout(5000) });
             if (res.ok) {
                  const data = await res.json().catch(() => ({}));
                  setBackendStatus(data.status === 'misconfigured' ? 'misconfigured' : 'online');

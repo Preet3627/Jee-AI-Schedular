@@ -1,4 +1,5 @@
 
+
 import { StudentData, DoubtData } from '../types';
 import { IconName } from '../components/Icon';
 
@@ -10,7 +11,6 @@ export interface Achievement {
 }
 
 export const calculateAchievements = (student: StudentData, allDoubts: DoubtData[]): Achievement[] => {
-    // FIX: RESULTS, STUDY_SESSIONS are top-level properties on StudentData
     const { SCHEDULE_ITEMS, RESULTS, STUDY_SESSIONS, CONFIG } = student;
     const achievements: Omit<Achievement, 'unlocked'>[] = [
         { name: 'High Scorer', icon: 'trophy', description: 'Score 200+ in a mock test.' },
@@ -61,7 +61,6 @@ export const calculateAchievements = (student: StudentData, allDoubts: DoubtData
     );
 
     const hasSolvedDoubt = allDoubts.some(doubt => 
-        // FIX: SID is on student object, not student.CONFIG
         doubt.solutions.some(sol => sol.user_sid === student.sid && doubt.user_sid !== student.sid)
     );
     

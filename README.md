@@ -54,4 +54,4 @@ This project is configured for seamless deployment on Vercel.
     - `JWT_SECRET`: A long, random, secure string for signing tokens.
     - `ENCRYPTION_KEY`: A secure, random 32-character string for data encryption. **Do not change this after setting it.**
 
-5.  **Deploy:** Trigger a new deployment from the Vercel dashboard. Vercel will build the frontend and set up the `server.js` file as a Serverless Function to handle all `/api` requests.
+5.  **Deploy:** Trigger a new deployment from the Vercel dashboard. Vercel will build the frontend and set up the `api/index.js` file as a Serverless Function to handle all `/api` requests.
