@@ -4,14 +4,14 @@
   "version": "3.0.0",
   "type": "module",
   "description": "Full-stack AI-powered scheduler for JEE aspirants.",
-  "main": "api/index.js",
+  "main": "server.js",
   "scripts": {
     "dev:frontend": "vite",
-    "dev:backend": "nodemon api/index.js",
+    "dev:backend": "nodemon server.js",
     "dev": "concurrently \"npm:dev:frontend\" \"npm:dev:backend\"",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node api/index.js"
+    "start": "node server.js"
   },
   "author": "",
   "license": "ISC",

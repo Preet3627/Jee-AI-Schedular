@@ -1,6 +1,6 @@
+
 import React, { useState } from 'react';
-// FIX: Corrected import path to point to the Icon component inside the `src` directory.
-import Icon from '../src/components/Icon';
+import Icon from './Icon';
 
 interface StudentCSVInputProps {
   onClose: () => void;
@@ -35,7 +35,7 @@ A${Date.now().toString().slice(-3)},ACTION,MONDAY,19:00,"Practice Integration","
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-2">AI Assistant (CSV Input)</h2>
-        <p className="text-sm text-gray-400 mb-4">Quickly add tasks by pasting CSV data. You can ask an AI like Gemini to generate this for you. `SID` is optional.</p>
+        <p className="text-sm text-gray-400 mb-4">Quickly add tasks or exams by pasting CSV data. You can ask an AI like Gemini to generate this for you. The `SID` column is optional.</p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <textarea

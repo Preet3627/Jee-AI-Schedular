@@ -1,7 +1,9 @@
 
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { StudentData } from '../types';
+// FIX: Corrected import path to point to apiService.
 import { api } from '../api/apiService';
+// FIX: Corrected import path for mockData.
 import { studentDatabase } from '../data/mockData';
 
 interface AuthContextType {

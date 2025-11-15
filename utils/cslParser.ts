@@ -1,7 +1,7 @@
 
 
-// FIX: Correct import path to point to types inside the `src` directory.
-import { ScheduleItem, HomeworkData, ScheduleCardData, ExamData } from '../src/types';
+// FIX: Correct import path to point to types from the root directory.
+import { ScheduleItem, HomeworkData, ScheduleCardData, ExamData } from '../types';
 
 interface ParsedSchedule {
     sid: string;
