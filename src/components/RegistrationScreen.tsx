@@ -59,8 +59,16 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
+            if (!res.ok) {
+                const errorText = await res.text().catch(() => 'Registration failed.');
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    throw new Error(errorJson.error || 'Registration failed.');
+                } catch {
+                    throw new Error(errorText || 'Registration failed.');
+                }
+            }
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
 
             // If mailer is not configured, server auto-registers and returns token
             if (data.token) {
@@ -85,8 +93,16 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sid: formData.sid, code })
             });
+            if (!res.ok) {
+                const errorText = await res.text().catch(() => 'Verification failed.');
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    throw new Error(errorJson.error || 'Verification failed.');
+                } catch {
+                    throw new Error(errorText || 'Verification failed.');
+                }
+            }
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
             await onRegister(data);
         } catch (err: any) {
             setError(err.message || 'Verification failed.');

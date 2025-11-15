@@ -292,22 +292,31 @@ const App: React.FC = () => {
     
     const handleLogin = async (sid: string, password: string) => {
         const res = await fetch(`${API_URL}/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid, password }) });
+        if (!res.ok) {
+            const errorText = await res.text().catch(() => 'Login failed');
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(errorJson.error || 'Login failed');
+            } catch {
+                throw new Error(errorText || 'Login failed');
+            }
+        }
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Login failed');
         await handleLoginSuccess(data);
     };
 
     const handleGoogleLogin = async (credential: string) => {
         const res = await fetch(`${API_URL}/auth/google`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ credential }) });
+        if (!res.ok) {
+            const errorText = await res.text().catch(() => 'Google login failed');
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(errorJson.error || 'Google login failed');
+            } catch {
+                throw new Error(errorText || 'Google login failed');
+            }
+        }
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Google login failed');
-        await handleLoginSuccess(data);
-    };
-
-    const handleRegister = async (userData: any) => {
-        const res = await fetch(`${API_URL}/register`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(userData) });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Registration failed');
         await handleLoginSuccess(data);
     };
 
@@ -447,7 +456,7 @@ const App: React.FC = () => {
                 </div>
             );
         }
-        if (view === 'register') return <RegistrationScreen onRegister={handleRegister} onSwitchToLogin={() => navigateTo('login')} onGoogleLogin={handleGoogleLogin} backendStatus={backendStatus} />;
+        if (view === 'register') return <RegistrationScreen onRegister={handleLoginSuccess} onSwitchToLogin={() => navigateTo('login')} onGoogleLogin={handleGoogleLogin} backendStatus={backendStatus} />;
         return <LoginScreen onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} onSwitchToRegister={() => navigateTo('register')} backendStatus={backendStatus} />;
     };
     
