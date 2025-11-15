@@ -28,10 +28,9 @@ dotenv.config();
 
 
 // --- ENV & SETUP CHECK ---
-const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME && process.env.ENCRYPTION_KEY;
+const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME && process.env.ENCRYPTION_KEY && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
 
 let pool = null;
-let appSettings = {};
 let mailer = null;
 const JWT_SECRET = process.env.JWT_SECRET;
 let googleClient = null;
@@ -79,39 +78,23 @@ if (isConfigured) {
             queueLimit: 0,
             charset: 'utf8mb4'
         });
+        
+        googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+        
+        if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+            mailer = nodemailer.createTransport({
+              host: process.env.SMTP_HOST,
+              port: parseInt(process.env.SMTP_PORT || '587', 10),
+              secure: process.env.SMTP_SECURE === 'true',
+              auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+            });
+        }
+
     } catch (error) {
-        console.error("FATAL ERROR: Could not create database pool. Check credentials.", error);
+        console.error("FATAL ERROR: Could not create database pool or initialize services. Check credentials.", error);
     }
 } else {
     console.error("FATAL ERROR: Server environment variables are not configured. The server will run in a misconfigured state.");
-}
-
-async function loadAppSettings() {
-  if (!isConfigured) return;
-  try {
-    const [rows] = await pool.query('SELECT * FROM settings');
-    rows.forEach(row => { appSettings[row.setting_key] = row.setting_value; });
-    console.log('Application settings loaded.');
-    
-    if (appSettings.GOOGLE_CLIENT_ID) {
-        googleClient = new OAuth2Client(appSettings.GOOGLE_CLIENT_ID);
-    }
-
-    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-        mailer = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: parseInt(process.env.SMTP_PORT || '587', 10),
-          secure: process.env.SMTP_SECURE === 'true',
-          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-        });
-        await mailer.verify();
-        console.log('SMTP mailer configured and verified.');
-    } else {
-        console.warn("SMTP mailer not configured. Email verification will be skipped.");
-    }
-  } catch (error) {
-    console.error('FATAL ERROR during initialization:', error.message);
-  }
 }
 
 // --- MIDDLEWARE ---
@@ -166,16 +149,30 @@ const getUserData = async (userId) => {
 
     const [scheduleRows] = await pool.query('SELECT item_data FROM schedule_items WHERE user_id = ?', [userId]);
     
-    const [[userConfigRow]] = await pool.query('SELECT config FROM user_configs WHERE user_id = ?', [userId]);
-    const decryptedConfig = userConfigRow?.config ? decrypt(userConfigRow.config) : '{}';
+    let [[userConfigRow]] = await pool.query('SELECT config FROM user_configs WHERE user_id = ?', [userId]);
+    
+    // FIX: If a user has no config, create a default one on-the-fly.
+    if (!userConfigRow) {
+        const defaultConfig = {
+            WAKE: '06:00', SCORE: '0/300', WEAK: [], UNACADEMY_SUB: false,
+            settings: { accentColor: '#0891b2', blurEnabled: true, mobileLayout: 'standard', forceOfflineMode: false, perQuestionTime: 180 },
+            RESULTS: [], EXAMS: [], STUDY_SESSIONS: [], DOUBTS: [],
+        };
+        const encryptedDefaultConfig = encrypt(JSON.stringify(defaultConfig));
+        await pool.query(
+            `INSERT INTO user_configs (user_id, config) VALUES (?, ?)`,
+            [userId, encryptedDefaultConfig]
+        );
+        userConfigRow = { config: encryptedDefaultConfig }; // Use the new default for the current request
+    }
+
+    const decryptedConfig = decrypt(userConfigRow.config);
     const configObject = JSON.parse(decryptedConfig);
     
     // This is now a complete StudentData object
     return { 
       ...clientSafeUser, 
       CONFIG: configObject,
-      // The other arrays are stored inside the CONFIG blob for now.
-      // This matches the type structure where CONFIG holds WAKE, SCORE, RESULTS, EXAMS etc.
       SCHEDULE_ITEMS: scheduleRows.map(r => typeof r.item_data === 'string' ? JSON.parse(r.item_data) : r.item_data),
       RESULTS: configObject.RESULTS || [],
       EXAMS: configObject.EXAMS || [],
@@ -191,6 +188,15 @@ apiRouter.get('/status', (req, res) => {
     }
     res.status(200).json({ status: 'online' });
 });
+
+// PUBLIC CONFIG ROUTE
+apiRouter.get('/config/public', (req, res) => {
+    if (!isConfigured || !process.env.GOOGLE_CLIENT_ID) {
+        return res.status(503).json({ error: 'Google integration is not configured on the server.' });
+    }
+    res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID });
+});
+
 
 // Apply configuration check for all subsequent routes
 apiRouter.use(configurationCheckMiddleware);
@@ -267,7 +273,7 @@ apiRouter.post('/login', async (req, res) => {
     const { sid, password } = req.body;
     if (!sid || !password) return res.status(400).json({ error: 'SID and password are required' });
     try {
-        const [[user]] = await pool.query('SELECT id, password, is_verified, email FROM users WHERE sid = ?', [sid]);
+        const [[user]] = await pool.query('SELECT id, password, is_verified, email FROM users WHERE sid = ? OR email = ?', [sid, sid]);
         if (!user || !user.password) return res.status(401).json({ error: 'Invalid credentials or sign in with Google' });
 
         if (!user.is_verified) {
@@ -278,7 +284,7 @@ apiRouter.post('/login', async (req, res) => {
         if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
         
         const userData = await getUserData(user.id);
-        const token = jwt.sign({ id: user.id, sid }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ id: user.id, sid: userData.sid }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token, user: userData });
     } catch (error) {
         console.error("Login error:", error);
@@ -290,7 +296,7 @@ apiRouter.post('/auth/google', async (req, res) => {
     const { credential } = req.body;
     if (!googleClient) return res.status(500).json({ error: 'Google Auth is not configured on the server.' });
     try {
-        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: appSettings.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID });
+        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
         const payload = ticket.getPayload();
         if (!payload || !payload.email) return res.status(400).json({ error: 'Invalid Google token' });
 
@@ -306,7 +312,7 @@ apiRouter.post('/auth/google', async (req, res) => {
             user = { id: result.insertId, sid: email };
         } else {
             // Update user details if they already exist from an email signup
-            await pool.query('UPDATE users SET google_id = ?, profile_photo = IF(profile_photo LIKE "data:image/svg+xml%", ?, profile_photo) WHERE id = ?', [googleId, picture, user.id]);
+            await pool.query('UPDATE users SET google_id = ?, profile_photo = IF(profile_photo LIKE "https://api.dicebear.com%", ?, profile_photo) WHERE id = ?', [googleId, picture, user.id]);
         }
         
         const userData = await getUserData(user.id);
@@ -671,18 +677,25 @@ app.get('*', (req, res) => {
 });
 
 // --- SERVER START ---
-// This async IIFE will run when the module is loaded.
-(async () => {
-    if (isConfigured && pool) {
-        await loadAppSettings(); // This needs to run in both environments
+const startServer = async () => {
+    if (isConfigured && mailer) {
+        try {
+            await mailer.verify();
+            console.log('SMTP mailer configured and verified.');
+        } catch (error) {
+            console.error("SMTP mailer verification failed:", error);
+        }
+    } else if (isConfigured) {
+        console.warn("SMTP mailer not configured. Email verification will be skipped.");
     }
 
-    // Vercel provides the `VERCEL` env var. If it's not present, we're likely local.
     if (!process.env.VERCEL) {
         const PORT = process.env.PORT || 3001;
         app.listen(PORT, () => console.log(`Server running on port ${PORT}. Configured: ${isConfigured}`));
     }
-})();
+};
+
+startServer();
 
 // Export the app for Vercel's serverless environment
 export default app;

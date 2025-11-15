@@ -12,22 +12,22 @@ declare global {
 interface LoginScreenProps {
     onSwitchToRegister: () => void;
     backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
+    googleClientId: string | null;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitchToRegister, backendStatus }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitchToRegister, backendStatus, googleClientId }) => {
     const { login, googleLogin, verificationEmail, setVerificationEmail } = useAuth();
     const [sid, setSid] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    const GOOGLE_CLIENT_ID = "59869142203-8qna4rfo93rrv9uiok3bes28pfu5k1l1.apps.googleusercontent.com";
 
     useEffect(() => {
-        if (window.google && backendStatus === 'online') {
+        if (window.google && backendStatus === 'online' && googleClientId) {
             try {
                 window.google.accounts.id.initialize({
-                    client_id: GOOGLE_CLIENT_ID,
+                    client_id: googleClientId,
                     callback: handleGoogleCallback,
                 });
                 window.google.accounts.id.renderButton(
@@ -38,7 +38,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitchToRegister, backendSt
                 console.error("Google Sign-In initialization error:", error);
             }
         }
-    }, [backendStatus]);
+    }, [backendStatus, googleClientId]);
 
     const handleGoogleCallback = async (response: any) => {
         setIsGoogleLoading(true);
@@ -78,7 +78,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitchToRegister, backendSt
                 </div>
 
                 <div className="space-y-4">
-                    <div id="googleSignInButton" className={`flex justify-center transition-opacity ${backendStatus !== 'online' || isGoogleLoading ? 'opacity-50 pointer-events-none' : ''}`}></div>
+                    <div id="googleSignInButton" className={`flex justify-center transition-opacity ${backendStatus !== 'online' || isGoogleLoading || !googleClientId ? 'opacity-50 pointer-events-none' : ''}`}></div>
                     {(isGoogleLoading) && <p className="text-sm text-center text-gray-400 animate-pulse">Verifying...</p>}
                     <div className="relative">
                         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-600"></div></div>

@@ -6,9 +6,10 @@ import { useAuth } from '../context/AuthContext';
 
 interface AuthScreenProps {
     backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
+    googleClientId: string | null;
 }
 
-const AuthScreen: React.FC<AuthScreenProps> = ({ backendStatus }) => {
+const AuthScreen: React.FC<AuthScreenProps> = ({ backendStatus, googleClientId }) => {
     const { verificationEmail, setVerificationEmail } = useAuth();
     const [isRegistering, setIsRegistering] = useState(false);
     
@@ -27,12 +28,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ backendStatus }) => {
                     backendStatus={backendStatus} 
                     initialEmail={verificationEmail}
                     onVerificationSuccess={handleSwitchToLogin}
+                    googleClientId={googleClientId}
                 />;
     }
     
     return <LoginScreen 
                 onSwitchToRegister={() => setIsRegistering(true)} 
                 backendStatus={backendStatus}
+                googleClientId={googleClientId}
             />;
 };
 

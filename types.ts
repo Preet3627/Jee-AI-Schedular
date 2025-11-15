@@ -130,7 +130,6 @@ export interface Config {
         blurEnabled: boolean;
         mobileLayout: 'standard' | 'toolbar';
         forceOfflineMode: boolean;
-        googleClientId: string;
         perQuestionTime: number; // Default time in seconds per MCQ
     };
 }

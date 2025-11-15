@@ -57,6 +57,9 @@ export const authFetch = async (url: string, options: RequestInit = {}) => {
 
 // Collection of all API call functions
 export const api = {
+    // Config
+    getPublicConfig: () => fetch(`${API_URL}/config/public`).then(handleResponse),
+
     // Auth
     login: (sid: string, password: string) => fetch(`${API_URL}/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid, password }) }).then(handleResponse),
     googleLogin: (credential: string) => fetch(`${API_URL}/auth/google`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ credential }) }).then(handleResponse),

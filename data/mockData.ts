@@ -1,3 +1,4 @@
+
 import { StudentData, UiText, ScheduleItem } from '../types';
 
 // Mock uiTextData
@@ -79,8 +80,6 @@ export const studentDatabase: StudentData[] = [
         blurEnabled: true,
         mobileLayout: 'standard',
         forceOfflineMode: false,
-        googleClientId: '',
-        // FIX: Removed invalid `geminiApiKey` property.
         perQuestionTime: 180,
       }
     },
@@ -117,8 +116,6 @@ export const studentDatabase: StudentData[] = [
         blurEnabled: true,
         mobileLayout: 'toolbar',
         forceOfflineMode: false,
-        googleClientId: '',
-        // FIX: Removed invalid `geminiApiKey` property.
         perQuestionTime: 150,
       }
     },

@@ -27,6 +27,7 @@ const App: React.FC = () => {
     const [allDoubts, setAllDoubts] = useState<DoubtData[]>([]);
     const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline' | 'misconfigured'>('checking');
     const [isSyncing, setIsSyncing] = useState(false);
+    const [googleClientId, setGoogleClientId] = useState<string | null>(null);
     const [googleAuthStatus, setGoogleAuthStatus] = useState<'unconfigured' | 'loading' | 'signed_in' | 'signed_out'>('loading');
 
     const handleSaveTask = async (task: ScheduleItem) => {
@@ -145,14 +146,22 @@ const App: React.FC = () => {
             const res = await fetch(`/api/status`, { signal: AbortSignal.timeout(5000) });
             if (res.ok) {
                  const data = await res.json().catch(() => ({}));
-                 setBackendStatus(data.status === 'misconfigured' ? 'misconfigured' : 'online');
+                 if(data.status === 'misconfigured') {
+                    setBackendStatus('misconfigured');
+                 } else {
+                    setBackendStatus('online');
+                    // Fetch public config once we know backend is online
+                    if (!googleClientId) {
+                        api.getPublicConfig().then(config => setGoogleClientId(config.googleClientId)).catch(console.error);
+                    }
+                 }
             } else {
                  setBackendStatus('offline');
             }
         } catch (error) {
             setBackendStatus('offline');
         }
-    }, []);
+    }, [googleClientId]);
 
     useEffect(() => {
         checkBackend();
@@ -183,19 +192,19 @@ const App: React.FC = () => {
     
     // Google API Init
     useEffect(() => {
-        if(currentUser?.CONFIG.settings.googleClientId) {
+        if(googleClientId) {
             initClient(
-                currentUser.CONFIG.settings.googleClientId,
+                googleClientId,
                 (isSignedIn) => setGoogleAuthStatus(isSignedIn ? 'signed_in' : 'signed_out'),
                 (error) => {
                     console.error("Google API Init Error", error);
                     setGoogleAuthStatus('unconfigured');
                 }
             );
-        } else if (currentUser) {
+        } else if (backendStatus === 'online') {
             setGoogleAuthStatus('unconfigured');
         }
-    }, [currentUser]);
+    }, [googleClientId, backendStatus]);
 
     const renderContent = () => {
         if (isLoading || backendStatus === 'checking') {
@@ -237,7 +246,7 @@ const App: React.FC = () => {
             );
         }
 
-        return <AuthScreen backendStatus={backendStatus} />;
+        return <AuthScreen backendStatus={backendStatus} googleClientId={googleClientId} />;
     };
 
     return <div className="min-h-screen bg-gray-950 text-gray-200 font-sans">{renderContent()}</div>;

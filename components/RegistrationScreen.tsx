@@ -9,9 +9,10 @@ interface RegistrationScreenProps {
     backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
     initialEmail: string | null;
     onVerificationSuccess: () => void;
+    googleClientId: string | null;
 }
 
-const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onSwitchToLogin, backendStatus, initialEmail, onVerificationSuccess }) => {
+const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onSwitchToLogin, backendStatus, initialEmail, onVerificationSuccess, googleClientId }) => {
     const { googleLogin, loginWithToken } = useAuth();
     const [step, setStep] = useState<'form' | 'verify'>(initialEmail ? 'verify' : 'form');
     const [formData, setFormData] = useState({ fullName: '', sid: '', email: initialEmail || '', password: '' });
@@ -19,13 +20,12 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onSwitchToLogin
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    const GOOGLE_CLIENT_ID = "59869142203-8qna4rfo93rrv9uiok3bes28pfu5k1l1.apps.googleusercontent.com";
 
     useEffect(() => {
-        if (window.google && step === 'form') {
+        if (window.google && step === 'form' && googleClientId) {
             try {
                 window.google.accounts.id.initialize({
-                    client_id: GOOGLE_CLIENT_ID,
+                    client_id: googleClientId,
                     callback: handleGoogleCallback,
                 });
                 window.google.accounts.id.renderButton(
@@ -36,7 +36,7 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onSwitchToLogin
                 console.error("Google Sign-Up initialization error:", error);
             }
         }
-    }, [step]);
+    }, [step, googleClientId]);
 
     const handleGoogleCallback = async (response: any) => {
         setIsGoogleLoading(true);
@@ -110,7 +110,7 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onSwitchToLogin
                 {step === 'form' ? (
                     <>
                         <div className="space-y-4">
-                            <div id="googleSignUpButton" className={`flex justify-center transition-opacity ${backendStatus !== 'online' || isGoogleLoading ? 'opacity-50 pointer-events-none' : ''}`}></div>
+                            <div id="googleSignUpButton" className={`flex justify-center transition-opacity ${backendStatus !== 'online' || isGoogleLoading || !googleClientId ? 'opacity-50 pointer-events-none' : ''}`}></div>
                             {(isGoogleLoading) && <p className="text-sm text-center text-gray-400 animate-pulse">Creating account with Google...</p>}
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-600"></div></div>
