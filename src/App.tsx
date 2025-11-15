@@ -139,6 +139,15 @@ const App: React.FC = () => {
             }
             try {
                 const res = await fetch(`${API_URL}/status`, { signal: AbortSignal.timeout(3000) });
+
+                // FIX: Correctly handle 304 Not Modified as a success state without trying to parse a body.
+                if (res.status === 304) {
+                    const wasOffline = backendStatus === 'offline';
+                    setBackendStatus('online');
+                    if (wasOffline) processSyncQueue();
+                    return; // Success, no body to parse.
+                }
+                
                 const data = await res.json();
                 
                 if (!res.ok) {
@@ -182,7 +191,11 @@ const App: React.FC = () => {
                 if ('Notification' in window && Notification.permission === 'granted') {
                     const oldItems = currentUserRef.current?.SCHEDULE_ITEMS || [];
                     const newItems = userData.SCHEDULE_ITEMS || [];
-                    const newBroadcasted = newItems.filter(newItem => !oldItems.some(oldItem => oldItem.ID === newItem.ID) && !newItem.isUserCreated);
+                    const newBroadcasted = newItems.filter(newItem => {
+                        const isUserCreated = 'isUserCreated' in newItem ? newItem.isUserCreated : false;
+                        return !oldItems.some(oldItem => oldItem.ID === newItem.ID) && !isUserCreated
+                    });
+
                     if (newBroadcasted.length > 0) {
                         new Notification('New Task from Admin!', {
                             body: `Your schedule has been updated with ${newBroadcasted.length} new task(s).`,
@@ -396,6 +409,7 @@ const App: React.FC = () => {
                         {userRole === 'admin' ? (
                             <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBatchImport={handleBatchImport} onBroadcastTask={handleBroadcastTask} />
                         ) : currentUser && (
+// FIX: Changed `onSaveTask={onSaveTask}` to `onSaveTask={handleSaveTask}` to pass the correct function handler.
                             <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={()=>{}} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateSettings={handleUpdateSettings} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.CONFIG.fullName)} googleAuthStatus={googleAuthStatus} onGoogleSignIn={gcal.handleSignIn} onGoogleSignOut={gcal.handleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={()=>{}} onPostSolution={()=>{}} />
                         )}
                     </div>
