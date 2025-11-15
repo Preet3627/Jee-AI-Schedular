@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Sitemap: /sitemap.xml
+
+# This allows AI web crawlers to find the guide on how to generate data for our app.
+User-agent: Google-Extended
+Allow: /ai-agent-guide.txt

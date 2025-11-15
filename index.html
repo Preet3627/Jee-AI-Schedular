@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="https://ponsrischool.in/wp-content/uploads/2025/11/Gemini_Generated_Image_ujvnj5ujvnj5ujvn.png" crossorigin="anonymous" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JEE Scheduler Pro</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --gradient-cyan: #0891b2;
+        --gradient-purple: #7c3aed;
+        --glass-bg: rgba(17, 24, 39, 0.5); /* bg-gray-900 with opacity */
+        --glass-border: rgba(55, 65, 81, 0.4); /* bg-gray-700 with opacity */
+
+        /* Customizable Accent Color */
+        --accent-color: var(--gradient-cyan);
+      }
+
+      body {
+        background-color: #02040a;
+        background-image:
+            radial-gradient(at 20% 20%, hsla(195, 80%, 30%, 0.2) 0px, transparent 50%),
+            radial-gradient(at 80% 10%, hsla(280, 70%, 40%, 0.15) 0px, transparent 50%),
+            radial-gradient(at 80% 80%, hsla(220, 80%, 35%, 0.15) 0px, transparent 50%),
+            radial-gradient(at 10% 90%, hsla(180, 75%, 30%, 0.2) 0px, transparent 50%);
+        background-attachment: fixed;
+      }
+      
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #111827; }
+      ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+
+      /* iOS-like Transitions */
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      @keyframes scaleIn {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      @keyframes scaleOut {
+        from { transform: scale(1); opacity: 1; }
+        to { transform: scale(0.95); opacity: 0; }
+      }
+
+      .modal-enter {
+        animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .modal-content-enter {
+        animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .modal-exit {
+        animation: fadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .modal-content-exit {
+        animation: scaleOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      
+      .popup-menu {
+        transform-origin: top right;
+      }
+      .popup-enter {
+        animation: scaleIn 0.15s ease-out forwards;
+      }
+      .popup-exit {
+        animation: scaleOut 0.15s ease-out forwards;
+      }
+      
+      .no-blur .backdrop-blur-sm { backdrop-filter: none; }
+      .no-blur .backdrop-blur-md { backdrop-filter: none; }
+      .no-blur .backdrop-blur-lg { backdrop-filter: none; }
+
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0-rc-f994737d14-20240522",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0-rc-f994737d14-20240522/client",
+    "express": "https://aistudiocdn.com/express@^5.1.0",
+    "mysql2/": "https://aistudiocdn.com/mysql2@^3.15.3/",
+    "cors": "https://aistudiocdn.com/cors@^2.8.5",
+    "bcryptjs": "https://aistudiocdn.com/bcryptjs@^3.0.3",
+    "jsonwebtoken": "https://aistudiocdn.com/jsonwebtoken@^9.0.2",
+    "google-auth-library": "https://aistudiocdn.com/google-auth-library@^10.5.0",
+    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10",
+    "dotenv/": "https://aistudiocdn.com/dotenv@^17.2.3/",
+    "fs": "https://aistudiocdn.com/fs@^0.0.1-security",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
+    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-900">
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>
