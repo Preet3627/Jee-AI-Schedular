@@ -1,14 +1,14 @@
+
 import React, { useState } from 'react';
 import Icon from './Icon';
-import { GoogleGenAI } from '@google/genai';
+import { api } from '../api/apiService';
 
 interface AIParserModalProps {
   onClose: () => void;
   onSave: (csv: string) => void;
-  geminiApiKey: string;
 }
 
-const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave, geminiApiKey }) => {
+const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,45 +24,16 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave, geminiAp
       setError('Please enter some text to parse.');
       return;
     }
-    if (!geminiApiKey) {
-      setError('Gemini API Key is not configured in settings.');
-      return;
-    }
 
     setIsLoading(true);
     setError('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const systemInstruction = `You are a data conversion expert. Your task is to convert unstructured text describing a student's schedule, exams, or results into a valid CSV format according to the provided schema. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. The user will provide the schema and the text to convert. Use the current date to infer any missing date information if required. Generate unique IDs for each item. Today's date is ${new Date().toLocaleDateString()}`;
-      
-      const prompt = `
-        Please convert the following text into a valid CSV.
-        
-        Available CSV Schemas:
-        1. SCHEDULE: ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
-        2. EXAM: ID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS
-        
-        Determine the correct schema from the text and generate the CSV.
-        
-        Text to convert:
-        ---
-        ${inputText}
-        ---
-      `;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { systemInstruction },
-      });
-      
-      const parsedCsv = response.text.trim();
-      onSave(parsedCsv);
-
+      const result = await api.parseTextToCsv(inputText);
+      onSave(result.csv);
     } catch (err: any) {
-      console.error("Gemini API error:", err);
-      setError(`Failed to parse text. ${err.message || 'Please check your API key and input.'}`);
+      console.error("AI Parser error:", err);
+      setError(err.error || 'Failed to parse text. The AI service may be unavailable.');
     } finally {
       setIsLoading(false);
     }

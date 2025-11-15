@@ -1,14 +1,14 @@
+
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
-import { GoogleGenAI } from '@google/genai';
+import { api } from '../api/apiService';
 
 interface ImageToTimetableModalProps {
   onClose: () => void;
   onSave: (csv: string) => void;
-  geminiApiKey: string;
 }
 
-const ImageToTimetableModal: React.FC<ImageToTimetableModalProps> = ({ onClose, onSave, geminiApiKey }) => {
+const ImageToTimetableModal: React.FC<ImageToTimetableModalProps> = ({ onClose, onSave }) => {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,36 +40,16 @@ const ImageToTimetableModal: React.FC<ImageToTimetableModalProps> = ({ onClose, 
       setError('Please upload an image of your timetable.');
       return;
     }
-    if (!geminiApiKey) {
-      setError('Gemini API Key is not configured in settings.');
-      return;
-    }
-
+   
     setIsLoading(true);
     setError('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      
-      const systemInstruction = `You are a data conversion expert specializing in academic timetables. Your task is to analyze an image of a weekly schedule and convert it into a valid CSV format according to the provided schema. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Infer details logically. For example, if a class is "Physics", the SUBJECT_TAG is "PHYSICS" and the CARD_TITLE could be "Physics Class". Create a unique ID for each entry. The required CSV format is: ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG. All tasks are of TYPE 'ACTION'.`;
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: {
-          parts: [
-            { text: "Analyze this timetable image and convert it to the specified CSV format." },
-            { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
-          ]
-        },
-        config: { systemInstruction },
-      });
-
-      const parsedCsv = response.text.trim();
-      onSave(parsedCsv);
-
+      const result = await api.parseImageToCsv(imageBase64);
+      onSave(result.csv);
     } catch (err: any) {
-      console.error("Gemini API error:", err);
-      setError(`Failed to parse image. ${err.message || 'Please check your API key and try a clearer image.'}`);
+      console.error("Gemini API error (image parse):", err);
+      setError(err.error || 'Failed to parse image. Please try a clearer image.');
     } finally {
       setIsLoading(false);
     }

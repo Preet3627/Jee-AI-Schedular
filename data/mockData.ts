@@ -80,7 +80,7 @@ export const studentDatabase: StudentData[] = [
         mobileLayout: 'standard',
         forceOfflineMode: false,
         googleClientId: '',
-        geminiApiKey: '',
+        // FIX: Removed invalid `geminiApiKey` property.
         perQuestionTime: 180,
       }
     },
@@ -118,7 +118,7 @@ export const studentDatabase: StudentData[] = [
         mobileLayout: 'toolbar',
         forceOfflineMode: false,
         googleClientId: '',
-        geminiApiKey: '',
+        // FIX: Removed invalid `geminiApiKey` property.
         perQuestionTime: 150,
       }
     },

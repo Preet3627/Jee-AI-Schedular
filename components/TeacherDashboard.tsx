@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { StudentData, ScheduleItem } from '../types';
 import Icon from './Icon';
@@ -79,7 +78,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} />
             )}
             {isAIBroadcastModalOpen && (
-                <AIParserModal onClose={() => setIsAIBroadcastModalOpen(false)} onSave={handleAIBroadcastSave} geminiApiKey="ADMIN_KEY" />
+                // FIX: Removed invalid `geminiApiKey` prop.
+                <AIParserModal onClose={() => setIsAIBroadcastModalOpen(false)} onSave={handleAIBroadcastSave} />
             )}
         </main>
     );

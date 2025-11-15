@@ -9,7 +9,8 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateAvatar } from './src/utils/generateAvatar.js';
+// FIX: Correct import path for generateAvatar.
+import { generateAvatar } from './utils/generateAvatar.js';
 import crypto from 'crypto';
 // FIX: Correct import for GoogleGenAI
 import { GoogleGenAI } from '@google/genai';
@@ -566,6 +567,56 @@ apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error("Gemini API error:", error);
         res.status(500).json({ error: `Failed to get response from AI: ${error.message}` });
+    }
+});
+
+apiRouter.post('/ai/parse-text-to-csv', authMiddleware, async (req, res) => {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: "Text is required." });
+    if (!process.env.API_KEY) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const systemInstruction = `You are a data conversion expert. Your task is to convert unstructured text describing a student's schedule, exams, or results into a valid CSV format according to the provided schema. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Use the current date to infer any missing date information if required. Generate unique IDs for each item. Today's date is ${new Date().toLocaleDateString()}`;
+        const prompt = `Please convert the following text into a valid CSV. Available CSV Schemas: 1. SCHEDULE: ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE; 2. EXAM: ID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS. Determine the correct schema from the text and generate the CSV. Text to convert:\n---\n${text}\n---`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: { systemInstruction },
+        });
+
+        res.json({ csv: response.text.trim() });
+    } catch (error) {
+        console.error("Gemini API error (text parse):", error);
+        res.status(500).json({ error: `Failed to parse text: ${error.message}` });
+    }
+});
+
+apiRouter.post('/ai/parse-image-to-csv', authMiddleware, async (req, res) => {
+    const { imageBase64 } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: "Image data is required." });
+    if (!process.env.API_KEY) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const systemInstruction = `You are a data conversion expert specializing in academic timetables. Your task is to analyze an image of a weekly schedule and convert it into a valid CSV format according to the provided schema. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Infer details logically. For example, if a class is "Physics", the SUBJECT_TAG is "PHYSICS" and the CARD_TITLE could be "Physics Class". Create a unique ID for each entry. The required CSV format is: ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG. All tasks are of TYPE 'ACTION'.`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    { text: "Analyze this timetable image and convert it to the specified CSV format." },
+                    { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
+                ]
+            },
+            config: { systemInstruction },
+        });
+
+        res.json({ csv: response.text.trim() });
+    } catch (error) {
+        console.error("Gemini API error (image parse):", error);
+        res.status(500).json({ error: `Failed to parse image: ${error.message}` });
     }
 });
 

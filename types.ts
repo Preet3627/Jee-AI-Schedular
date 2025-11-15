@@ -131,7 +131,6 @@ export interface Config {
         mobileLayout: 'standard' | 'toolbar';
         forceOfflineMode: boolean;
         googleClientId: string;
-        geminiApiKey: string;
         perQuestionTime: number; // Default time in seconds per MCQ
     };
 }

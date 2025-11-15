@@ -1,3 +1,4 @@
+
 import { StudentData, ScheduleItem, Config, ResultData, ExamData } from '../types';
 
 const API_URL = '/api';
@@ -67,7 +68,6 @@ export const api = {
     updateProfile: (data: { fullName?: string; profilePhoto?: string }) => authFetch('/profile', { method: 'PUT', body: JSON.stringify(data) }),
     saveTask: (task: ScheduleItem) => authFetch('/schedule-items', { method: 'POST', body: JSON.stringify({ task }) }),
     deleteTask: (taskId: string) => authFetch(`/schedule-items/${taskId}`, { method: 'DELETE' }),
-    // FIX: Renamed to updateConfig and changed signature to be more flexible
     updateConfig: (updates: Partial<Config>) => authFetch('/config', { method: 'POST', body: JSON.stringify(updates) }),
     fullSync: (userData: StudentData) => authFetch('/user-data/full-sync', { method: 'POST', body: JSON.stringify({ userData }) }),
 
@@ -80,6 +80,8 @@ export const api = {
     getStudents: () => authFetch('/admin/students'),
     broadcastTask: (task: ScheduleItem) => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task }) }),
     
-    // FIX: Add missing 'solveDoubt' method for the AI Doubt Solver feature.
-    solveDoubt: (data: { prompt: string; imageBase64?: string; apiKey: string; }) => authFetch('/ai/solve-doubt', { method: 'POST', body: JSON.stringify({ prompt: data.prompt, imageBase64: data.imageBase64 }) }),
+    // AI (secure backend endpoints)
+    solveDoubt: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/solve-doubt', { method: 'POST', body: JSON.stringify(data) }),
+    parseTextToCsv: (text: string) => authFetch('/ai/parse-text-to-csv', { method: 'POST', body: JSON.stringify({ text }) }),
+    parseImageToCsv: (imageBase64: string) => authFetch('/ai/parse-image-to-csv', { method: 'POST', body: JSON.stringify({ imageBase64 }) }),
 };

@@ -1,14 +1,13 @@
+
 import React, { useState, useRef } from 'react';
-import { StudentData } from '../types';
 import Icon from './Icon';
 import { api } from '../api/apiService';
 
 interface AIDoubtSolverModalProps {
-  student: StudentData;
   onClose: () => void;
 }
 
-const AIDoubtSolverModal: React.FC<AIDoubtSolverModalProps> = ({ student, onClose }) => {
+const AIDoubtSolverModal: React.FC<AIDoubtSolverModalProps> = ({ onClose }) => {
   const [prompt, setPrompt] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [response, setResponse] = useState('');
@@ -39,11 +38,7 @@ const AIDoubtSolverModal: React.FC<AIDoubtSolverModalProps> = ({ student, onClos
       setError('Please ask a question.');
       return;
     }
-    if (!student.CONFIG.settings.geminiApiKey) {
-      setError('Gemini API key is not configured in your settings.');
-      return;
-    }
-
+    
     setIsLoading(true);
     setError('');
     setResponse('');
@@ -52,11 +47,10 @@ const AIDoubtSolverModal: React.FC<AIDoubtSolverModalProps> = ({ student, onClos
       const result = await api.solveDoubt({
         prompt,
         imageBase64: imageBase64 || undefined,
-        apiKey: student.CONFIG.settings.geminiApiKey,
       });
       setResponse(result.response);
     } catch (err: any) {
-      setError(err.error || 'An error occurred while fetching the answer.');
+      setError(err.error || 'An error occurred. The AI service may be misconfigured by the administrator or is currently unavailable.');
     } finally {
       setIsLoading(false);
     }

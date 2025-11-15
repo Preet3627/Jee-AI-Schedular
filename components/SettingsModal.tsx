@@ -22,7 +22,6 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [blurEnabled, setBlurEnabled] = useState(settings.blurEnabled !== false);
   const [mobileLayout, setMobileLayout] = useState(settings.mobileLayout || 'standard');
   const [forceOfflineMode, setForceOfflineMode] = useState(settings.forceOfflineMode || false);
-  const [geminiApiKey, setGeminiApiKey] = useState(settings.geminiApiKey || '');
   const [perQuestionTime, setPerQuestionTime] = useState(settings.perQuestionTime || 180);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
@@ -34,7 +33,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ accentColor, blurEnabled, mobileLayout: mobileLayout as 'standard' | 'toolbar', forceOfflineMode, geminiApiKey, perQuestionTime });
+    onSave({ accentColor, blurEnabled, mobileLayout: mobileLayout as 'standard' | 'toolbar', forceOfflineMode, perQuestionTime });
     handleClose();
   };
 
@@ -85,7 +84,10 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
           
            <div>
               <h3 className="text-base font-bold text-gray-300">Integrations & Data</h3>
-              <div className="mt-4"><label htmlFor="gemini-key" className="text-sm font-bold text-gray-400">Gemini API Key</label><input id="gemini-key" type="password" value={geminiApiKey} onChange={e => setGeminiApiKey(e.target.value)} className={inputClass} placeholder="Enter your Gemini API Key" /><p className="text-xs text-gray-500 mt-1">Used for AI parsing features. Stored securely on your account.</p></div>
+               <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                <p className="text-sm font-semibold text-cyan-400">AI Features</p>
+                <p className="text-xs text-gray-400">AI-powered text/image parsing and doubt solving are enabled by the administrator.</p>
+              </div>
               {googleAuthStatus !== 'unconfigured' && (
                   <div className="mt-4">
                       {googleAuthStatus === 'loading' && <p className="text-sm text-yellow-400 text-center">Connecting to Google...</p>}
@@ -101,6 +103,17 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
               )}
                <div className="mt-4"><button type="button" onClick={onExportToIcs} className="w-full px-4 py-2 text-sm font-semibold text-gray-300 bg-gray-700/50 rounded-lg">Export Week to Calendar (.ics)</button></div>
           </div>
+          
+          <div className="border-t border-gray-700/50"></div>
+          
+          <div>
+            <label className="text-base font-bold text-gray-300">Practice Timer</label>
+            <div className="mt-2">
+                <label htmlFor="per-question-time" className="text-sm font-bold text-gray-400">Default time per question (seconds)</label>
+                <input id="per-question-time" type="number" value={perQuestionTime} onChange={e => setPerQuestionTime(parseInt(e.target.value, 10))} className={inputClass} />
+            </div>
+          </div>
+
 
           <div className="border-t border-gray-700/50"></div>
           
