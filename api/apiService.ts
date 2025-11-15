@@ -1,4 +1,3 @@
-
 import { StudentData, ScheduleItem, Config, ResultData, ExamData } from '../types';
 
 const API_URL = '/api';
@@ -80,4 +79,7 @@ export const api = {
     // Admin
     getStudents: () => authFetch('/admin/students'),
     broadcastTask: (task: ScheduleItem) => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task }) }),
+    
+    // FIX: Add missing 'solveDoubt' method for the AI Doubt Solver feature.
+    solveDoubt: (data: { prompt: string; imageBase64?: string; apiKey: string; }) => authFetch('/ai/solve-doubt', { method: 'POST', body: JSON.stringify({ prompt: data.prompt, imageBase64: data.imageBase64 }) }),
 };
