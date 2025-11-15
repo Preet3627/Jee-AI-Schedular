@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Icon from './Icon';
 import { playNextSound, playSkipSound, playStopSound, playTimesUpSound, vibrate } from '../utils/sounds';
 
@@ -31,32 +31,31 @@ const McqTimer: React.FC<McqTimerProps> = ({ questionNumbers, perQuestionTime, o
     return `${m}:${s}`;
   };
 
-  const updateNotification = () => {
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+  const updateNotification = useCallback(() => {
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted' && isActive && !isFinished) {
       const timeStr = isOvertime ? `+${formatTime(overtimeSeconds)}` : formatTime(secondsRemaining);
       const title = `Q# ${currentQuestionNumber} | ${timeStr}`;
       const body = `Practice in progress... (${currentQuestionIndex + 1}/${totalQuestions})`;
 
-      // Close previous notification before creating a new one
       notificationRef.current?.close();
 
-      // FIX: Removed non-standard 'renotify' property from Notification options.
       notificationRef.current = new Notification(title, {
         body: body,
         tag: 'mcq-timer-notification',
         silent: true,
       });
     }
-  };
+  }, [isActive, isFinished, isOvertime, overtimeSeconds, secondsRemaining, currentQuestionNumber, currentQuestionIndex, totalQuestions]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && isActive && !isFinished) {
-        if (Notification.permission !== 'granted') {
-          Notification.requestPermission();
-        }
-        updateNotification(); // Initial notification
-        notificationIntervalRef.current = setInterval(updateNotification, 5000); // Update every 5s
+        Notification.requestPermission().then(permission => {
+            if(permission === 'granted') {
+                updateNotification(); // Initial notification
+                notificationIntervalRef.current = setInterval(updateNotification, 5000); // Update every 5s
+            }
+        });
       } else {
         if (notificationIntervalRef.current) clearInterval(notificationIntervalRef.current);
         notificationRef.current?.close();
@@ -69,7 +68,7 @@ const McqTimer: React.FC<McqTimerProps> = ({ questionNumbers, perQuestionTime, o
       if (notificationIntervalRef.current) clearInterval(notificationIntervalRef.current);
       notificationRef.current?.close();
     };
-  }, [isActive, isFinished, secondsRemaining, isOvertime, currentQuestionIndex]);
+  }, [isActive, isFinished, updateNotification]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setTimeout> | null = null;
@@ -97,6 +96,32 @@ const McqTimer: React.FC<McqTimerProps> = ({ questionNumbers, perQuestionTime, o
     }
   };
   
+  const finishSession = (wasLastActionSkip = false) => {
+    if (isFinished) return;
+    playStopSound(); vibrate('finish');
+    setIsActive(false);
+    setIsFinished(true);
+
+    let finalSolved = solvedQuestions;
+    let finalSkipped = skippedQuestions;
+
+    // Add the current question to the correct list if it's not already there
+    const isCurrentQuestionHandled = solvedQuestions.includes(currentQuestionNumber) || skippedQuestions.includes(currentQuestionNumber);
+    if (!isCurrentQuestionHandled) {
+        if (wasLastActionSkip) {
+            finalSkipped = [...finalSkipped, currentQuestionNumber];
+        } else {
+            finalSolved = [...finalSolved, currentQuestionNumber];
+        }
+    }
+    
+    const duration = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
+    onSessionComplete(duration, finalSolved.length, finalSkipped);
+
+    notificationRef.current?.close();
+    if (notificationIntervalRef.current) clearInterval(notificationIntervalRef.current);
+  };
+  
   const handleNext = (isSkip = false) => {
     if (isSkip) {
         playSkipSound(); vibrate('click');
@@ -116,46 +141,37 @@ const McqTimer: React.FC<McqTimerProps> = ({ questionNumbers, perQuestionTime, o
     }
   };
 
-  const finishSession = (wasLastActionSkip = false) => {
-    if (isFinished) return;
-    playStopSound(); vibrate('finish');
-    setIsActive(false);
-    
-    let finalSolved = solvedQuestions;
-    let finalSkipped = skippedQuestions;
-    
-    if (wasLastActionSkip && !skippedQuestions.includes(currentQuestionNumber)) {
-        finalSkipped = [...skippedQuestions, currentQuestionNumber];
-    } else if (!wasLastActionSkip && !solvedQuestions.includes(currentQuestionNumber)) {
-        finalSolved = [...solvedQuestions, currentQuestionNumber];
-    }
-    
-    const duration = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
-    onSessionComplete(duration, finalSolved.length, finalSkipped);
-    setIsFinished(true);
-    notificationRef.current?.close();
-    if (notificationIntervalRef.current) clearInterval(notificationIntervalRef.current);
-  };
-  
-
   if (isFinished) {
     const duration = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
+    const finalSolvedCount = solvedQuestions.length + (skippedQuestions.includes(currentQuestionNumber) ? 0 : 1);
+    const finalSkippedCount = totalQuestions - finalSolvedCount;
+
     return (
         <div className="text-center space-y-4">
             <h3 className="text-xl font-bold text-white">Session Complete!</h3>
             <p>Total time: {formatTime(duration)}</p>
-            <p className="text-green-400 font-semibold">Questions Solved: {solvedQuestions.length + (skippedQuestions.includes(currentQuestionNumber) ? 0 : 1)}</p>
-            <p className="text-yellow-400 font-semibold">Questions Skipped: {skippedQuestions.length + (skippedQuestions.includes(currentQuestionNumber) ? 1 : 0) -1}</p>
+            <p className="text-green-400 font-semibold">Questions Solved: {finalSolvedCount}</p>
+            <p className="text-yellow-400 font-semibold">Questions Skipped: {finalSkippedCount}</p>
             <button onClick={onClose} className="w-full px-4 py-2 mt-4 text-base font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600">Close</button>
         </div>
     );
   }
 
-  if (!isActive) { /* ... UI remains the same ... */ }
+  if (!isActive) {
+      return (
+          <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-4">Ready to Practice?</h3>
+              <p className="text-gray-400 mb-2">Total Questions: <span className="font-bold text-white">{totalQuestions}</span></p>
+              <p className="text-gray-400 mb-6">Time per Question: <span className="font-bold text-white">{perQuestionTime}s</span></p>
+              <button onClick={handleStart} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
+                  <Icon name="play" /> Start Practice
+              </button>
+          </div>
+      )
+  }
 
   return (
     <div className="flex flex-col items-center">
-        {/* ... Active timer UI remains largely the same ... */}
         <div className="w-full flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
                 <Icon name="stopwatch" className="w-5 h-5 text-cyan-400" />

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import Icon from './Icon';
+// FIX: Corrected import path to point to the Icon component inside the `src` directory.
+import Icon from '../src/components/Icon';
 
 interface StudentCSVInputProps {
   onClose: () => void;

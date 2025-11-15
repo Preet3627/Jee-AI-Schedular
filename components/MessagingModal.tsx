@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StudentData, MessageData } from '../types';
-import Icon from './Icon';
+// FIX: Corrected import paths to point to files inside the `src` directory.
+import { StudentData, MessageData } from '../src/types';
+import Icon from '../src/components/Icon';
 
 interface MessagingModalProps {
   student: StudentData;
