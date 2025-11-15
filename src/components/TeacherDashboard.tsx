@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { StudentData, ScheduleItem } from '../types';
 import Icon from './Icon';
@@ -86,17 +87,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
 const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string) => void, onDeleteUser: (sid: string) => void, onStartMessage: (student: StudentData) => void }> = ({ students, onToggleSub, onDeleteUser, onStartMessage }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {students.map(student => (
-            <div key={student.CONFIG.SID} className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
+            <div key={student.sid} className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
                  <div className="flex items-center gap-3 mb-3">
-                    <img src={student.CONFIG.profilePhoto} alt={student.CONFIG.fullName} className="w-12 h-12 rounded-full object-cover" />
+                    <img src={student.profilePhoto} alt={student.fullName} className="w-12 h-12 rounded-full object-cover" />
                     <div>
-                       <h3 className="font-bold text-white">{student.CONFIG.fullName}</h3>
-                       <p className="text-sm text-gray-400">{student.CONFIG.SID}</p>
+                       <h3 className="font-bold text-white">{student.fullName}</h3>
+                       <p className="text-sm text-gray-400">{student.sid}</p>
                     </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                      <button onClick={() => onStartMessage(student)} className="w-full flex items-center justify-center gap-2 bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="message" className="w-3.5 h-3.5"/> Message</button>
-                    <button onClick={() => onDeleteUser(student.CONFIG.SID)} className="w-full bg-red-800 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Delete</button>
+                    <button onClick={() => onDeleteUser(student.sid)} className="w-full bg-red-800 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Delete</button>
                 </div>
             </div>
         ))}

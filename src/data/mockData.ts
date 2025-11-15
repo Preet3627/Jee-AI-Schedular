@@ -1,3 +1,4 @@
+
 import { UiText, StudentData } from '../types';
 import { generateAvatar } from '../utils/generateAvatar';
 
@@ -17,15 +18,18 @@ export const uiTextData: UiText = {
 
 export const studentDatabase: StudentData[] = [
     {
+        id: 1,
+        sid: "S001",
+        email: "rohan.shah@example.com",
+        fullName: "Rohan Shah",
+        profilePhoto: generateAvatar("Rohan Shah"),
+        isVerified: true,
+        role: 'student',
         CONFIG: {
-            SID: "S001",
-            fullName: "Rohan Shah",
-            profilePhoto: generateAvatar("Rohan Shah"),
             WAKE: "0530",
             SCORE: "147/300",
             WEAK: ["Trig Identities", "FBD in Rotation", "P-Block Reactions"],
             UNACADEMY_SUB: true,
-            googleId: '',
             googleDriveFileId: '',
             driveLastSync: '',
             settings: { 
@@ -88,15 +92,18 @@ export const studentDatabase: StudentData[] = [
         DOUBTS: []
     },
     {
+        id: 2,
+        sid: "S002",
+        email: "priya.patel@example.com",
+        fullName: "Priya Patel",
+        profilePhoto: generateAvatar("Priya Patel"),
+        isVerified: true,
+        role: 'student',
         CONFIG: {
-            SID: "S002",
-            fullName: "Priya Patel",
-            profilePhoto: generateAvatar("Priya Patel"),
             WAKE: "0600",
             SCORE: "182/300",
             WEAK: ["Definite Integration", "Wave Optics", "Mole Concept"],
             UNACADEMY_SUB: false,
-            googleId: '',
             googleDriveFileId: '',
             driveLastSync: '',
             settings: { 

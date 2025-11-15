@@ -1,3 +1,4 @@
+
 export type Language = 'EN' | 'GU';
 
 export interface LocalizedString {
@@ -116,15 +117,12 @@ export interface StudySession {
   questions_skipped: number[];
 }
 
+// Represents the structure of the encrypted JSON blob in the `user_configs` table
 export interface Config {
-    SID: string;
-    fullName: string;
-    profilePhoto: string;
     WAKE: string;
     SCORE: string;
     WEAK: string[];
     UNACADEMY_SUB: boolean;
-    googleId?: string;
     googleDriveFileId?: string;
     driveLastSync?: string;
     settings: {
@@ -138,9 +136,21 @@ export interface Config {
     };
 }
 
+// The complete, normalized user data object used throughout the frontend
 export interface StudentData {
+    // Core user info from the `users` table
+    id: number;
+    sid: string;
+    email: string;
+    fullName: string;
+    profilePhoto: string;
+    isVerified: boolean;
+    role: 'student' | 'admin';
+
+    // Data from other tables, combined by the backend
     CONFIG: Config;
     SCHEDULE_ITEMS: ScheduleItem[];
+    // FIX: Moved these properties from Config to StudentData to match backend response
     RESULTS: ResultData[];
     EXAMS: ExamData[];
     STUDY_SESSIONS: StudySession[];

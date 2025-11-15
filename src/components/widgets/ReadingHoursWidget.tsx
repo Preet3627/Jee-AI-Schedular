@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { StudentData } from '../../types';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -9,7 +10,8 @@ interface ReadingHoursWidgetProps {
 
 const ReadingHoursWidget: React.FC<ReadingHoursWidgetProps> = ({ student }) => {
     const { t } = useLocalization();
-    const { SCHEDULE_ITEMS, STUDY_SESSIONS } = student;
+    // FIX: Access STUDY_SESSIONS from the student prop directly
+    const { SCHEDULE_ITEMS } = student;
 
     const studyTaskTypes = ['DEEP_DIVE', 'HOMEWORK', 'ANALYSIS'];
     const assumedHoursPerTask = 2;
@@ -32,7 +34,7 @@ const ReadingHoursWidget: React.FC<ReadingHoursWidgetProps> = ({ student }) => {
         return taskDate < today;
     }).length * assumedHoursPerTask;
 
-    const timedSessionSeconds = STUDY_SESSIONS.reduce((total, session) => {
+    const timedSessionSeconds = student.STUDY_SESSIONS.reduce((total, session) => {
         const sessionDate = new Date(session.date);
         return sessionDate >= startOfWeek ? total + session.duration : total;
     }, 0);

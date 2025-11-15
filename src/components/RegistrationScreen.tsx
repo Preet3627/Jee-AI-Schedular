@@ -1,16 +1,20 @@
+
 import React, { useState, useEffect } from 'react';
 import Icon from './Icon';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../api/apiService';
 
 interface RegistrationScreenProps {
-    onRegister: (data: any) => Promise<void>;
     onSwitchToLogin: () => void;
-    onGoogleLogin: (token: string) => Promise<void>;
-    backendStatus: 'checking' | 'online' | 'offline';
+    backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
+    initialEmail: string | null;
+    onVerificationSuccess: () => void;
 }
 
-const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onSwitchToLogin, onGoogleLogin, backendStatus }) => {
-    const [step, setStep] = useState<'form' | 'verify'>('form');
-    const [formData, setFormData] = useState({ fullName: '', sid: '', password: '' });
+const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onSwitchToLogin, backendStatus, initialEmail, onVerificationSuccess }) => {
+    const { googleLogin, loginWithToken } = useAuth();
+    const [step, setStep] = useState<'form' | 'verify'>(initialEmail ? 'verify' : 'form');
+    const [formData, setFormData] = useState({ fullName: '', sid: '', email: initialEmail || '', password: '' });
     const [code, setCode] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -18,7 +22,7 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
     const GOOGLE_CLIENT_ID = "59869142203-8qna4rfo93rrv9uiok3bes28pfu5k1l1.apps.googleusercontent.com";
 
     useEffect(() => {
-        if (window.google) {
+        if (window.google && step === 'form') {
             try {
                 window.google.accounts.id.initialize({
                     client_id: GOOGLE_CLIENT_ID,
@@ -32,13 +36,14 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
                 console.error("Google Sign-Up initialization error:", error);
             }
         }
-    }, []);
+    }, [step]);
 
     const handleGoogleCallback = async (response: any) => {
         setIsGoogleLoading(true);
         setError('');
         try {
-            await onGoogleLogin(response.credential);
+            await googleLogin(response.credential);
+            onVerificationSuccess(); // Google login implies verification
         } catch (err: any) {
             setError(err.message || 'Google sign-up failed.');
             setIsGoogleLoading(false);
@@ -54,31 +59,12 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
         setError('');
         setIsLoading(true);
         try {
-            const res = await fetch('/api/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            const responseText = await res.text();
-            
-            if (!res.ok) {
-                try {
-                    const errorJson = JSON.parse(responseText);
-                    throw new Error(errorJson.error || 'Registration failed.');
-                } catch {
-                    throw new Error(responseText || 'Registration failed.');
-                }
-            }
-
-            try {
-                const data = JSON.parse(responseText);
-                if (data.token) {
-                    await onRegister(data);
-                } else {
-                    setStep('verify');
-                }
-            } catch {
-                throw new Error('Failed to read server response for registration.');
+            const data = await api.register(formData);
+            if (data.token) { // Mailer not configured, direct login
+                 loginWithToken(data.token);
+                 onVerificationSuccess();
+            } else {
+                setStep('verify');
             }
         } catch (err: any) {
             setError(err.message || 'Registration failed.');
@@ -91,29 +77,16 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
         e.preventDefault();
         setError('');
         setIsLoading(true);
+        const emailToVerify = formData.email || initialEmail;
+        if (!emailToVerify) {
+            setError("Email is missing for verification.");
+            setIsLoading(false);
+            return;
+        }
         try {
-            const res = await fetch('/api/verify-and-register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sid: formData.sid, code })
-            });
-            const responseText = await res.text();
-
-            if (!res.ok) {
-                try {
-                    const errorJson = JSON.parse(responseText);
-                    throw new Error(errorJson.error || 'Verification failed.');
-                } catch {
-                    throw new Error(responseText || 'Verification failed.');
-                }
-            }
-            
-            try {
-                const data = JSON.parse(responseText);
-                await onRegister(data);
-            } catch {
-                 throw new Error('Failed to read server response for verification.');
-            }
+            const data = await api.verifyEmail(emailToVerify, code);
+            loginWithToken(data.token);
+            onVerificationSuccess();
         } catch (err: any) {
             setError(err.message || 'Verification failed.');
         } finally {
@@ -150,9 +123,13 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
                                 <label htmlFor="fullName" className={labelClass}>Full Name</label>
                                 <input id="fullName" name="fullName" type="text" required className={inputClass} onChange={handleInputChange} value={formData.fullName} />
                             </div>
+                             <div>
+                                <label htmlFor="sid" className={labelClass}>Student ID</label>
+                                <input id="sid" name="sid" type="text" required className={inputClass} onChange={handleInputChange} value={formData.sid} />
+                            </div>
                             <div>
-                                <label htmlFor="sid" className={labelClass}>Email</label>
-                                <input id="sid" name="sid" type="email" required className={inputClass} onChange={handleInputChange} value={formData.sid} />
+                                <label htmlFor="email" className={labelClass}>Email</label>
+                                <input id="email" name="email" type="email" required className={inputClass} onChange={handleInputChange} value={formData.email} />
                             </div>
                             <div>
                                 <label htmlFor="password" className={labelClass}>Password</label>
@@ -168,7 +145,7 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegister, onS
                     <form onSubmit={handleVerifySubmit} className="space-y-4">
                         <div className="text-center">
                             <h2 className="text-xl font-bold text-white">Check your email</h2>
-                            <p className="text-sm text-gray-400 mt-2">We've sent a 6-digit verification code to <span className="font-semibold text-cyan-400">{formData.sid}</span>.</p>
+                            <p className="text-sm text-gray-400 mt-2">We've sent a 6-digit verification code to <span className="font-semibold text-cyan-400">{formData.email || initialEmail}</span>.</p>
                         </div>
                         <div>
                             <label htmlFor="code" className={labelClass}>Verification Code</label>

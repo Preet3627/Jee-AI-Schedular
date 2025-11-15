@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import Icon from './Icon';
+import { useAuth } from '../context/AuthContext';
 
 declare global {
   interface Window {
@@ -8,19 +10,17 @@ declare global {
 }
 
 interface LoginScreenProps {
-    onLogin: (sid: string, password: string) => Promise<void>;
-    onGoogleLogin: (token: string) => Promise<void>;
     onSwitchToRegister: () => void;
-    backendStatus: 'checking' | 'online' | 'offline';
+    backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin, onSwitchToRegister, backendStatus }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitchToRegister, backendStatus }) => {
+    const { login, googleLogin, verificationEmail, setVerificationEmail } = useAuth();
     const [sid, setSid] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    // This should ideally come from the backend/settings, but hardcoded for client-side init
     const GOOGLE_CLIENT_ID = "59869142203-8qna4rfo93rrv9uiok3bes28pfu5k1l1.apps.googleusercontent.com";
 
     useEffect(() => {
@@ -44,7 +44,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin, onSwi
         setIsGoogleLoading(true);
         setError('');
         try {
-            await onGoogleLogin(response.credential);
+            await googleLogin(response.credential);
         } catch (err: any) {
             setError(err.message || 'Google login failed.');
             setIsGoogleLoading(false);
@@ -56,14 +56,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGoogleLogin, onSwi
         setError('');
         setIsLoading(true);
         try {
-            await onLogin(sid, password);
+            await login(sid, password);
         } catch (err: any) {
             setError(err.message || 'Login failed.');
         } finally {
             setIsLoading(false);
         }
     };
-
+    
     const inputClass = "w-full px-4 py-3 mt-2 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 transition";
     const labelClass = "text-sm font-bold text-gray-400";
     const buttonClass = "w-full flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none bg-gradient-to-r from-[var(--gradient-cyan)] to-[var(--gradient-purple)]";

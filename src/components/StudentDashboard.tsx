@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData } from '../types';
 import ScheduleList from './ScheduleList';
@@ -86,7 +87,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
     const handleCsvSave = (csv: string) => {
         try {
-            const parsedData = parseCSVData(csv, student.CONFIG.SID);
+            // FIX: student.sid is correct, not student.CONFIG.SID
+            const parsedData = parseCSVData(csv, student.sid);
             if (parsedData.schedules.length > 0) onSaveBatchTasks(parsedData.schedules.map(s => s.item));
             if (parsedData.exams.length > 0) parsedData.exams.forEach(e => onAddExam(e.item));
             alert(`Successfully processed data!`);
@@ -156,16 +158,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                          <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />
                          <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />
                          <ReadingHoursWidget student={student} />
+                         {/* FIX: RESULTS is a top-level property on StudentData now */}
                          <MarksAnalysisWidget results={student.RESULTS} />
                     </div>
                 </div>
             )}
             {activeTab === 'planner' && <PlannerView items={taskItems} onEdit={handleEditClick} />}
+            {/* FIX: EXAMS is a top-level property on StudentData now */}
             {activeTab === 'exams' && <ExamsView exams={student.EXAMS} onAdd={() => { setEditingExam(null); setIsExamModalOpen(true); }} onEdit={(exam) => { setEditingExam(exam); setIsExamModalOpen(true); }} onDelete={onDeleteExam} />}
             {activeTab === 'performance' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
                         <div className="flex justify-end"><button onClick={() => setIsLogResultModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button></div>
+                        {/* FIX: RESULTS is a top-level property on StudentData now */}
                         {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
                     </div>
                     <div className="space-y-8">

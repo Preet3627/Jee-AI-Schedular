@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { StudentData, MessageData } from '../types';
 import Icon from './Icon';
@@ -28,7 +29,7 @@ const MessagingModal: React.FC<MessagingModalProps> = ({ student, onClose, isDem
       }
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API_URL}/messages/${student.CONFIG.SID}`, {
+        const res = await fetch(`${API_URL}/messages/${student.sid}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) throw new Error('Failed to fetch messages');
@@ -41,7 +42,7 @@ const MessagingModal: React.FC<MessagingModalProps> = ({ student, onClose, isDem
       }
     };
     fetchMessages();
-  }, [student.CONFIG.SID, isDemoMode]);
+  }, [student.sid, isDemoMode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,7 +63,7 @@ const MessagingModal: React.FC<MessagingModalProps> = ({ student, onClose, isDem
         const res = await fetch(`${API_URL}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ recipient_sid: student.CONFIG.SID, content: newMessage })
+            body: JSON.stringify({ recipient_sid: student.sid, content: newMessage })
         });
         if (!res.ok) throw new Error('Failed to send message');
         const sentMessage = await res.json();
@@ -83,8 +84,8 @@ const MessagingModal: React.FC<MessagingModalProps> = ({ student, onClose, isDem
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-lg h-[70vh] flex flex-col bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
         <header className="p-4 border-b border-[var(--glass-border)] flex-shrink-0">
-          <h2 className="text-xl font-bold text-white">Message to {student.CONFIG.fullName}</h2>
-          <p className="text-sm text-gray-400">{student.CONFIG.SID}</p>
+          <h2 className="text-xl font-bold text-white">Message to {student.fullName}</h2>
+          <p className="text-sm text-gray-400">{student.sid}</p>
         </header>
 
         <main className="flex-grow p-4 overflow-y-auto">

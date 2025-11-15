@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { StudentData } from '../types';
 import Icon from './Icon';
@@ -124,7 +125,8 @@ const AIDoubtSolverModal: React.FC<AIDoubtSolverModalProps> = ({ student, onClos
                                 {msg.image && <img src={msg.image} alt="Doubt image" className="rounded-md mb-2 max-w-xs" />}
                                 <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                             </div>
-                            {msg.sender === 'user' && <img src={student.CONFIG.profilePhoto} alt="User" className="w-8 h-8 rounded-full flex-shrink-0" />}
+                            {/* FIX: profilePhoto is a top-level property on StudentData */}
+                            {msg.sender === 'user' && <img src={student.profilePhoto} alt="User" className="w-8 h-8 rounded-full flex-shrink-0" />}
                         </div>
                     ))}
                     {isLoading && (
