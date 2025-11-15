@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData } from '../types';
 import ScheduleList from './ScheduleList';
-import Icon from './Icon';
+// FIX: Import IconName type to be used in component props.
+import Icon, { IconName } from './Icon';
 import AIParserModal from './AIParserModal';
 import CommunityDashboard from './CommunityDashboard';
 import PlannerView from './PlannerView';
@@ -46,10 +47,12 @@ interface StudentDashboardProps {
     onBackupToDrive: () => void;
     onRestoreFromDrive: () => void;
     allDoubts: DoubtData[];
+    onPostDoubt: (question: string, image?: string) => void;
+    onPostSolution: (doubtId: string, solution: string, image?: string) => void;
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
-    const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateSettings, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts } = props;
+    const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateSettings, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts, onPostDoubt, onPostSolution } = props;
     const [activeTab, setActiveTab] = useState<ActiveTab>('schedule');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isAiParserModalOpen, setisAiParserModalOpen] = useState(false);
@@ -80,9 +83,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         setIsCreateModalOpen(true);
     };
 
-    const handleCslSave = (csl: string) => {
+    const handleCsvSave = (csv: string) => {
         try {
-            const parsedData = parseCSVData(csl, student.CONFIG.SID);
+            const parsedData = parseCSVData(csv, student.CONFIG.SID);
             if (parsedData.schedules.length > 0) onSaveBatchTasks(parsedData.schedules.map(s => s.item));
             if (parsedData.exams.length > 0) parsedData.exams.forEach(e => onAddExam(e.item));
             alert(`Successfully processed data!`);
@@ -103,26 +106,25 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         setIsPracticeModalOpen(true);
     };
     
-    const TabButton: React.FC<{ tabId: ActiveTab; children: React.ReactNode; }> = ({ tabId, children }) => (
-        <button onClick={() => setActiveTab(tabId)} className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${activeTab === tabId ? 'text-cyan-400 border-[var(--accent-color)]' : 'text-gray-400 border-transparent hover:text-white'}`}>
-            {children}
+    const TabButton: React.FC<{ tabId: ActiveTab; icon: IconName; children: React.ReactNode; }> = ({ tabId, icon, children }) => (
+        <button onClick={() => setActiveTab(tabId)} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${activeTab === tabId ? 'text-[var(--accent-color)] border-[var(--accent-color)]' : 'text-gray-400 border-transparent hover:text-white'}`}>
+            <Icon name={icon} className="w-4 h-4" /> {children}
         </button>
     );
 
     const TopTabBar = () => (
       <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[var(--glass-border)] mb-6 gap-4">
         <div className="flex items-center flex-wrap">
-          <TabButton tabId="schedule">Schedule</TabButton>
-          <TabButton tabId="planner">Planner</TabButton>
-          <TabButton tabId="exams">Exams</TabButton>
-          <TabButton tabId="performance">Performance</TabButton>
-          <TabButton tabId="community">Community</TabButton>
+          <TabButton tabId="schedule" icon="schedule">Schedule</TabButton>
+          <TabButton tabId="planner" icon="planner">Planner</TabButton>
+          <TabButton tabId="exams" icon="trophy">Exams</TabButton>
+          <TabButton tabId="performance" icon="performance">Performance</TabButton>
+          <TabButton tabId="community" icon="community">Community</TabButton>
         </div>
         <div className="flex items-center gap-2 mb-2 sm:mb-0">
           <button onClick={() => setIsImageModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Import from Image"><Icon name="image" /></button>
           <button onClick={() => setisAiParserModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Import from Text/CSL"><Icon name="upload" /></button>
           <button onClick={() => setIsPracticeModalOpen(true)} className="p-2 rounded-lg bg-purple-600 hover:bg-purple-500" title="Custom Practice"><Icon name="stopwatch" /></button>
-          <button onClick={() => onExportToIcs()} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Export Week to .ics"><Icon name="calendar" /></button>
           <button onClick={() => setIsSettingsModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600"><Icon name="settings" /></button>
           <button onClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
             <Icon name="plus" /> Create
@@ -147,7 +149,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
                         <ActivityTracker activities={activityItems} />
-                        <ScheduleList items={taskItems} onDelete={onDeleteTask} onEdit={handleEditClick} onMoveToNextDay={(id) => {/* Logic for this is in App.tsx now */}} onStar={handleStarTask} onStartPractice={handleStartPractice} isSubscribed={student.CONFIG.UNACADEMY_SUB} />
+                        <ScheduleList items={taskItems} onDelete={onDeleteTask} onEdit={handleEditClick} onMoveToNextDay={()=>{}} onStar={handleStarTask} onStartPractice={handleStartPractice} isSubscribed={student.CONFIG.UNACADEMY_SUB} />
                     </div>
                     <div className="space-y-8">
                          <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />
@@ -171,13 +173,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     </div>
                 </div>
             )}
-            {activeTab === 'community' && <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={()=>{}} onPostSolution={()=>{}} />}
+            {activeTab === 'community' && <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />}
 
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} />}
-            {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCslSave} geminiApiKey={student.CONFIG.settings.geminiApiKey} />}
-            {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={handleCslSave} geminiApiKey={student.CONFIG.settings.geminiApiKey} />}
+            {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCsvSave} geminiApiKey={student.CONFIG.settings.geminiApiKey} />}
+            {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={handleCsvSave} geminiApiKey={student.CONFIG.settings.geminiApiKey} />}
             {isPracticeModalOpen && <CustomPracticeModal initialQRanges={practiceTask?.Q_RANGES} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} />}
-            {/* FIX: Pass onExportToIcs prop to SettingsModal to satisfy its required props. */}
             {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={onUpdateSettings} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}

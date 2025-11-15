@@ -20,7 +20,7 @@ const ConfigurationErrorScreen: React.FC = () => {
             <li><span className="font-bold text-cyan-300">DB_USER</span>: Your MySQL database username</li>
             <li><span className="font-bold text-cyan-300">DB_PASSWORD</span>: Your MySQL database password</li>
             <li><span className="font-bold text-cyan-300">DB_NAME</span>: The name of your database</li>
-            <li><span className="font-bold text-cyan-300">JWT_SECRET</span>: A long, random, secret string for tokens</li>
+            <li><span className="font-bold text-cyan-300">JWT_SECRET</span>: A long, random, secure string for tokens</li>
           </ul>
            <p className="text-sm text-gray-400">
             After adding these variables, you will need to **redeploy** the application for the changes to take effect.

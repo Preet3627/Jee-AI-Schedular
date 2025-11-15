@@ -8,7 +8,7 @@ This is a secure, multilingual (EN/GU), full-stack Student Management System (SM
 - **Role-Based Dashboards:** Separate, secure dashboards for Students and Admins, powered by live data from the backend.
 - **PWA with Offline Sync:** As an installable PWA, the app caches data for offline viewing. Any changes made offline are queued and automatically synced with the server upon reconnection.
 - **Google Integration:** Seamless Google Sign-In/Sign-Up, with features for backing up data to Google Drive and syncing schedules with Google Calendar.
-- **Admin Broadcast:** Administrators can create and broadcast tasks (schedules, homework) to all students simultaneously.
+- **Admin Broadcast:** Administrators can create and broadcast tasks (schedules, homework) to all students simultaneously, with PWA notifications for users.
 - **Community Hub:** A collaborative forum where students can post questions and solutions, with support for image uploads.
 - **AI-Powered Imports:** Leverage the Gemini API to parse schedules from unstructured text or timetable images directly into the app.
 - **Secure & Configurable:** All sensitive keys and credentials are managed on the backend via environment variables, ensuring the frontend code is secure.

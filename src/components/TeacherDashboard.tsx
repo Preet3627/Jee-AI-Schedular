@@ -3,7 +3,9 @@ import { StudentData, ScheduleItem } from '../types';
 import Icon from './Icon';
 import AIGuide from './AIGuide';
 import MessagingModal from './MessagingModal';
-import CreateEditTaskModal from './CreateEditTaskModal'; // Re-use for broadcasting
+import CreateEditTaskModal from './CreateEditTaskModal';
+import AIParserModal from './AIParserModal';
+import { parseCSVData } from '../utils/csvParser';
 
 interface TeacherDashboardProps {
     students: StudentData[];
@@ -15,9 +17,10 @@ interface TeacherDashboardProps {
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleUnacademySub, onDeleteUser, onAddTeacher, onBatchImport, onBroadcastTask }) => {
-    const [activeTab, setActiveTab] = useState<'grid' | 'import' | 'broadcast' | 'access' | 'guide'>('grid');
+    const [activeTab, setActiveTab] = useState<'grid' | 'broadcast' | 'guide'>('grid');
     const [messagingStudent, setMessagingStudent] = useState<StudentData | null>(null);
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+    const [isAIBroadcastModalOpen, setIsAIBroadcastModalOpen] = useState(false);
 
     const TabButton: React.FC<{ tabId: string; children: React.ReactNode; }> = ({ tabId, children }) => (
         <button
@@ -32,7 +35,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
         const taskWithUniqueId = { ...task, ID: `${task.type.charAt(0)}${Date.now()}` };
         if (window.confirm(`Are you sure you want to send this task to all ${students.length} students?`)) {
             onBroadcastTask(taskWithUniqueId);
-            setIsBroadcastModalOpen(false);
+        }
+    };
+    
+    const handleAIBroadcastSave = (csv: string) => {
+        try {
+            const parsedData = parseCSVData(csv);
+            const tasksToBroadcast = parsedData.schedules.map(s => s.item);
+            if (tasksToBroadcast.length === 0) {
+                alert("No schedule items found in the provided text.");
+                return;
+            }
+            if(window.confirm(`This will broadcast ${tasksToBroadcast.length} tasks to all students. Continue?`)) {
+                tasksToBroadcast.forEach(onBroadcastTask);
+                setIsAIBroadcastModalOpen(false);
+            }
+        } catch (error: any) {
+            alert(`Error parsing data: ${error.message}`);
         }
     };
 
@@ -42,14 +61,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 <nav className="-mb-px flex space-x-6">
                     <TabButton tabId="grid"><div className="flex items-center gap-2"><Icon name="users" /> Student Grid</div></TabButton>
                     <TabButton tabId="broadcast"><div className="flex items-center gap-2"><Icon name="send" /> Broadcast</div></TabButton>
-                    <TabButton tabId="import"><div className="flex items-center gap-2"><Icon name="upload" /> CSL Import</div></TabButton>
                     <TabButton tabId="guide"><div className="flex items-center gap-2"><Icon name="book-open" /> AI Guide</div></TabButton>
                 </nav>
             </div>
             <div className="mt-6">
                 {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={setMessagingStudent} />}
-                {activeTab === 'broadcast' && <BroadcastManager onOpenModal={() => setIsBroadcastModalOpen(true)} />}
-                {activeTab === 'import' && <CSLBatchImport onImport={onBatchImport} />}
+                {activeTab === 'broadcast' && <BroadcastManager onOpenModal={() => setIsBroadcastModalOpen(true)} onOpenAIModal={() => setIsAIBroadcastModalOpen(true)} />}
                 {activeTab === 'guide' && <AIGuide />}
             </div>
 
@@ -58,6 +75,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
             )}
             {isBroadcastModalOpen && (
                 <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} />
+            )}
+            {isAIBroadcastModalOpen && (
+                <AIParserModal onClose={() => setIsAIBroadcastModalOpen(false)} onSave={handleAIBroadcastSave} geminiApiKey="ADMIN_KEY" />
             )}
         </main>
     );
@@ -83,31 +103,20 @@ const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string
     </div>
 );
 
-const BroadcastManager: React.FC<{ onOpenModal: () => void }> = ({ onOpenModal }) => (
+const BroadcastManager: React.FC<{ onOpenModal: () => void, onOpenAIModal: () => void }> = ({ onOpenModal, onOpenAIModal }) => (
     <div className="bg-gray-800/70 p-6 rounded-lg border border-gray-700 max-w-2xl mx-auto text-center">
         <Icon name="send" className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
         <h3 className="font-bold text-white text-lg mb-2">Broadcast a Task</h3>
-        <p className="text-sm text-gray-400 mb-4">Create a single schedule item or homework assignment and send it to every student. The task will appear in their schedule. If they have Google Calendar connected, it will sync automatically.</p>
-        <button onClick={onOpenModal} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 mx-auto text-base font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg bg-gradient-to-r from-[var(--gradient-cyan)] to-[var(--gradient-purple)]">
-            <Icon name="plus" /> Create Broadcast Task
-        </button>
+        <p className="text-sm text-gray-400 mb-4">Create a task and send it to every student. It will appear in their schedule and sync to their Google Calendar. Use the AI Parser for batch broadcasting.</p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button onClick={onOpenModal} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg bg-gray-700 hover:bg-gray-600">
+                <Icon name="plus" /> Create Manually
+            </button>
+            <button onClick={onOpenAIModal} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg bg-gradient-to-r from-[var(--gradient-cyan)] to-[var(--gradient-purple)]">
+                <Icon name="upload" /> Broadcast from AI
+            </button>
+        </div>
     </div>
 );
-
-const CSLBatchImport: React.FC<{ onImport: (csl: string) => void }> = ({ onImport }) => {
-    const [cslText, setCslText] = useState('');
-    return (
-        <div className="bg-gray-800/70 p-6 rounded-lg border border-gray-700 max-w-2xl mx-auto">
-            <h3 className="font-bold text-white text-lg mb-4">Paste CSL to Import</h3>
-            <p className="text-sm text-gray-400 mb-4">Paste a CSL block here. The system will parse and assign all items to the correct students based on their SIDs.</p>
-            <form onSubmit={(e) => { e.preventDefault(); onImport(cslText); setCslText(''); }}>
-                <textarea value={cslText} onChange={(e) => setCslText(e.target.value)} className="w-full h-64 bg-gray-900 border border-gray-600 rounded-md p-3 font-mono text-sm" placeholder="ID,SID,TYPE,DAY,..." />
-                 <button type="submit" disabled={!cslText} className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg disabled:opacity-50 bg-gradient-to-r from-[var(--gradient-cyan)] to-[var(--gradient-purple)]">
-                    <Icon name="upload" /> Import Schedule
-                </button>
-            </form>
-        </div>
-    );
-};
 
 export default TeacherDashboard;
