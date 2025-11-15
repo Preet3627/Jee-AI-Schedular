@@ -5,7 +5,7 @@ import LoginScreen from './components/LoginScreen';
 import StudentDashboard from './components/StudentDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import RegistrationScreen from './components/RegistrationScreen';
-import DemoModeSelector from './components/DemoModeSelector';
+import BackendOfflineScreen from './components/BackendOfflineScreen';
 import ConfigurationErrorScreen from './components/ConfigurationErrorScreen';
 import { studentDatabase } from './data/mockData';
 import * as gcal from './utils/googleCalendar';
@@ -66,7 +66,6 @@ const App: React.FC = () => {
 
         for (const item of queue) {
             try {
-                // FIX: Access headers from item.options, not item directly.
                 const options = { ...item.options, headers: JSON.parse(item.options.headers || '{}') };
                 const res = await fetch(item.url, options);
                 if (!res.ok && res.status !== 409) throw new Error('Sync failed');
@@ -80,7 +79,6 @@ const App: React.FC = () => {
         setIsSyncing(false);
         if (!failed) {
             localStorage.removeItem('syncQueue');
-            // Successful sync, force a full data refresh from server
             const res = await fetch(`${API_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) {
                 const { userData, role } = await res.json();
@@ -89,13 +87,35 @@ const App: React.FC = () => {
             }
         }
     }, [isSyncing, token]);
-
+    
     const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
         const fullUrl = `${API_URL}${url}`;
-        const headers = { 'Content-Type': 'application/json', ...options.headers };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
         
-        const fetchOptions = { ...options, headers };
+        const headersInit: HeadersInit = { 'Content-Type': 'application/json', ...options.headers };
+        if (token) {
+            if (headersInit instanceof Headers) {
+                headersInit.set('Authorization', `Bearer ${token}`);
+            } else if (Array.isArray(headersInit)) {
+                headersInit.push(['Authorization', `Bearer ${token}`]);
+            } else {
+                headersInit['Authorization'] = `Bearer ${token}`;
+            }
+        }
+
+        const fetchOptions = { ...options, headers: headersInit };
+    
+        const normalizeHeadersForQueue = (headers: HeadersInit): Record<string, string> => {
+            const normalized: Record<string, string> = {};
+            if (headers instanceof Headers) {
+                headers.forEach((value, key) => (normalized[key] = value));
+            } else if (Array.isArray(headers)) {
+                headers.forEach(([key, value]) => (normalized[key] = value));
+            } else {
+                return headers as Record<string, string>;
+            }
+            return normalized;
+        };
+
 
         if (backendStatus === 'online' && !isDemoMode) {
             try {
@@ -109,20 +129,17 @@ const App: React.FC = () => {
                 console.warn('API call failed, request might be queued.', error);
                 if (options.method && options.method !== 'GET') {
                     const queue = JSON.parse(localStorage.getItem('syncQueue') || '[]');
-                    queue.push({ url: fullUrl, options: { ...options, headers: JSON.stringify(headers)}, timestamp: Date.now() });
+                    queue.push({ url: fullUrl, options: { ...options, headers: JSON.stringify(normalizeHeadersForQueue(headersInit))}, timestamp: Date.now() });
                     localStorage.setItem('syncQueue', JSON.stringify(queue));
                 }
                 throw error;
             }
         } else if (isDemoMode || backendStatus === 'offline') {
             if (options.method === 'GET') {
-                 // For offline GETs, we just rely on cached data, so this function would not be called.
-                 // This part is a fallback.
                 return new Response(JSON.stringify({}), { status: 200 });
             }
-            // Queue mutations if offline/demo
             const queue = JSON.parse(localStorage.getItem('syncQueue') || '[]');
-            queue.push({ url: fullUrl, options: { ...options, headers: JSON.stringify(headers)}, timestamp: Date.now() });
+            queue.push({ url: fullUrl, options: { ...options, headers: JSON.stringify(normalizeHeadersForQueue(headersInit))}, timestamp: Date.now() });
             localStorage.setItem('syncQueue', JSON.stringify(queue));
             return new Response(JSON.stringify({ queued: true }), { status: 202 });
         } else {
@@ -130,41 +147,52 @@ const App: React.FC = () => {
         }
     }, [token, handleLogout, backendStatus, isDemoMode]);
     
-    // Check Backend Status & Sync
-    useEffect(() => {
-        const checkBackend = async () => {
-            if (JSON.parse(currentUserRef.current?.CONFIG.settings.forceOfflineMode?.toString() || 'false')) {
-                setBackendStatus('offline');
-                return;
+    const checkBackend = useCallback(async (): Promise<'online' | 'offline' | 'misconfigured'> => {
+        if (currentUserRef.current?.CONFIG.settings.forceOfflineMode) {
+            return 'offline';
+        }
+        try {
+            const res = await fetch(`${API_URL}/status`, { signal: AbortSignal.timeout(5000) });
+            if (res.status === 304) {
+                return 'online'; // Success, no body to parse.
             }
-            try {
-                const res = await fetch(`${API_URL}/status`, { signal: AbortSignal.timeout(3000) });
+            if (res.ok) {
+                 const data = await res.json().catch(() => ({})); // Handle cases where body might be empty on 200
+                 return data.status === 'misconfigured' ? 'misconfigured' : 'online';
+            }
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 503 && data.status === 'misconfigured') {
+                return 'misconfigured';
+            }
+            return 'offline';
+        } catch (error) {
+            return 'offline';
+        }
+    }, []);
 
-                // FIX: Correctly handle 304 Not Modified as a success state without trying to parse a body.
-                if (res.status === 304) {
-                    const wasOffline = backendStatus === 'offline';
-                    setBackendStatus('online');
-                    if (wasOffline) processSyncQueue();
-                    return; // Success, no body to parse.
-                }
-                
-                const data = await res.json();
-                
-                if (!res.ok) {
-                    if (res.status === 503 && data.status === 'misconfigured') {
-                        setBackendStatus('misconfigured');
-                    } else { throw new Error('Offline'); }
-                } else {
-                    const wasOffline = backendStatus === 'offline';
-                    setBackendStatus('online');
-                    if(wasOffline) processSyncQueue();
-                }
-            } catch (error) { setBackendStatus('offline'); }
+    const handleRetryConnection = useCallback(async () => {
+        setBackendStatus('checking');
+        const status = await checkBackend();
+        setBackendStatus(status);
+    }, [checkBackend]);
+    
+    // Effect for initial and interval checks
+    useEffect(() => {
+        const runCheck = async () => {
+            const newStatus = await checkBackend();
+            setBackendStatus(newStatus);
         };
-        checkBackend();
-        const interval = setInterval(checkBackend, 15000);
+        runCheck();
+        const interval = setInterval(runCheck, 15000);
         return () => clearInterval(interval);
-    }, [processSyncQueue, backendStatus]);
+    }, [checkBackend]);
+    
+    // Effect to process sync queue when coming online
+    useEffect(() => {
+        if (backendStatus === 'online') {
+            processSyncQueue();
+        }
+    }, [backendStatus, processSyncQueue]);
 
     // Auth & Data Loading
     useEffect(() => {
@@ -188,13 +216,14 @@ const App: React.FC = () => {
                 if (!res.ok) throw new Error('Auth failed');
                 const { userData, role } = await res.json();
 
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    const oldItems = currentUserRef.current?.SCHEDULE_ITEMS || [];
+                if ('Notification' in window && Notification.permission === 'granted' && currentUserRef.current) {
+                    const oldItems = currentUserRef.current.SCHEDULE_ITEMS || [];
                     const newItems = userData.SCHEDULE_ITEMS || [];
-                    const newBroadcasted = newItems.filter(newItem => {
-                        const isUserCreated = 'isUserCreated' in newItem ? newItem.isUserCreated : false;
-                        return !oldItems.some(oldItem => oldItem.ID === newItem.ID) && !isUserCreated
-                    });
+                    
+                    const newBroadcasted = newItems.filter((newItem: ScheduleItem) => 
+                        !oldItems.some(oldItem => oldItem.ID === newItem.ID) && 
+                        ('isUserCreated' in newItem && !newItem.isUserCreated)
+                    );
 
                     if (newBroadcasted.length > 0) {
                         new Notification('New Task from Admin!', {
@@ -226,8 +255,11 @@ const App: React.FC = () => {
             }
         };
         
-        if(backendStatus !== 'checking' && backendStatus !== 'misconfigured') loadInitialData();
-        else if (backendStatus === 'misconfigured') setIsLoading(false);
+        if(backendStatus === 'online' && token) {
+             loadInitialData();
+        } else if (backendStatus !== 'checking') {
+             setIsLoading(false);
+        }
     }, [backendStatus, token, isDemoMode, handleLogout, navigateTo]);
 
     // Google API Init
@@ -393,13 +425,13 @@ const App: React.FC = () => {
     };
 
     const renderContent = () => {
-        if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="text-xl animate-pulse">Initializing Interface...</div></div>;
+        if (isLoading || backendStatus === 'checking') return <div className="flex items-center justify-center min-h-screen"><div className="text-xl animate-pulse">Initializing Interface...</div></div>;
         
         if (backendStatus === 'misconfigured') {
-            return <ConfigurationErrorScreen />;
+            return <ConfigurationErrorScreen onRetryConnection={handleRetryConnection} backendStatus={backendStatus} />;
         }
         
-        if (backendStatus === 'offline' && !token && !isDemoMode) return <DemoModeSelector onSelectDemoUser={handleSelectDemoUser} />;
+        if (backendStatus === 'offline' && !token && !isDemoMode) return <BackendOfflineScreen onSelectDemoUser={handleSelectDemoUser} onRetryConnection={handleRetryConnection} backendStatus={backendStatus} />;
 
         if (view === 'dashboard' && (currentUser || (userRole === 'admin' && (allStudents.length > 0 || isDemoMode)))) {
             return (
@@ -409,7 +441,6 @@ const App: React.FC = () => {
                         {userRole === 'admin' ? (
                             <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBatchImport={handleBatchImport} onBroadcastTask={handleBroadcastTask} />
                         ) : currentUser && (
-// FIX: Changed `onSaveTask={onSaveTask}` to `onSaveTask={handleSaveTask}` to pass the correct function handler.
                             <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={()=>{}} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateSettings={handleUpdateSettings} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.CONFIG.fullName)} googleAuthStatus={googleAuthStatus} onGoogleSignIn={gcal.handleSignIn} onGoogleSignOut={gcal.handleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={()=>{}} onPostSolution={()=>{}} />
                         )}
                     </div>

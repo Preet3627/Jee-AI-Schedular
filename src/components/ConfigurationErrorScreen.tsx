@@ -1,6 +1,11 @@
 import React from 'react';
 
-const ConfigurationErrorScreen: React.FC = () => {
+interface ConfigurationErrorScreenProps {
+    onRetryConnection: () => void;
+    backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
+}
+
+const ConfigurationErrorScreen: React.FC<ConfigurationErrorScreenProps> = ({ onRetryConnection, backendStatus }) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-950 text-gray-200">
       <div className="w-full max-w-2xl p-8 space-y-6 bg-[var(--glass-bg)] border border-red-500/50 rounded-xl shadow-2xl shadow-red-500/10 backdrop-blur-md">
@@ -23,8 +28,20 @@ const ConfigurationErrorScreen: React.FC = () => {
             <li><span className="font-bold text-cyan-300">JWT_SECRET</span>: A long, random, secure string for tokens</li>
           </ul>
            <p className="text-sm text-gray-400">
-            After adding these variables, you will need to **redeploy** the application for the changes to take effect.
+            After adding these variables, you will need to **redeploy** the application for the changes to take effect. You can use the button below to check the status after redeploying.
            </p>
+        </div>
+        <div className="mt-6">
+            <button onClick={onRetryConnection} disabled={backendStatus === 'checking'} className="w-full max-w-xs mx-auto text-center px-4 py-3 text-base font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 transition hover:bg-cyan-800/50">
+                {backendStatus === 'checking' ? (
+                    <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Checking Status...
+                    </>
+                ) : (
+                    'Retry Connection'
+                )}
+            </button>
         </div>
       </div>
     </div>
