@@ -91,7 +91,10 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                       {googleAuthStatus === 'signed_in' ? (
                         <div className="space-y-2"><h4 className="text-sm font-bold text-gray-300">Google Drive Backup</h4><p className="text-xs text-green-400">Account connected.</p><button type="button" onClick={onBackupToDrive} className="w-full text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg">Backup Now</button><button type="button" onClick={onRestoreFromDrive} className="w-full text-center px-4 py-2 text-sm font-semibold text-yellow-300 bg-yellow-900/50 rounded-lg">Restore from Drive</button>{driveLastSync && <p className="text-xs text-gray-500 text-center">Last sync: {new Date(driveLastSync).toLocaleString()}</p>}<button type="button" onClick={onGoogleSignOut} className="w-full mt-2 px-4 py-2 text-sm text-red-400 bg-red-900/50 rounded-lg">Disconnect Google</button></div>
                       ) : (
-                          <button type="button" onClick={onGoogleSignIn} className="w-full mt-2 flex items-center justify-center gap-3 px-4 py-3 bg-white text-gray-800 rounded-lg">Connect Google Account</button>
+                          <button type="button" onClick={onGoogleSignIn} className="w-full mt-2 flex items-center justify-center gap-3 px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg">
+                            <Icon name="drive" className="w-5 h-5" />
+                            Connect Google Account
+                          </button>
                       )}
                   </div>
               )}

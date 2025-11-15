@@ -1,7 +1,7 @@
 import React from 'react';
 import Icon from './Icon';
 
-type ActiveTab = 'schedule' | 'planner' | 'performance' | 'community' | 'exams';
+type ActiveTab = 'schedule' | 'planner' | 'performance' | 'doubts' | 'exams';
 
 interface BottomToolbarProps {
     activeTab: ActiveTab;
@@ -14,7 +14,7 @@ const BottomToolbar: React.FC<BottomToolbarProps> = ({ activeTab, setActiveTab, 
         { id: 'schedule', icon: 'schedule', label: 'Schedule' },
         { id: 'planner', icon: 'planner', label: 'Planner' },
         { id: 'performance', icon: 'performance', label: 'Performance' },
-        { id: 'community', icon: 'community', label: 'Community' },
+        { id: 'doubts', icon: 'community', label: 'Doubts' },
     ] as const;
 
     return (

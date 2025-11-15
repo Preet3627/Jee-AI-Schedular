@@ -11,7 +11,7 @@ This is a secure, multilingual (EN/GU), full-stack Student Management System (SM
 - **Admin Broadcast:** Administrators can create and broadcast tasks (schedules, homework) to all students simultaneously, with PWA notifications for users.
 - **Community Hub:** A collaborative forum where students can post questions and solutions, with support for image uploads.
 - **AI-Powered Imports:** Leverage the Gemini API to parse schedules from unstructured text or timetable images directly into the app.
-- **Secure & Configurable:** All sensitive keys and credentials are managed on the backend via environment variables, ensuring the frontend code is secure.
+- **Secure & Configurable:** All sensitive keys and credentials are managed on the backend via environment variables, ensuring the frontend code is secure. User data is encrypted at rest.
 
 ## Tech Stack
 
@@ -24,7 +24,7 @@ This is a secure, multilingual (EN/GU), full-stack Student Management System (SM
 
 1.  **Clone the repository.**
 2.  **Setup Database:** Import the provided SQL schema into your MySQL database.
-3.  **Configure Environment:** Create a `.env` file in the project root. You can copy the contents from `public/.env.example.txt` and fill in your actual database credentials and a secret string for `JWT_SECRET`.
+3.  **Configure Environment:** Create a `.env` file in the project root. You can copy the contents from `public/.env.example.txt` and fill in your actual database credentials and secret strings.
 4.  **Install Dependencies:**
     ```bash
     npm install
@@ -52,5 +52,6 @@ This project is configured for seamless deployment on Vercel.
     - `DB_PASSWORD`: Your MySQL database password.
     - `DB_NAME`: Your MySQL database name.
     - `JWT_SECRET`: A long, random, secure string for signing tokens.
+    - `ENCRYPTION_KEY`: A secure, random 32-character string for data encryption. **Do not change this after setting it.**
 
 5.  **Deploy:** Trigger a new deployment from the Vercel dashboard. Vercel will build the frontend and set up the `server.js` file as a Serverless Function to handle all `/api` requests.

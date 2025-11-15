@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData } from '../types';
 import ScheduleList from './ScheduleList';
-// FIX: Import IconName type to be used in component props.
 import Icon, { IconName } from './Icon';
-import AIParserModal from './AIParserModal';
-import CommunityDashboard from './CommunityDashboard';
+import DoubtsDashboard from './DoubtsDashboard';
 import PlannerView from './PlannerView';
 import MistakeManager from './MistakeManager';
 import TodaysAgendaWidget from './widgets/TodaysAgendaWidget';
@@ -24,8 +22,10 @@ import LogResultModal from './LogResultModal';
 import EditWeaknessesModal from './EditWeaknessesModal';
 import AchievementsWidget from './widgets/AchievementsWidget';
 import ImageToTimetableModal from './ImageToTimetableModal';
+import AIDoubtSolverModal from './AIDoubtSolverModal';
+import AIParserModal from './AIParserModal';
 
-type ActiveTab = 'schedule' | 'planner' | 'exams' | 'performance' | 'community';
+type ActiveTab = 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts';
 
 interface StudentDashboardProps {
     student: StudentData;
@@ -66,6 +66,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [isLogResultModalOpen, setIsLogResultModalOpen] = useState(false);
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<ExamData | null>(null);
+    const [isAiDoubtSolverOpen, setIsAiDoubtSolverOpen] = useState(false);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -119,7 +120,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
           <TabButton tabId="planner" icon="planner">Planner</TabButton>
           <TabButton tabId="exams" icon="trophy">Exams</TabButton>
           <TabButton tabId="performance" icon="performance">Performance</TabButton>
-          <TabButton tabId="community" icon="community">Community</TabButton>
+          <TabButton tabId="doubts" icon="community">Doubts</TabButton>
         </div>
         <div className="flex items-center gap-2 mb-2 sm:mb-0">
           <button onClick={() => setIsImageModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Import from Image"><Icon name="image" /></button>
@@ -173,7 +174,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     </div>
                 </div>
             )}
-            {activeTab === 'community' && <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />}
+            {activeTab === 'doubts' && <DoubtsDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} onAskAi={() => setIsAiDoubtSolverOpen(true)} />}
 
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCsvSave} geminiApiKey={student.CONFIG.settings.geminiApiKey} />}
@@ -183,7 +184,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}
             {isExamModalOpen && <CreateEditExamModal exam={editingExam} onClose={() => { setIsExamModalOpen(false); setEditingExam(null); }} onSave={(exam) => editingExam ? onUpdateExam(exam) : onAddExam(exam)} />}
-
+            {isAiDoubtSolverOpen && <AIDoubtSolverModal student={student} onClose={() => setIsAiDoubtSolverOpen(false)} />}
+            
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}
         </main>
     );

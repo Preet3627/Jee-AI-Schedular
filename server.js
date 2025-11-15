@@ -9,6 +9,8 @@ import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateAvatar } from './src/utils/generateAvatar.js';
+import crypto from 'crypto';
+import { GoogleGenAI } from '@google/genai';
 
 // --- SERVER SETUP ---
 const app = express();
@@ -19,13 +21,45 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- ENV & SETUP CHECK ---
-const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME;
+const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME && process.env.ENCRYPTION_KEY;
 
 let pool = null;
 let appSettings = {};
 let mailer = null;
 const JWT_SECRET = process.env.JWT_SECRET;
 let googleClient = null;
+const verificationCodes = new Map();
+
+// --- ENCRYPTION SETUP ---
+const ALGORITHM = 'aes-256-cbc';
+const ENCRYPTION_KEY = isConfigured ? crypto.scryptSync(process.env.ENCRYPTION_KEY, 'salt', 32) : null;
+const IV_LENGTH = 16;
+
+const encrypt = (text) => {
+    if (!ENCRYPTION_KEY) throw new Error('Encryption key not configured.');
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return `${iv.toString('hex')}:${encrypted}`;
+};
+
+const decrypt = (text) => {
+    if (!ENCRYPTION_KEY) throw new Error('Encryption key not configured.');
+    try {
+        const parts = text.split(':');
+        const iv = Buffer.from(parts.shift(), 'hex');
+        const encryptedText = Buffer.from(parts.join(':'), 'hex');
+        const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (error) {
+        console.error("Decryption failed:", error);
+        return text; // Fallback to returning original text if decryption fails
+    }
+};
+
 
 if (isConfigured) {
     try {
@@ -69,7 +103,6 @@ async function loadAppSettings() {
     }
   } catch (error) {
     console.error('FATAL ERROR during initialization:', error.message);
-    // In a real production scenario, you might not want to exit, but for setup this is useful.
   }
 }
 
@@ -113,7 +146,12 @@ const getUserData = async (userId) => {
     const [[user]] = await pool.query('SELECT id, sid, role, config FROM users WHERE id = ?', [userId]);
     if (!user) return null;
     const [scheduleRows] = await pool.query('SELECT item_data FROM schedule_items WHERE user_id = ?', [userId]);
-    const userData = { ...user.config, SCHEDULE_ITEMS: scheduleRows.map(r => r.item_data) };
+    
+    const decryptedConfig = user.config ? decrypt(user.config) : '{}';
+    const configObject = JSON.parse(decryptedConfig);
+    const scheduleItems = scheduleRows.map(r => typeof r.item_data === 'string' ? JSON.parse(r.item_data) : r.item_data);
+
+    const userData = { ...configObject, SCHEDULE_ITEMS: scheduleItems };
     return { id: user.id, role: user.role, userData };
 };
 
@@ -126,9 +164,10 @@ const createNewUser = async (sid, fullName, password = null, googleId = null) =>
         WEAK: [], EXAMS: [], RESULTS: [], STUDY_SESSIONS: [],
         settings: { accentColor: '#0891b2', blurEnabled: true, mobileLayout: 'standard', forceOfflineMode: false, geminiApiKey: '', perQuestionTime: 180 }
     };
+    const encryptedConfig = encrypt(JSON.stringify(defaultConfig));
     const [result] = await pool.query(
         'INSERT INTO users (sid, password, googleId, config) VALUES (?, ?, ?, ?)',
-        [sid, hashedPassword, googleId, JSON.stringify(defaultConfig)]
+        [sid, hashedPassword, googleId, encryptedConfig]
     );
     return result.insertId;
 };
@@ -141,22 +180,60 @@ apiRouter.post('/register', async (req, res) => {
         const [[existingUser]] = await pool.query('SELECT id FROM users WHERE sid = ?', [sid]);
         if (existingUser) return res.status(409).json({ error: 'Student ID already exists' });
 
-        const userId = await createNewUser(sid, fullName, password);
-        const user = await getUserData(userId);
-
         if (mailer) {
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            verificationCodes.set(sid, {
+                code,
+                fullName,
+                password,
+                expires: Date.now() + 15 * 60 * 1000 // 15 minutes
+            });
+            
             await mailer.sendMail({
                 from: `"JEE Scheduler Pro" <${appSettings.SMTP_USER}>`,
                 to: sid,
-                subject: 'Welcome to JEE Scheduler Pro!',
-                text: `Hi ${fullName},\n\nYour account has been successfully created. Welcome aboard!\n\nBest,\nThe JEE Scheduler Pro Team`,
+                subject: 'Verify your email for JEE Scheduler Pro',
+                text: `Hi ${fullName},\n\nYour verification code is: ${code}\n\nThis code will expire in 15 minutes.\n\nBest,\nThe JEE Scheduler Pro Team`,
+                html: `<p>Hi ${fullName},</p><p>Your verification code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes.</p><p>Best,<br>The JEE Scheduler Pro Team</p>`,
             });
+            res.status(200).json({ message: 'Verification code sent to your email.' });
+        } else {
+            const userId = await createNewUser(sid, fullName, password);
+            const user = await getUserData(userId);
+            const token = jwt.sign({ id: userId, sid: sid }, JWT_SECRET, { expiresIn: '7d' });
+            res.status(201).json({ token, user, message: "Registered without email verification (mailer not configured)." });
         }
-        
+    } catch (error) {
+        console.error("Registration initiation error:", error);
+        res.status(500).json({ error: 'Server error during registration process.' });
+    }
+});
+
+apiRouter.post('/verify-and-register', async (req, res) => {
+    const { sid, code } = req.body;
+    if (!sid || !code) return res.status(400).json({ error: 'Email/SID and code are required' });
+
+    const stored = verificationCodes.get(sid);
+    if (!stored || stored.code !== code) {
+        return res.status(400).json({ error: 'Invalid verification code.' });
+    }
+    if (Date.now() > stored.expires) {
+        verificationCodes.delete(sid);
+        return res.status(400).json({ error: 'Verification code has expired.' });
+    }
+
+    try {
+        const { fullName, password } = stored;
+        const userId = await createNewUser(sid, fullName, password);
+        const user = await getUserData(userId);
+        verificationCodes.delete(sid);
         const token = jwt.sign({ id: userId, sid: sid }, JWT_SECRET, { expiresIn: '7d' });
         res.status(201).json({ token, user });
     } catch (error) {
-        console.error("Registration error:", error);
+        console.error("Verification/Registration error:", error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ error: 'Student ID already exists' });
+        }
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -190,12 +267,12 @@ apiRouter.post('/auth/google', async (req, res) => {
 
         const { email, name, sub: googleId } = payload;
         
-        let [[user]] = await pool.query('SELECT id, sid FROM users WHERE sid = ? OR googleId = ?', [email, googleId]);
+        let [[user]] = await pool.query('SELECT id, sid, googleId FROM users WHERE sid = ? OR googleId = ?', [email, googleId]);
 
-        if (!user) { // New user registration via Google
+        if (!user) {
             const userId = await createNewUser(email, name, null, googleId);
             user = { id: userId, sid: email };
-        } else if (!user.googleId) { // Existing user linking Google account
+        } else if (!user.googleId) {
             await pool.query('UPDATE users SET googleId = ? WHERE id = ?', [googleId, user.id]);
         }
         
@@ -245,7 +322,12 @@ apiRouter.delete('/schedule-items/:id', authMiddleware, async (req, res) => {
 apiRouter.post('/config', authMiddleware, async (req, res) => {
     try {
         const { settings } = req.body;
-        await pool.query('UPDATE users SET config = JSON_MERGE_PATCH(config, ?) WHERE id = ?', [JSON.stringify({ settings }), req.userId]);
+        const [[user]] = await pool.query("SELECT config FROM users WHERE id = ?", [req.userId]);
+        const currentConfig = user.config ? JSON.parse(decrypt(user.config)) : {};
+        const newConfig = { ...currentConfig, settings: { ...currentConfig.settings, ...settings } };
+        const encryptedConfig = encrypt(JSON.stringify(newConfig));
+
+        await pool.query("UPDATE users SET config = ? WHERE id = ?", [encryptedConfig, req.userId]);
         res.json({ success: true });
     } catch (error) {
         console.error("Error updating config:", error);
@@ -258,11 +340,9 @@ apiRouter.post('/user-data/full-sync', authMiddleware, async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-        // Update user config
-        await connection.query('UPDATE users SET config = ? WHERE id = ?', [JSON.stringify(userData.CONFIG), req.userId]);
-        // Clear existing schedule items
+        const encryptedConfig = encrypt(JSON.stringify(userData.CONFIG));
+        await connection.query('UPDATE users SET config = ? WHERE id = ?', [encryptedConfig, req.userId]);
         await connection.query('DELETE FROM schedule_items WHERE user_id = ?', [req.userId]);
-        // Insert new schedule items
         if (userData.SCHEDULE_ITEMS && userData.SCHEDULE_ITEMS.length > 0) {
             const scheduleValues = userData.SCHEDULE_ITEMS.map(item => [req.userId, item.ID, JSON.stringify(item)]);
             await connection.query('INSERT INTO schedule_items (user_id, item_id_str, item_data) VALUES ?', [scheduleValues]);
@@ -329,11 +409,44 @@ apiRouter.post('/doubts/:id/solutions', authMiddleware, async (req, res) => {
     }
 });
 
+// --- AI ENDPOINTS ---
+apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
+    const { prompt, imageBase64, apiKey } = req.body;
+    if (!prompt || !apiKey) {
+        return res.status(400).json({ error: "Prompt and API key are required." });
+    }
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        
+        const contents = { parts: [{ text: prompt }] };
+        if (imageBase64) {
+            contents.parts.push({
+                inlineData: { mimeType: 'image/jpeg', data: imageBase64 }
+            });
+        }
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-flash-latest',
+            contents: contents,
+        });
+
+        res.json({ response: response.text });
+    } catch (error) {
+        console.error("Gemini API error:", error);
+        res.status(500).json({ error: `Failed to get response from AI: ${error.message}` });
+    }
+});
+
+
 // --- ADMIN ENDPOINTS ---
 apiRouter.get('/admin/students', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const [students] = await pool.query("SELECT id, sid, role, config FROM users WHERE role = 'student'");
-        res.json(students.map(s => ({...s.config, SCHEDULE_ITEMS: []}))); // Send config only
+        const decryptedStudents = students.map(s => {
+            const config = s.config ? JSON.parse(decrypt(s.config)) : {};
+            return { ...config, SCHEDULE_ITEMS: [] };
+        });
+        res.json(decryptedStudents);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch students' });
     }
@@ -364,7 +477,6 @@ apiRouter.post('/admin/broadcast-task', authMiddleware, adminMiddleware, async (
     }
 });
 
-
 // --- PUBLIC & API ROUTE SETUP ---
 app.get('/api/status', (req, res) => {
     if (!isConfigured || !pool) {
@@ -375,11 +487,9 @@ app.get('/api/status', (req, res) => {
 
 app.use('/api', apiRouter);
 
-// Serve static files from 'dist' and 'public'
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Fallback for React Router - must be the last route
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });

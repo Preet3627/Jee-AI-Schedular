@@ -1,7 +1,7 @@
 # Universal CSV Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 3.0.0
+# Version: 3.1.0
 # Purpose: To guide AI agents in generating CSV data for the JEE Scheduler Pro platform.
-
+#Always remember to Schedule All things between 5pm to 11:30pm On mondays to saturday You can Plan Anytime on sunday And You Have to remember time Of Kota test is 7am to 1pm So do not Use this Time schedule on sunday when kota test is on that date
 ## 1. General Rules
 - **Format:** Standard CSV. Each import should handle ONE data type per file/paste.
 - **Header Row:** The first row MUST be a header row matching the fields specified below.
@@ -11,7 +11,7 @@
 ---
 
 ## 2. Data Type: SCHEDULE
-**Purpose:** Adds weekly tasks (study sessions, homework) to a student's schedule.
+**Purpose:** Adds tasks (study sessions, homework) to a student's schedule. This can be used to generate a weekly template or a schedule spanning up to one month. The system will interpret the 'DAY' field cyclically.
 
 **Header:**
 `ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE`
@@ -21,14 +21,20 @@
 |----------------|--------------------------------------------------------------------|--------------------------|---------------------------------------------|
 | `ID`           | Unique ID. Use `A` prefix for ACTION, `H` for HOMEWORK.            | **Yes**                  | `A101`, `H202`                              |
 | `SID`          | Student ID. Optional for students, required for admin imports.     | No                       | `S001`                                      |
-| `TYPE`         | `ACTION` (study block) or `HOMEWORK`.                              | **Yes**                  | `ACTION`                                    |
-| `DAY`          | Full day name in English (MONDAY, etc.).                           | **Yes**                  | `FRIDAY`                                    |
+| `TYPE`         | `ACTION` (a timed study block) or `HOMEWORK`.                      | **Yes**                  | `ACTION`                                    |
+| `DAY`          | Full day name in English (MONDAY, TUESDAY, etc.).                  | **Yes**                  | `FRIDAY`                                    |
 | `TIME`         | Time in HH:MM format (24-hour). Required for `ACTION`.             | **Yes for `ACTION`**     | `20:30`                                     |
 | `CARD_TITLE`   | Concise title of the task.                                         | **Yes**                  | `Rotational Dynamics Deep Dive`             |
-| `FOCUS_DETAIL` | A descriptive explanation.                                         | **Yes**                  | `"Fix FBD, Tension errors in pulleys."`     |
+| `FOCUS_DETAIL` | A descriptive explanation. Use quotes if it contains a comma.      | **Yes**                  | `"Fix FBD, Tension errors in pulleys."`     |
 | `SUBJECT_TAG`  | `PHYSICS`, `CHEMISTRY`, or `MATHS`.                                | **Yes**                  | `PHYSICS`                                   |
 | `Q_RANGES`     | **For `HOMEWORK` only.** Semicolon-separated question ranges.      | No                       | `"L1:1-10@p45;PYQ:5-15"`                    |
 | `SUB_TYPE`     | **For `ACTION` only.** `DEEP_DIVE`, `MORNING_DRILL`, `ANALYSIS`.    | No                       | `MORNING_DRILL`                           |
+
+**`Q_RANGES` Format Details:**
+- Multiple sets are separated by a semicolon `;`.
+- A set can have an optional label (e.g., `L1:`, `PYQ:`).
+- A set can have an optional page number (e.g., `@p45`).
+- Examples: `"1-25"`, `"Exercises: 1-10"`, `"L1: 1-15@p50; L2: 1-10@p55"`
 
 **Example CSV (SCHEDULE):**
 ```csv
@@ -36,6 +42,7 @@ ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
 A101,S001,ACTION,MONDAY,06:00,"Trig Identities Drill","15-minute speed drill of core trig identities.",MATHS,,MORNING_DRILL
 H101,S001,HOMEWORK,TUESDAY,,"Maths Homework","Complete exercises on indefinite integration.",MATHS,"Ex 7.2: 1-20@p305",
 A102,S001,ACTION,WEDNESDAY,19:00,"Rotational Dynamics","Focus on Free Body Diagrams. Solve 10 PYQs.",PHYSICS,,DEEP_DIVE
+A103,S001,ACTION,FRIDAY,21:00,"Mock Test Analysis","Review last mock test, focus on Chemistry errors.",CHEMISTRY,,ANALYSIS
 ```
 
 ---

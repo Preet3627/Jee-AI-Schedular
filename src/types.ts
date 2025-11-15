@@ -79,7 +79,6 @@ export interface ExamData {
   syllabus: string; // Comma-separated list of topics
 }
 
-// FIX: Add missing interfaces to align with application data model.
 export interface SolutionData {
   id: string;
   doubt_id: string;
@@ -145,6 +144,5 @@ export interface StudentData {
     RESULTS: ResultData[];
     EXAMS: ExamData[];
     STUDY_SESSIONS: StudySession[];
-    // FIX: Add missing DOUBTS property to StudentData interface.
     DOUBTS: DoubtData[];
 }
