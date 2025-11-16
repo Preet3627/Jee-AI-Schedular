@@ -96,6 +96,26 @@ export const api = {
     // Study Material
     getStudyMaterial: (path: string) => authFetch(`/study-material/browse?path=${encodeURIComponent(path)}`),
     getStudyMaterialDetails: (paths: string[]) => authFetch('/study-material/details', { method: 'POST', body: JSON.stringify({ paths }) }),
+    getStudyMaterialContent: async (path: string): Promise<Blob> => {
+        const fullUrl = `${API_URL}/study-material/content?path=${encodeURIComponent(path)}`;
+        const token = localStorage.getItem('token');
+        const headers: HeadersInit = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const res = await fetch(fullUrl, { headers });
+
+        if (!res.ok) {
+            if (res.status === 401) {
+                window.dispatchEvent(new Event('auth-error'));
+            }
+            const errorText = await res.text().catch(() => `HTTP error! status: ${res.status}`);
+            throw new Error(errorText);
+        }
+        return res.blob();
+    },
+
 
     // Admin
     getStudents: () => authFetch('/admin/students'),
