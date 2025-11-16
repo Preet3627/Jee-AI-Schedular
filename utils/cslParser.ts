@@ -43,19 +43,17 @@ function parseCSV(csvText: string): Record<string, string>[] {
     let currentRow: string[] = [];
     let currentField = '';
     let inQuotes = false;
-    let i = 0;
-
-    while (i < text.length) {
+    
+    for (let i = 0; i < text.length; i++) {
         const char = text[i];
-
+        
         if (inQuotes) {
             if (char === '"') {
+                // Check for escaped quote ""
                 if (i + 1 < text.length && text[i + 1] === '"') {
-                    // Escaped quote
                     currentField += '"';
-                    i++;
+                    i++; // Skip the next quote
                 } else {
-                    // End of quoted field
                     inQuotes = false;
                 }
             } else {
@@ -70,29 +68,28 @@ function parseCSV(csvText: string): Record<string, string>[] {
                 rows.push(currentRow);
                 currentRow = [];
                 currentField = '';
-            } else if (char === '"') {
+            } else if (char === '"' && currentField === '') {
                 inQuotes = true;
             } else {
                 currentField += char;
             }
         }
-        i++;
     }
-
-    // Add the final field and row
+    // Push the final field and row
     currentRow.push(currentField);
     rows.push(currentRow);
 
-    const nonEmptyRows = rows.filter(row => row.length > 1 || (row.length === 1 && row[0].trim() !== ''));
+    // Filter out rows that are completely empty or just contain empty strings
+    const nonEmptyRows = rows.filter(row => row.some(field => field.trim() !== ''));
+
     if (nonEmptyRows.length < 2) {
         // Not enough rows for a header and data
         return [];
     }
-    
-    // The first non-empty line is assumed to be the header
+
     const header = nonEmptyRows[0].map(h => h.trim());
     const dataRows = nonEmptyRows.slice(1);
-    
+
     return dataRows.map(row => {
         const obj: Record<string, string> = {};
         header.forEach((key, index) => {
@@ -125,7 +122,7 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
         // Skip empty lines that might be between blocks
         if (!line.trim()) continue;
 
-        const normalizedLine = line.replace(/\s/g, '').toLowerCase();
+        const normalizedLine = line.replace(/[\s"]/g, '').toLowerCase();
         const isHeader = normalizedLine === scheduleHeader || normalizedLine === examHeader || normalizedLine === metricsHeader;
 
         if (isHeader) {
