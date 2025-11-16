@@ -153,7 +153,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
   
-  const colorPresets = ['#0891b2', '#7c3aed', '#16a34a', '#db2777', '#ca8a04'];
+  const colorPresets = ['#0891b2', '#7c3aed', '#16a34a', '#db2777', '#ca8a04', '#64748b'];
   const inputClass = "w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500";
   const animationClasses = isExiting ? 'modal-exit' : 'modal-enter';
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
@@ -218,36 +218,52 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                     </div>
                 )}
               </div>
-              {googleAuthStatus === 'unconfigured' ? null : googleAuthStatus === 'loading' ? (
-                <p className="text-sm text-yellow-400 text-center mt-4">Connecting to Google...</p>
-              ) : (
-                <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
-                    {googleAuthStatus === 'signed_in' ? (
-                        <>
-                            <p className="text-sm font-semibold text-green-400">Google Account Connected</p>
-                            <div className="mt-4 space-y-4">
-                                <ToggleSwitch id="calendar-sync-toggle" label="Sync to Google Calendar" desc="Automatically sync tasks to your calendar." checked={calendarSync} onChange={setCalendarSync} />
-                                {calendarSync && calendarLastSync && <p className="text-xs text-gray-500">Last sync: {new Date(calendarLastSync).toLocaleString()}</p>}
-                                
-                                <div>
-                                    <p className="text-sm font-bold text-gray-300">Google Drive Backup</p>
-                                    <div className="flex gap-2 mt-2">
-                                        <button type="button" onClick={onBackupToDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50">Backup</button>
-                                        <button type="button" onClick={onRestoreFromDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-yellow-300 bg-yellow-900/50 rounded-lg hover:bg-yellow-800/50">Restore</button>
-                                    </div>
-                                    {driveLastSync && <p className="text-xs text-gray-500 text-center mt-1">Last backup: {new Date(driveLastSync).toLocaleString()}</p>}
+              
+               <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                {(() => {
+                    switch (googleAuthStatus) {
+                        case 'unconfigured':
+                            return (
+                                <div className="text-center opacity-60">
+                                    <p className="text-sm font-semibold text-yellow-400">Google Integration Not Configured</p>
+                                    <p className="text-xs text-gray-400 mt-1">The administrator needs to set up Google API credentials on the server to enable Calendar Sync and Drive Backup.</p>
                                 </div>
-                            </div>
-                             <button type="button" onClick={onGoogleSignOut} className="w-full mt-4 px-4 py-2 text-sm text-red-400 bg-red-900/50 rounded-lg">Disconnect Google</button>
-                        </>
-                    ) : (
-                         <button type="button" onClick={onGoogleSignIn} className="w-full flex items-center justify-center gap-3 px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg">
-                            <Icon name="drive" className="w-5 h-5" />
-                            Connect Google Account
-                        </button>
-                    )}
+                            );
+                        case 'loading':
+                            return <p className="text-sm text-yellow-400 text-center animate-pulse">Connecting to Google...</p>;
+                        case 'signed_in':
+                            return (
+                                <>
+                                    <p className="text-sm font-semibold text-green-400">Google Account Connected</p>
+                                    <div className="mt-4 space-y-4">
+                                        <ToggleSwitch id="calendar-sync-toggle" label="Sync to Google Calendar" desc="Automatically sync tasks to your calendar." checked={calendarSync} onChange={setCalendarSync} />
+                                        {calendarSync && calendarLastSync && <p className="text-xs text-gray-500">Last sync: {new Date(calendarLastSync).toLocaleString()}</p>}
+                                        
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-300">Google Drive Backup</p>
+                                            <div className="flex gap-2 mt-2">
+                                                <button type="button" onClick={onBackupToDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50">Backup</button>
+                                                <button type="button" onClick={onRestoreFromDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-yellow-300 bg-yellow-900/50 rounded-lg hover:bg-yellow-800/50">Restore</button>
+                                            </div>
+                                            {driveLastSync && <p className="text-xs text-gray-500 text-center mt-1">Last backup: {new Date(driveLastSync).toLocaleString()}</p>}
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={onGoogleSignOut} className="w-full mt-4 px-4 py-2 text-sm text-red-400 bg-red-900/50 rounded-lg">Disconnect Google</button>
+                                </>
+                            );
+                        case 'signed_out':
+                            return (
+                                <button type="button" onClick={onGoogleSignIn} className="w-full flex items-center justify-center gap-3 px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg">
+                                    <Icon name="drive" className="w-5 h-5" />
+                                    Connect Google Account
+                                </button>
+                            );
+                        default:
+                            return null;
+                    }
+                })()}
                 </div>
-              )}
+              
                <div className="mt-4"><button type="button" onClick={onExportToIcs} className="w-full px-4 py-2 text-sm font-semibold text-gray-300 bg-gray-700/50 rounded-lg">Export Week to Calendar (.ics)</button></div>
           </div>
           
