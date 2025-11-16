@@ -208,11 +208,35 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
                         };
                     } else if (type === 'ACTION') {
                         if (!row.TIME) continue; // ACTION type requires a TIME
-                        scheduleItem = {
-                            ID: row.ID, type: 'ACTION', SUB_TYPE: (row.SUB_TYPE as any) || 'DEEP_DIVE', DAY: createLocalizedString(row.DAY),
-                            TIME: row.TIME, CARD_TITLE: createLocalizedString(row.CARD_TITLE), FOCUS_DETAIL: createLocalizedString(row.FOCUS_DETAIL),
-                            SUBJECT_TAG: createLocalizedString(row.SUBJECT_TAG.toUpperCase()),
-                        };
+                        
+                        // --- HEURISTIC to detect mislabeled HOMEWORK as ACTION ---
+                        const title = row.CARD_TITLE || '';
+                        const detail = row.FOCUS_DETAIL || '';
+                        const qRanges = row.Q_RANGES || '';
+                        const isLikelyHomework = /homework/i.test(title) || /homework/i.test(detail);
+                        const qRangeInDetailRegex = /(?:Q:|Qs:|Questions:)\s*([^\n,]+)/i;
+                        const match = detail.match(qRangeInDetailRegex);
+
+                        // If it looks like homework and has Q_RANGES in the detail text, but not in the Q_RANGES column...
+                        if (isLikelyHomework && match && !qRanges) {
+                            const extractedQRange = match[1].trim();
+                            // It's a HOMEWORK item masquerading as an ACTION. Convert it.
+                            scheduleItem = {
+                                ID: row.ID, type: 'HOMEWORK', DAY: createLocalizedString(row.DAY),
+                                CARD_TITLE: createLocalizedString(title), 
+                                FOCUS_DETAIL: createLocalizedString(detail.replace(qRangeInDetailRegex, '').trim()), // Clean up detail
+                                SUBJECT_TAG: createLocalizedString(row.SUBJECT_TAG.toUpperCase()), 
+                                Q_RANGES: extractedQRange,
+                                TIME: row.TIME || undefined, // Homework can have an optional time
+                            };
+                        } else {
+                             // It's a regular ACTION item.
+                            scheduleItem = {
+                                ID: row.ID, type: 'ACTION', SUB_TYPE: (row.SUB_TYPE as any) || 'DEEP_DIVE', DAY: createLocalizedString(row.DAY),
+                                TIME: row.TIME, CARD_TITLE: createLocalizedString(title), FOCUS_DETAIL: createLocalizedString(detail),
+                                SUBJECT_TAG: createLocalizedString(row.SUBJECT_TAG.toUpperCase()),
+                            };
+                        }
                     }
                     if (scheduleItem) {
                         results.schedules.push({ sid, item: scheduleItem });
