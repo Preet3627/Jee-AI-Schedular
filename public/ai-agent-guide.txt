@@ -1,5 +1,5 @@
 # Universal CSV Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 3.3.0
+# Version: 3.4.0
 # Purpose: To guide AI agents in generating CSV data for the JEE Scheduler Pro platform.
 
 ## 0. About JEE Scheduler Pro
@@ -15,6 +15,21 @@ JEE Scheduler Pro is an advanced, AI-powered study planner for students preparin
     - On Sundays, you can schedule tasks at any time, with one exception.
     - **Kota Test Exception:** If a "Kota test" or similar major mock exam is scheduled on a Sunday, do NOT schedule any other tasks between **07:00 (7 AM) and 13:00 (1 PM)** to avoid conflicts.
 
+---
+
+## 1.5. Multi-Schema Support (IMPORTANT)
+The system can process multiple data types in a single CSV import. If a user provides text that describes both a new weekly task and an upcoming exam, you should generate CSV rows for BOTH schemas in your response.
+
+**Multi-Schema Example:**
+User Input: "My AITS mock test is on Sunday at 9am, full syllabus. Also, I need to finish my maths homework (Ex 2.1, Qs 1-15) by Tuesday."
+
+AI-Generated CSV Output:
+```csv
+ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS
+E501,,EXAM,FULL,"AITS Mock Test",2024-09-01,09:00,"Full Syllabus"
+ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
+H502,,HOMEWORK,TUESDAY,,"Maths Homework","Complete exercises for the week.",MATHS,"Ex 2.1: 1-15",
+```
 ---
 
 ## 2. CRITICAL AI BEHAVIOR: Always Use CSV

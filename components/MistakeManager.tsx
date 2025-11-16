@@ -7,16 +7,33 @@ import Icon from './Icon';
 interface MistakeManagerProps {
     result: ResultData;
     onToggleMistakeFixed: (resultId: string, mistake: string) => void;
+    onViewAnalysis: (result: ResultData) => void;
 }
 
-const MistakeManager: React.FC<MistakeManagerProps> = ({ result, onToggleMistakeFixed }) => {
+const MistakeManager: React.FC<MistakeManagerProps> = ({ result, onToggleMistakeFixed, onViewAnalysis }) => {
     const { t } = useLocalization();
 
     return (
-        <div>
-            <h3 className="text-lg font-semibold text-red-400 tracking-widest uppercase mb-4">
-                {t({ EN: "Mistake Analysis", GU: "ભૂલ વિશ્લેષણ" })} ({result.DATE})
-            </h3>
+        <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700/80">
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h3 className="text-lg font-semibold text-cyan-400 tracking-wider">
+                        Test on {new Date(result.DATE).toLocaleDateString()}
+                    </h3>
+                    <p className="text-2xl font-bold text-white">{result.SCORE}</p>
+                </div>
+                {result.analysis && (
+                    <button 
+                        onClick={() => onViewAnalysis(result)}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors">
+                        View Detailed Analysis
+                    </button>
+                )}
+            </div>
+            
+            <h4 className="text-md font-semibold text-red-400 tracking-widest uppercase mb-4 border-t border-gray-700/50 pt-4">
+                {t({ EN: "Mistake Analysis", GU: "ભૂલ વિશ્લેષણ" })}
+            </h4>
             <ul className="space-y-2">
                 {result.MISTAKES.map((mistake, index) => {
                     const isFixed = result.FIXED_MISTAKES?.includes(mistake);

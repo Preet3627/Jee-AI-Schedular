@@ -1,3 +1,4 @@
+
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -839,16 +840,60 @@ apiRouter.post('/ai/parse-text-to-csv', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are a data conversion expert. Your task is to convert unstructured text describing a student's schedule, exams, or results into a valid CSV format. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Use the current date to infer any missing date information if required. Generate unique IDs for each item (e.g., A for Action, H for Homework, E for Exam). Today's date is ${new Date().toISOString().split('T')[0]}.`;
-        const prompt = `Please convert the following text into a valid CSV. Analyze the text to determine the correct schema.
-Available Schemas:
-1. SCHEDULE: ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
-2. EXAM: ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS
+        const systemInstruction = `You are an expert data transformation AI. Your sole purpose is to convert unstructured text from students into structured, multi-schema CSV data.
+RULES:
+1.  **CSV ONLY:** Your entire output must be raw CSV text. Do not include explanations, apologies, or markdown like \`\`\`csv.
+2.  **Multi-Schema Support:** The user's text may contain information for schedules, exams, and results simultaneously. You MUST detect and generate CSV rows for all of them in a single output.
+3.  **Unique IDs:** Generate a unique ID for every single SCHEDULE or EXAM row. Prefix with 'A' for ACTION, 'H' for HOMEWORK, 'E' for EXAM.
+4.  **Infer Missing Data:** Use logic and the current date (${new Date().toISOString().split('T')[0]}) to fill in missing details like dates. For days of the week, assume they are in the upcoming week.
+5.  **Quoting:** Use double quotes for any field containing commas.`;
 
-Text to convert:
+        // Helper to get next Friday's date for the example
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // Sunday - 0, ... , Saturday - 6
+        const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+        const nextFriday = new Date(today);
+        nextFriday.setDate(today.getDate() + (daysUntilFriday === 0 ? 7 : daysUntilFriday));
+        const nextFridayDate = nextFriday.toISOString().split('T')[0];
+
+        const prompt = `Convert the following text into one or more CSV blocks based on the schemas provided.
+
+**SCHEMAS:**
+
+**1. SCHEDULE (for classes, study sessions, homework):**
+HEADER: \`ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE\`
+- TYPE must be 'ACTION' (a timed task) or 'HOMEWORK'.
+- TIME is required for 'ACTION'.
+- Q_RANGES is for 'HOMEWORK' only (e.g., "Ex 1.1: 1-15; PYQ: 1-10").
+
+**2. EXAM (for tests and quizzes):**
+HEADER: \`ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS\`
+- TYPE must be 'EXAM'.
+- SUBJECT can be 'PHYSICS', 'CHEMISTRY', 'MATHS', or 'FULL'.
+- DATE must be YYYY-MM-DD.
+
+**3. METRICS (for test results or weaknesses):**
+HEADER: \`SID,TYPE,SCORE,MISTAKES,WEAKNESSES\`
+- TYPE must be 'RESULT' or 'WEAKNESS'.
+- SCORE is for 'RESULT' only, format: "marks/total".
+- MISTAKES/WEAKNESSES are semicolon-separated strings.
+
+**EXAMPLE CONVERSION:**
+USER TEXT: "Next friday I have a major test on the full syllabus at 9am. Also, I need to study rotational dynamics on Monday at 8pm, focusing on FBDs and solving PYQs. My last test score was 190/300 and I made mistakes in thermodynamics and wave optics."
+
+YOUR CSV OUTPUT:
+ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS
+E${Date.now()},,EXAM,FULL,"Major Test",${nextFridayDate},09:00,"Full Syllabus"
+ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
+A${Date.now()+1},,ACTION,MONDAY,20:00,"Rotational Dynamics Study","Focus on FBDs and solving PYQs.",PHYSICS,,DEEP_DIVE
+SID,TYPE,SCORE,MISTAKES,WEAKNESSES
+,RESULT,"190/300","thermodynamics;wave optics",
+
 ---
+**USER TEXT TO CONVERT:**
 ${text}
----`;
+---
+`;
         
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -890,6 +935,100 @@ apiRouter.post('/ai/parse-image-to-csv', authMiddleware, async (req, res) => {
         res.status(500).json({ error: `Failed to parse image: ${error.message}` });
     }
 });
+
+apiRouter.post('/ai/analyze-test-results', authMiddleware, async (req, res) => {
+    const { imageBase64, userAnswers, timings, syllabus } = req.body;
+    if (!imageBase64 || !userAnswers || !timings || !syllabus) return res.status(400).json({ error: "Answer key image, user answers, timings, and syllabus are required." });
+
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are an expert AI assistant for analyzing JEE Mains exam results. You will be given an image of an answer key, a JSON object of the student's answers, a JSON object of the time spent per question, and the exam syllabus.
+        Your task is multi-faceted:
+        1.  **Grade the Exam:** Extract correct answers from the image. Compare with student answers. Calculate the score using the JEE Mains scheme (+4/-1 for MCQs, +4/0 for Numericals, 0 for unattempted).
+        2.  **Analyze Timing:** Calculate the total time spent on Physics, Chemistry, and Maths. Identify the subject that took the most time.
+        3.  **Analyze Mistakes by Syllabus:** Using the provided syllabus, map each incorrect question number to its corresponding chapter/topic. Aggregate the number of correct and incorrect answers for each chapter mentioned in the syllabus. Calculate accuracy for each chapter.
+        4.  **Provide Suggestions:** Generate a concise, actionable paragraph of suggestions for improvement based on the performance, timing, and weak chapters.
+
+        **Output Format:** Your ENTIRE response MUST be a single, valid JSON object. Do not include any other text, explanations, or markdown formatting. The JSON object must have the following structure:
+        {
+          "score": number,
+          "totalMarks": number,
+          "correctQuestionNumbers": number[],
+          "incorrectQuestionNumbers": number[],
+          "unattemptedQuestionNumbers": number[],
+          "subjectTimings": { "PHYSICS": number (seconds), "CHEMISTRY": number (seconds), "MATHS": number (seconds) },
+          "chapterScores": { "Chapter Name from Syllabus": { "correct": number, "incorrect": number, "accuracy": number (0-100) } },
+          "aiSuggestions": "string"
+        }`;
+            
+        const prompt = `
+        Student's Answers: ${JSON.stringify(userAnswers)}
+        Time per Question (seconds): ${JSON.stringify(timings)}
+        Exam Syllabus: ${syllabus}
+        
+        Analyze the provided answer key image and the student's data. Return the full analysis in the specified JSON format.`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro', // Use a more powerful model for this complex task
+            contents: {
+                parts: [
+                    { text: prompt },
+                    { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
+                ]
+            },
+            config: { 
+                systemInstruction,
+                responseMimeType: 'application/json'
+            },
+        });
+
+        res.json(JSON.parse(response.text));
+    } catch (error) {
+        console.error("Gemini API error (analyze results):", error);
+        res.status(500).json({ error: `Failed to analyze test results with AI: ${error.message}` });
+    }
+});
+
+apiRouter.post('/ai/analyze-specific-mistake', authMiddleware, async (req, res) => {
+    const { imageBase64, prompt } = req.body;
+    if (!imageBase64 || !prompt) return res.status(400).json({ error: "Image of the question and a description are required." });
+
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are a master JEE tutor. A student has uploaded an image of a specific question they got wrong and a brief description of their error. Your task is to provide a clear, concise analysis.
+        **Output Format:** Your ENTIRE response MUST be a single, valid JSON object with two keys:
+        1. "topic": A very specific, short topic name for this question (e.g., "Moment of Inertia of a Cone", "SN2 Reaction Mechanism").
+        2. "explanation": A step-by-step explanation. Start by stating the core concept, then identify the student's likely error based on their description, and finally, provide the correct method to solve the problem. Use markdown for formatting within the explanation string.`;
+            
+        const fullPrompt = `Student's description of mistake: "${prompt}". Please analyze the attached question image and provide the analysis in the specified JSON format.`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    { text: fullPrompt },
+                    { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
+                ]
+            },
+            config: { 
+                systemInstruction,
+                responseMimeType: 'application/json'
+            },
+        });
+
+        res.json(JSON.parse(response.text));
+    } catch (error) {
+        console.error("Gemini API error (specific mistake):", error);
+        res.status(500).json({ error: `Failed to analyze mistake with AI: ${error.message}` });
+    }
+});
+
 
 apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
     const { history, prompt, imageBase64 } = req.body;

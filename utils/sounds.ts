@@ -1,3 +1,4 @@
+
 let audioContext: AudioContext | null = null;
 
 const getAudioContext = (): AudioContext | null => {
@@ -35,6 +36,7 @@ const playTone = (frequency: number, duration: number, type: OscillatorType = 's
 export const playNextSound = () => playTone(440, 0.1, 'sine');
 export const playSkipSound = () => playTone(330, 0.1, 'triangle');
 export const playStopSound = () => playTone(220, 0.2, 'square');
+export const playMarkSound = () => playTone(660, 0.08, 'triangle');
 export const playTimesUpSound = () => {
     playTone(880, 0.1, 'sawtooth');
     setTimeout(() => playTone(880, 0.1, 'sawtooth'), 150);

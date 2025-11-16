@@ -1,7 +1,6 @@
-
 import React from 'react';
 
-export type IconName = 'bell' | 'copy' | 'check' | 'trash' | 'play' | 'pause' | 'stop' | 'upload' | 'stopwatch' | 'logout' | 'dashboard' | 'users' | 'plus' | 'fixed' | 'login' | 'user-plus' | 'edit' | 'ellipsis' | 'forward' | 'trophy' | 'star' | 'streak' | 'send' | 'message' | 'settings' | 'schedule' | 'planner' | 'performance' | 'community' | 'calendar' | 'image' | 'book-open' | 'drive' | 'gemini';
+export type IconName = 'bell' | 'copy' | 'check' | 'trash' | 'play' | 'pause' | 'stop' | 'upload' | 'stopwatch' | 'logout' | 'dashboard' | 'users' | 'plus' | 'fixed' | 'login' | 'user-plus' | 'edit' | 'ellipsis' | 'forward' | 'trophy' | 'star' | 'streak' | 'send' | 'message' | 'settings' | 'schedule' | 'planner' | 'performance' | 'community' | 'calendar' | 'image' | 'book-open' | 'drive' | 'gemini' | 'marker';
 
 interface IconProps {
   name: IconName;
@@ -110,7 +109,7 @@ const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5" }) => {
     ),
     trophy: (
        <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.25l1.353 2.746a.5.5 0 00.47.304h2.854a.5.5 0 01.353.854L12.023 9.18a.5.5 0 00-.18.558l1.353 2.746a.5.5 0 01-.707.707L9.48 10.442a.5.5 0 00-.56 0l-3.008 2.749a.5.5 0 01-.707-.707l1.353-2.746a.5.5 0 00-.18-.558L3.37 7.154a.5.5 0 01.353-.854h2.854a.5.5 0 00.47-.304L8.4 3.251a.5.5 0 011.2 0zM9 12v9m-3-3h6" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.25l1.353 2.746a.5.5 0 00.47.304h2.854a.5.5 0 01.353.854L12.023 9.18a.5.5 0 00-.18.558l1.353 2.746a.5.5 0 01-.707.707L9.48 10.442a.5.5 0 00-.56 0l-3.008 2.749a.5.5 0 01-.707-.707l1.353-2.746a.5.5 0 00-.18.558L3.37 7.154a.5.5 0 01.353-.854h2.854a.5.5 0 00.47-.304L8.4 3.251a.5.5 0 011.2 0zM9 12v9m-3-3h6" />
       </svg>
     ),
     star: (
@@ -184,6 +183,11 @@ const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5" }) => {
     'gemini': (
         <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2.5l-2.5 6-6 2.5 6 2.5 2.5 6 2.5-6 6-2.5-6-2.5z" />
+        </svg>
+    ),
+    'marker': (
+        <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
     )
   };

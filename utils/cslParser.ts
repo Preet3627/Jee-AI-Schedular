@@ -30,57 +30,77 @@ function createLocalizedString(text: string) {
 }
 
 /**
- * A robust CSV parser that handles quoted fields, escaped quotes, and empty fields.
+ * A robust, stateful CSV parser that handles quoted fields, escaped quotes,
+ * and newlines within fields.
  * @param csvText The raw CSV string.
  * @returns An array of objects representing the rows.
  */
 function parseCSV(csvText: string): Record<string, string>[] {
-    const lines = csvText.replace(/\r/g, '').split('\n').filter(line => line.trim() !== '');
-    if (lines.length < 2) {
-        return [];
-    }
+    const text = csvText.replace(/\r/g, '').trim();
+    if (!text) return [];
 
-    const parseLine = (line: string): string[] => {
-        const values: string[] = [];
-        let currentField = '';
-        let inQuotes = false;
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    let i = 0;
 
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
+    while (i < text.length) {
+        const char = text[i];
 
+        if (inQuotes) {
             if (char === '"') {
-                if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
-                    // This is an escaped double quote (""), so add a single " to the field
+                if (i + 1 < text.length && text[i + 1] === '"') {
+                    // Escaped quote
                     currentField += '"';
-                    i++; // Skip the next quote
+                    i++;
                 } else {
-                    // This is a starting or ending quote
-                    inQuotes = !inQuotes;
+                    // End of quoted field
+                    inQuotes = false;
                 }
-            } else if (char === ',' && !inQuotes) {
-                values.push(currentField.trim());
+            } else {
+                currentField += char;
+            }
+        } else {
+            if (char === ',') {
+                currentRow.push(currentField);
                 currentField = '';
+            } else if (char === '\n') {
+                currentRow.push(currentField);
+                rows.push(currentRow);
+                currentRow = [];
+                currentField = '';
+            } else if (char === '"') {
+                inQuotes = true;
             } else {
                 currentField += char;
             }
         }
-        values.push(currentField.trim()); // Add the last field
-        return values;
-    };
+        i++;
+    }
+
+    // Add the final field and row
+    currentRow.push(currentField);
+    rows.push(currentRow);
+
+    const nonEmptyRows = rows.filter(row => row.length > 1 || (row.length === 1 && row[0].trim() !== ''));
+    if (nonEmptyRows.length < 2) {
+        // Not enough rows for a header and data
+        return [];
+    }
     
-    const header = parseLine(lines[0]).map(h => h.trim());
-    const dataRows = lines.slice(1);
-
-    return dataRows.map(line => {
-        const row: Record<string, string> = {};
-        const values = parseLine(line);
-
+    // The first non-empty line is assumed to be the header
+    const header = nonEmptyRows[0].map(h => h.trim());
+    const dataRows = nonEmptyRows.slice(1);
+    
+    return dataRows.map(row => {
+        const obj: Record<string, string> = {};
         header.forEach((key, index) => {
             if (key) {
-                row[key] = values[index] || '';
+                obj[key] = row[index] ? row[index].trim() : '';
             }
         });
-        return row;
+        return obj;
     });
 }
 

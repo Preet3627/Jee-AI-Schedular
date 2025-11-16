@@ -10,8 +10,8 @@ export function getQuestionNumbersFromRanges(rangesStr: string): number[] {
 
     const questionNumbers = new Set<number>();
 
-    // Remove any descriptive text before parsing, e.g., "Ex 1.1: 1-10" -> "1-10"
-    const cleanedRangesStr = rangesStr.replace(/[^0-9-;,]/g, '');
+    // Remove page number info for parsing, e.g. "@p45" or "(p. 45)"
+    const cleanedRangesStr = rangesStr.replace(/@p\d+/g, '').replace(/\(p\.\s*\d+\)/g, '');
 
     const parts = cleanedRangesStr.split(/[;,]/);
 

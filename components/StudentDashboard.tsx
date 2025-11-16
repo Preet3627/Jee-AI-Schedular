@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData } from '../types';
 import ScheduleList from './ScheduleList';
@@ -44,6 +45,7 @@ import AIDoubtSolverModal from './AIDoubtSolverModal';
 import { api } from '../api/apiService';
 import SubjectAllocationWidget from './widgets/SubjectAllocationWidget';
 import UpcomingExamsWidget from './widgets/UpcomingExamsWidget';
+import TestReportModal from './TestReportModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts';
 
@@ -87,6 +89,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<ExamData | null>(null);
     const [isAiMistakeModalOpen, setIsAiMistakeModalOpen] = useState(false);
+    const [viewingReport, setViewingReport] = useState<ResultData | null>(null);
     
     // AI Chat State
     const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -229,16 +232,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
           <TabButton tabId="doubts" icon="community">Doubts</TabButton>
         </div>
         <div className="flex items-center gap-2 mb-2 sm:mb-0">
-          <a href="https://nc.ponsrischool.in/index.php/s/qeBT6jwoSBB4six" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Study Material">
-            <Icon name="book-open" />
-          </a>
-          <button onClick={() => setIsImageModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Import from Image"><Icon name="image" /></button>
-          <button onClick={() => setisAiParserModalOpen(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600" title="Import schedule from text or CSV using AI">
-            <Icon name="upload" /> AI Import
+          <button onClick={() => setisAiParserModalOpen(true)} className="p-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700 flex items-center gap-2 text-sm font-semibold" title="AI Import">
+            <Icon name="gemini" className="w-4 h-4" /> AI Import
           </button>
-          <button onClick={() => setIsPracticeModalOpen(true)} className="p-2 rounded-lg bg-purple-600 hover:bg-purple-500" title="Custom Practice"><Icon name="stopwatch" /></button>
-          <button onClick={() => setIsSettingsModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600"><Icon name="settings" /></button>
-          <button onClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
+          <button onClick={() => setIsPracticeModalOpen(true)} className="p-2.5 rounded-lg bg-purple-600/50 hover:bg-purple-600" title="Custom Practice"><Icon name="stopwatch" /></button>
+          <button onClick={() => setIsSettingsModalOpen(true)} className="p-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700"><Icon name="settings" /></button>
+          <button onClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
             <Icon name="plus" /> Create
           </button>
         </div>
@@ -254,9 +253,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                             <MotivationalQuoteWidget quote={quote} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />
-                                <ReadingHoursWidget student={student} />
+                                <ScoreTrendWidget results={student.RESULTS} />
                             </div>
-                            <ScoreTrendWidget results={student.RESULTS} />
+                            <ReadingHoursWidget student={student} />
                         </div>
                         <div className="space-y-8">
                              <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />
@@ -290,7 +289,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                                 <button onClick={() => setIsAiMistakeModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600"><Icon name="book-open" /> Analyze Mistake with AI</button>
                                 <button onClick={() => setIsLogResultModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button>
                             </div>
-                            {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
+                            {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} onViewAnalysis={setViewingReport} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
                         </div>
                         <div className="space-y-8">
                              <PerformanceMetrics score={student.CONFIG.SCORE} weaknesses={student.CONFIG.WEAK} onEditWeaknesses={() => setIsEditWeaknessesModalOpen(true)} />
@@ -333,7 +332,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCsvSave} />}
             {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={handleCsvSave} />}
-            {isPracticeModalOpen && <CustomPracticeModal initialQRanges={practiceTask?.Q_RANGES} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} />}
+            {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} />}
             {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}
@@ -341,6 +340,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isAiMistakeModalOpen && <AIMistakeAnalysisModal onClose={() => setIsAiMistakeModalOpen(false)} onSaveWeakness={handleSaveWeakness} />}
             {isAiDoubtSolverOpen && <AIDoubtSolverModal onClose={() => setIsAiDoubtSolverOpen(false)} />}
             {isAiChatOpen && <AIChatPopup history={aiChatHistory} onSendMessage={handleAiChatMessage} onClose={() => setIsAiChatOpen(false)} isLoading={isAiChatLoading} />}
+            {viewingReport && <TestReportModal result={viewingReport} onClose={() => setViewingReport(null)} onUpdateWeaknesses={onUpdateWeaknesses} student={student} />}
             
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}
         </main>

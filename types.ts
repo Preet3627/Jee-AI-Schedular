@@ -66,10 +66,28 @@ export type ScheduleItem = ScheduleCardData | HomeworkData | ActivityData;
 export interface ResultData {
   ID: string;
   DATE: string;
-  SCORE: string;
-  MISTAKES: string[];
+  SCORE: string; // e.g., "185/300"
+  MISTAKES: string[]; // List of mistake topics or question numbers
   FIXED_MISTAKES?: string[];
+  
+  // New detailed analysis fields
+  syllabus?: string;
+  timings?: Record<number, number>; // { qNum: seconds }
+  analysis?: {
+    subjectTimings: Record<'PHYSICS' | 'CHEMISTRY' | 'MATHS' | 'OTHER', number>;
+    chapterScores: Record<string, { correct: number; incorrect: number; accuracy: number }>;
+    aiSuggestions: string;
+    incorrectQuestionNumbers?: number[];
+  };
+  detailedMistakes?: {
+    qNumber: number;
+    analysis: {
+        topic: string;
+        explanation: string;
+    };
+  }[];
 }
+
 
 export interface ExamData {
   ID: string;

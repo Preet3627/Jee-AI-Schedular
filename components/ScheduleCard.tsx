@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleItem, HomeworkData } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
@@ -110,7 +109,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit,
                   <div className="flex flex-wrap gap-2">
                     {cardData.Q_RANGES.split(';').map((range, idx) => (
                       <span key={idx} className="bg-gray-900/50 px-2 py-1 rounded">
-                        {range.replace('@p', ' (p.') + (range.includes('@p') ? ')' : '')}
+                        {range.replace(/@p(\d+)/, ' (p. $1)')}
                       </span>
                     ))}
                   </div>
