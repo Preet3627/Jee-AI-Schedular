@@ -8,9 +8,10 @@ interface CommunityDashboardProps {
   allDoubts: DoubtData[];
   onPostDoubt: (question: string, image?: string) => void;
   onPostSolution: (doubtId: string, solution: string, image?: string) => void;
+  onAskAi: () => void;
 }
 
-const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDoubts, onPostDoubt, onPostSolution }) => {
+const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDoubts, onPostDoubt, onPostSolution, onAskAi }) => {
   const [newDoubt, setNewDoubt] = useState('');
   const [doubtImage, setDoubtImage] = useState<string | null>(null);
   const [solutionTexts, setSolutionTexts] = useState<{[key: string]: string}>({});
@@ -68,6 +69,9 @@ const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDou
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
             <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600">
               <Icon name="image" /> {doubtImage ? 'Change Image' : 'Add Image'}
+            </button>
+            <button type="button" onClick={onAskAi} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600" title="Get an instant answer from the AI assistant">
+              <Icon name="gemini" /> Ask AI
             </button>
             <button type="submit" disabled={!newDoubt.trim()} className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
               Post Doubt

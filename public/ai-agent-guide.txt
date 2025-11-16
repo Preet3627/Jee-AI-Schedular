@@ -1,17 +1,24 @@
 # Universal CSV Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 3.1.0
+# Version: 3.2.0
 # Purpose: To guide AI agents in generating CSV data for the JEE Scheduler Pro platform.
-#Always remember to Schedule All things between 5pm to 11:30pm On mondays to saturday You can Plan Anytime on sunday And You Have to remember time Of Kota test is 7am to 1pm So do not Use this Time schedule on sunday when kota test is on that date
-## 1. General Rules
+
+## 0. About JEE Scheduler Pro
+JEE Scheduler Pro is an advanced, AI-powered study planner for students preparing for the JEE exams. It offers personalized weekly schedules, performance tracking, a community doubt-solving forum, and exam management. The platform is secure, using encryption to protect student data. Your role as an AI agent is to generate realistic and structured data that students can import to quickly set up their study plans.
+
+## 1. General Rules & Best Practices
 - **Format:** Standard CSV. Each import should handle ONE data type per file/paste.
 - **Header Row:** The first row MUST be a header row matching the fields specified below.
 - **Delimiter:** Comma `,`.
 - **Quoting:** Fields with commas MUST be enclosed in double quotes (e.g., "Fix FBD, Tension errors").
+- **Scheduling Logic (CRITICAL):**
+    - For weekdays (Monday to Saturday), schedule all study-related `ACTION` tasks between **17:00 (5 PM) and 23:30 (11:30 PM)**.
+    - On Sundays, you can schedule tasks at any time, with one exception.
+    - **Kota Test Exception:** If a "Kota test" or similar major mock exam is scheduled on a Sunday, do NOT schedule any other tasks between **07:00 (7 AM) and 13:00 (1 PM)** to avoid conflicts.
 
 ---
 
-## 2. Data Type: SCHEDULE
-**Purpose:** Adds tasks (study sessions, homework) to a student's schedule. This can be used to generate a weekly template or a schedule spanning up to one month. The system will interpret the 'DAY' field cyclically.
+## 2. Data Type: SCHEDULE (for Study Sessions & Homework)
+**Purpose:** Adds tasks to a student's weekly schedule. This can be used to generate a full weekly template. The system will interpret the 'DAY' field cyclically.
 
 **Header:**
 `ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE`
@@ -39,10 +46,10 @@
 **Example CSV (SCHEDULE):**
 ```csv
 ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
-A101,S001,ACTION,MONDAY,06:00,"Trig Identities Drill","15-minute speed drill of core trig identities.",MATHS,,MORNING_DRILL
+A101,S001,ACTION,MONDAY,19:00,"Trig Identities Drill","15-minute speed drill of core trig identities.",MATHS,,MORNING_DRILL
 H101,S001,HOMEWORK,TUESDAY,,"Maths Homework","Complete exercises on indefinite integration.",MATHS,"Ex 7.2: 1-20@p305",
-A102,S001,ACTION,WEDNESDAY,19:00,"Rotational Dynamics","Focus on Free Body Diagrams. Solve 10 PYQs.",PHYSICS,,DEEP_DIVE
-A103,S001,ACTION,FRIDAY,21:00,"Mock Test Analysis","Review last mock test, focus on Chemistry errors.",CHEMISTRY,,ANALYSIS
+A102,S001,ACTION,WEDNESDAY,20:00,"Rotational Dynamics","Focus on Free Body Diagrams. Solve 10 PYQs.",PHYSICS,,DEEP_DIVE
+A103,S001,ACTION,FRIDAY,21:30,"Mock Test Analysis","Review last mock test, focus on Chemistry errors.",CHEMISTRY,,ANALYSIS
 ```
 
 ---
@@ -68,14 +75,14 @@ A103,S001,ACTION,FRIDAY,21:00,"Mock Test Analysis","Review last mock test, focus
 **Example CSV (EXAM):**
 ```csv
 ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS
-E301,S001,EXAM,FULL,"AITS Mock Test #3",2024-08-15,09:00,"Full Syllabus Paper 1"
+E301,S001,EXAM,FULL,"Kota Major Test #1",2024-08-18,07:00,"Full Syllabus Paper 1"
 E302,S001,EXAM,CHEMISTRY,"Organic Chemistry Test",2024-08-22,14:00,"Hydrocarbons,Aldehydes & Ketones"
 ```
 
 ---
 
-## 4. Data Type: METRICS
-**Purpose:** Logs a mock test result or updates a student's priority weaknesses.
+## 4. Data Type: METRICS (for Results & Mistakes)
+**Purpose:** Logs a mock test result or updates a student's priority weaknesses (mistakes).
 
 **Header:**
 `SID,TYPE,SCORE,MISTAKES,WEAKNESSES`
@@ -84,7 +91,7 @@ E302,S001,EXAM,CHEMISTRY,"Organic Chemistry Test",2024-08-22,14:00,"Hydrocarbons
 | Header       | Description                                                             | Required? | Example                                          |
 |--------------|-------------------------------------------------------------------------|-----------|--------------------------------------------------|
 | `SID`        | Student ID.                                                             | **Yes**   | `S001`                                           |
-| `TYPE`       | `RESULT` (log a score) or `WEAKNESS` (update list).                     | **Yes**   | `RESULT`                                         |
+| `TYPE`       | `RESULT` (log a score and its mistakes) or `WEAKNESS` (update list).    | **Yes**   | `RESULT`                                         |
 | `SCORE`      | **For `RESULT` only.** Score in "marks/total" format.                     | No        | `185/300`                                        |
 | `MISTAKES`   | **For `RESULT` only.** Semicolon-separated list of mistake topics.      | No        | `"Integration by Parts;Young's Double Slit"`       |
 | `WEAKNESSES` | **For `WEAKNESS` only.** Semicolon-separated list of priority weaknesses. | No        | `"Definite Integration;Wave Optics;Mole Concept"`  |

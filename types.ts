@@ -133,6 +133,7 @@ export interface Config {
         forceOfflineMode: boolean;
         perQuestionTime: number; // Default time in seconds per MCQ
         hasGeminiKey?: boolean; // A safe flag for the frontend
+        showAiChatAssistant?: boolean;
     };
 }
 

@@ -859,6 +859,43 @@ apiRouter.post('/ai/parse-image-to-csv', authMiddleware, async (req, res) => {
     }
 });
 
+apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
+    const { history, prompt, imageBase64 } = req.body;
+    if (!prompt) return res.status(400).json({ error: "A prompt is required." });
+
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are a helpful and friendly AI assistant for JEE (Joint Entrance Examination) aspirants. Your goal is to help students with their academic questions related to Physics, Chemistry, and Maths, and provide guidance on health and wellness for students. Politely decline to answer questions outside of these topics. Be encouraging and supportive.`;
+        
+        const contents = [];
+        if (history) {
+            contents.push(...history);
+        }
+        
+        const userParts = [{ text: prompt }];
+        if (imageBase64) {
+            // The Gemini API expects image data first for multimodal prompts.
+            const imagePart = { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } };
+            userParts.unshift(imagePart);
+        }
+        contents.push({ role: 'user', parts: userParts });
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: contents,
+            config: { systemInstruction },
+        });
+
+        res.json({ response: response.text });
+    } catch (error) {
+        console.error("Gemini API error (chat):", error);
+        res.status(500).json({ error: `Failed to get response from AI: ${error.message}` });
+    }
+});
+
 
 // --- ADMIN ENDPOINTS ---
 apiRouter.get('/admin/students', authMiddleware, adminMiddleware, async (req, res) => {

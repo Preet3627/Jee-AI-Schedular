@@ -40,6 +40,9 @@ import AIMistakeAnalysisModal from './AIMistakeAnalysisModal';
 import AIParserModal from './AIParserModal';
 import MotivationalQuoteWidget from './widgets/MotivationalQuoteWidget';
 import { motivationalQuotes } from '../data/motivationalQuotes';
+import AIChatPopup from './AIChatPopup';
+import AIDoubtSolverModal from './AIDoubtSolverModal';
+import { api } from '../api/apiService';
 
 type ActiveTab = 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts';
 
@@ -49,7 +52,7 @@ interface StudentDashboardProps {
     onSaveBatchTasks: (tasks: ScheduleItem[]) => void;
     onDeleteTask: (taskId: string) => void;
     onToggleMistakeFixed: (resultId: string, mistake: string) => void;
-    onUpdateSettings: (settings: Partial<Config['settings']>) => void;
+    onUpdateSettings: (settings: Partial<Config['settings'] & { geminiApiKey?: string }>) => void;
     onLogStudySession: (session: Omit<StudySession, 'date'>) => void;
     onUpdateWeaknesses: (weaknesses: string[]) => void;
     onLogResult: (result: ResultData) => void;
@@ -83,6 +86,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<ExamData | null>(null);
     const [isAiMistakeModalOpen, setIsAiMistakeModalOpen] = useState(false);
+    
+    // AI Chat State
+    const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+    const [aiChatHistory, setAiChatHistory] = useState<{ role: string; parts: { text: string }[] }[]>([]);
+    const [showAiChatFab, setShowAiChatFab] = useState(student.CONFIG.settings.showAiChatAssistant !== false && !!student.CONFIG.settings.hasGeminiKey);
+    const [isAiChatLoading, setIsAiChatLoading] = useState(false);
+
+    // AI Doubt Solver State
+    const [isAiDoubtSolverOpen, setIsAiDoubtSolverOpen] = useState(false);
 
     const quote = useMemo(() => motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)], []);
 
@@ -129,6 +141,41 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         const updatedWeaknesses = [...new Set([...student.CONFIG.WEAK, newWeakness])];
         onUpdateWeaknesses(updatedWeaknesses);
     };
+
+    const handleApiKeySet = () => {
+        // Only show for the very first time user sets a key
+        if (!student.CONFIG.settings.hasGeminiKey) {
+            setIsAiChatOpen(true);
+        }
+        setShowAiChatFab(true); // Always show the button after a key is set
+    };
+
+    const handleUpdateSettings = async (settings: Partial<Config['settings'] & { geminiApiKey?: string }>) => {
+        await onUpdateSettings(settings);
+        if (settings.showAiChatAssistant !== undefined) {
+            setShowAiChatFab(settings.showAiChatAssistant);
+        }
+    };
+
+    const handleAiChatMessage = async (prompt: string, imageBase64?: string) => {
+        const userMessage = { role: 'user', parts: [{ text: prompt }] };
+        const newHistory = [...aiChatHistory, userMessage];
+        setAiChatHistory(newHistory);
+        setIsAiChatLoading(true);
+        try {
+            const result = await api.aiChat({
+                history: aiChatHistory, // Send previous history for context
+                prompt,
+                imageBase64,
+            });
+            setAiChatHistory([...newHistory, { role: 'model', parts: [{ text: result.response }] }]);
+        } catch (error: any) {
+            const errorMessage = error.error || error.message || "An unknown error occurred.";
+            setAiChatHistory([...newHistory, { role: 'model', parts: [{ text: `Sorry, I encountered an error: ${errorMessage}` }] }]);
+        } finally {
+            setIsAiChatLoading(false);
+        }
+    };
     
     const TabButton: React.FC<{ tabId: ActiveTab; icon: IconName; children: React.ReactNode; }> = ({ tabId, icon, children }) => (
         <button onClick={() => setActiveTab(tabId)} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${activeTab === tabId ? 'text-[var(--accent-color)] border-[var(--accent-color)]' : 'text-gray-400 border-transparent hover:text-white'}`}>
@@ -159,6 +206,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     
     return (
         <main className={`mt-8 ${useToolbarLayout ? 'pb-24' : ''}`}>
+            
+            {showAiChatFab && !isAiChatOpen && (
+                <button 
+                    onClick={() => setIsAiChatOpen(true)}
+                    className="fixed bottom-6 right-6 z-40 w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30 transition-transform hover:scale-110 active:scale-95"
+                    title="Open AI Assistant"
+                >
+                    <Icon name="gemini" className="w-8 h-8"/>
+                </button>
+            )}
+            
             {useToolbarLayout ? (
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold capitalize text-white">{activeTab}</h2>
@@ -201,17 +259,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     </div>
                 </div>
             )}
-            {activeTab === 'doubts' && <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />}
+            {activeTab === 'doubts' && <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} onAskAi={() => setIsAiDoubtSolverOpen(true)} />}
 
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCsvSave} />}
             {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={handleCsvSave} />}
             {isPracticeModalOpen && <CustomPracticeModal initialQRanges={practiceTask?.Q_RANGES} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} />}
-            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={onUpdateSettings} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
+            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}
             {isExamModalOpen && <CreateEditExamModal exam={editingExam} onClose={() => { setIsExamModalOpen(false); setEditingExam(null); }} onSave={(exam) => editingExam ? onUpdateExam(exam) : onAddExam(exam)} />}
             {isAiMistakeModalOpen && <AIMistakeAnalysisModal onClose={() => setIsAiMistakeModalOpen(false)} onSaveWeakness={handleSaveWeakness} />}
+            {isAiDoubtSolverOpen && <AIDoubtSolverModal onClose={() => setIsAiDoubtSolverOpen(false)} />}
+            {isAiChatOpen && <AIChatPopup history={aiChatHistory} onSendMessage={handleAiChatMessage} onClose={() => setIsAiChatOpen(false)} isLoading={isAiChatLoading} />}
             
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}
         </main>

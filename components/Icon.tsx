@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-export type IconName = 'bell' | 'copy' | 'check' | 'trash' | 'play' | 'pause' | 'stop' | 'upload' | 'stopwatch' | 'logout' | 'dashboard' | 'users' | 'plus' | 'fixed' | 'login' | 'user-plus' | 'edit' | 'ellipsis' | 'forward' | 'trophy' | 'star' | 'streak' | 'send' | 'message' | 'settings' | 'schedule' | 'planner' | 'performance' | 'community' | 'calendar' | 'image' | 'book-open' | 'drive';
+export type IconName = 'bell' | 'copy' | 'check' | 'trash' | 'play' | 'pause' | 'stop' | 'upload' | 'stopwatch' | 'logout' | 'dashboard' | 'users' | 'plus' | 'fixed' | 'login' | 'user-plus' | 'edit' | 'ellipsis' | 'forward' | 'trophy' | 'star' | 'streak' | 'send' | 'message' | 'settings' | 'schedule' | 'planner' | 'performance' | 'community' | 'calendar' | 'image' | 'book-open' | 'drive' | 'gemini';
 
 interface IconProps {
   name: IconName;
@@ -180,6 +180,11 @@ const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5" }) => {
         <path d="M0 0h24v24H0z" fill="none"/>
         <path d="M7.71 3.5L1.5 15l3.12 5.5h14.76L22.5 15 16.29 3.5H7.71zM12 14.25L8.61 8h3.03L15.36 14.25H12zM7.65 15.25l2.22-3.87L12 5l3.07 6.38 2.22 3.87H7.65z"/>
       </svg>
+    ),
+    'gemini': (
+        <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2.5l-2.5 6-6 2.5 6 2.5 2.5 6 2.5-6 6-2.5-6-2.5z" />
+        </svg>
     )
   };
   return icons[name] || null;

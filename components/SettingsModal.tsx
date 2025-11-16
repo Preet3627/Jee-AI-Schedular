@@ -14,15 +14,17 @@ interface SettingsModalProps {
   onGoogleSignOut: () => void;
   onBackupToDrive: () => void;
   onRestoreFromDrive: () => void;
+  onApiKeySet: () => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
-  const { settings, driveLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive } = props;
+  const { settings, driveLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet } = props;
   const [accentColor, setAccentColor] = useState(settings.accentColor || '#0891b2');
   const [blurEnabled, setBlurEnabled] = useState(settings.blurEnabled !== false);
   const [mobileLayout, setMobileLayout] = useState(settings.mobileLayout || 'standard');
   const [forceOfflineMode, setForceOfflineMode] = useState(settings.forceOfflineMode || false);
   const [perQuestionTime, setPerQuestionTime] = useState(settings.perQuestionTime || 180);
+  const [showAiChat, setShowAiChat] = useState(settings.showAiChatAssistant !== false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
@@ -39,12 +41,16 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         blurEnabled, 
         mobileLayout: mobileLayout as 'standard' | 'toolbar', 
         forceOfflineMode, 
-        perQuestionTime 
+        perQuestionTime,
+        showAiChatAssistant: showAiChat
     };
     if (geminiApiKey.trim()) {
         settingsToSave.geminiApiKey = geminiApiKey.trim();
+        onSave(settingsToSave);
+        onApiKeySet();
+    } else {
+        onSave(settingsToSave);
     }
-    onSave(settingsToSave);
     handleClose();
   };
 
@@ -127,9 +133,9 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
             </div>
           </div>
 
-
           <div className="border-t border-gray-700/50"></div>
-          
+
+          <ToggleSwitch id="ai-chat-toggle" label="Show AI Chat Assistant" desc="Shows the floating Gemini icon on the dashboard." checked={showAiChat} onChange={setShowAiChat} />
           <ToggleSwitch id="blur-toggle" label="Enable UI Blur Effect" desc="May improve performance on some devices." checked={blurEnabled} onChange={setBlurEnabled} />
           <ToggleSwitch id="mobile-layout-toggle" label="Enable Simplified Mobile View" desc="Uses a bottom toolbar on small screens." checked={mobileLayout === 'toolbar'} onChange={(c) => setMobileLayout(c ? 'toolbar' : 'standard')} />
           <ToggleSwitch id="offline-mode-toggle" label="Force Offline Mode" desc="Use cached data to save mobile data." checked={forceOfflineMode} onChange={setForceOfflineMode} />

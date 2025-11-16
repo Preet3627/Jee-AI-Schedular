@@ -96,6 +96,7 @@ export const api = {
     broadcastTask: (task: ScheduleItem) => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task }) }),
     
     // AI (secure backend endpoints)
+    aiChat: (data: { history: any[]; prompt: string; imageBase64?: string; }) => authFetch('/ai/chat', { method: 'POST', body: JSON.stringify(data) }),
     analyzeMistake: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/analyze-mistake', { method: 'POST', body: JSON.stringify(data) }),
     solveDoubt: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/solve-doubt', { method: 'POST', body: JSON.stringify(data) }),
     parseTextToCsv: (text: string) => authFetch('/ai/parse-text-to-csv', { method: 'POST', body: JSON.stringify({ text }) }),
