@@ -29,6 +29,17 @@ const App: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [googleClientId, setGoogleClientId] = useState<string | null>(null);
     const [googleAuthStatus, setGoogleAuthStatus] = useState<'unconfigured' | 'loading' | 'signed_in' | 'signed_out'>('loading');
+    const [resetToken, setResetToken] = useState<string | null>(null);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('reset-token');
+        if (token) {
+            setResetToken(token);
+            // Clean the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
 
     const handleSaveTask = async (task: ScheduleItem) => {
         await api.saveTask(task);
@@ -197,7 +208,8 @@ const App: React.FC = () => {
                 googleClientId,
                 (isSignedIn) => setGoogleAuthStatus(isSignedIn ? 'signed_in' : 'signed_out'),
                 (error) => {
-                    console.error("Google API Init Error", error);
+                    // Log the full error object as a JSON string for better debugging.
+                    console.error("Google API Init Error", JSON.stringify(error, null, 2));
                     setGoogleAuthStatus('unconfigured');
                 }
             );
@@ -246,7 +258,7 @@ const App: React.FC = () => {
             );
         }
 
-        return <AuthScreen backendStatus={backendStatus} googleClientId={googleClientId} />;
+        return <AuthScreen backendStatus={backendStatus} googleClientId={googleClientId} resetToken={resetToken} />;
     };
 
     return <div className="min-h-screen bg-gray-950 text-gray-200 font-sans">{renderContent()}</div>;

@@ -116,9 +116,17 @@ const initializeDatabaseSchema = async () => {
               google_id VARCHAR(255) UNIQUE,
               verification_code VARCHAR(10),
               verification_expires DATETIME,
+              password_reset_token VARCHAR(255),
+              password_reset_expires DATETIME,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        // Add password reset columns if they don't exist
+        const [cols] = await connection.query("SHOW COLUMNS FROM users LIKE 'password_reset_token'");
+        if (cols.length === 0) {
+            await connection.query("ALTER TABLE users ADD COLUMN password_reset_token VARCHAR(255), ADD COLUMN password_reset_expires DATETIME");
+        }
+
         await connection.query(`
             CREATE TABLE IF NOT EXISTS user_configs (
               user_id INT PRIMARY KEY,
@@ -171,6 +179,39 @@ const initializeDatabaseSchema = async () => {
         console.log("Database schema verified successfully.");
     } catch (error) {
         console.error("FATAL: Could not initialize database schema.", error);
+    } finally {
+        connection.release();
+    }
+};
+
+const ensureAdminUserExists = async () => {
+    if (!pool) return;
+    const connection = await pool.getConnection();
+    try {
+        const adminEmail = 'patelbhavna107@gmail.com';
+        const adminName = 'Bhavna Patel';
+        const adminSid = 'ADMIN_BHAVNA';
+
+        const [[existingAdmin]] = await connection.query('SELECT id, role FROM users WHERE email = ?', [adminEmail]);
+
+        if (existingAdmin) {
+            if (existingAdmin.role !== 'admin') {
+                console.log(`Updating user ${adminEmail} to admin role.`);
+                await connection.query('UPDATE users SET role = "admin" WHERE id = ?', [existingAdmin.id]);
+            } else {
+                console.log(`Admin user ${adminEmail} already exists and has correct role.`);
+            }
+        } else {
+            console.log(`Creating new admin user for ${adminEmail}. This user must log in with Google.`);
+            const profilePhoto = generateAvatar(adminName);
+            // No password is set. Admin must use Google OAuth.
+            await connection.query(
+                'INSERT INTO users (sid, email, full_name, profile_photo, is_verified, role) VALUES (?, ?, ?, ?, ?, ?)',
+                [adminSid, adminEmail, adminName, profilePhoto, true, 'admin']
+            );
+        }
+    } catch (error) {
+        console.error("Error during admin user setup:", error);
     } finally {
         connection.release();
     }
@@ -407,6 +448,52 @@ apiRouter.post('/auth/google', async (req, res) => {
     } catch (error) {
         console.error('Google auth error:', error);
         res.status(500).json({ error: 'Google authentication failed' });
+    }
+});
+
+apiRouter.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    if (!mailer) return res.status(500).json({ error: 'Password reset is not configured on this server.' });
+    try {
+        const [[user]] = await pool.query('SELECT id, full_name, password FROM users WHERE email = ?', [email]);
+        if (user && user.password) { // Only allow reset for non-Google-only accounts
+            const token = crypto.randomBytes(32).toString('hex');
+            const expires = Date.now() + 3600000; // 1 hour
+            await pool.query('UPDATE users SET password_reset_token = ?, password_reset_expires = ? WHERE id = ?', [token, new Date(expires), user.id]);
+            
+            // In a real app, use the actual domain from an env var
+            const resetLink = `http://localhost:5173/?reset-token=${token}`;
+            
+            await mailer.sendMail({
+                from: `"JEE Scheduler Pro" <${process.env.SMTP_USER}>`,
+                to: email,
+                subject: 'Password Reset Request',
+                text: `Hi ${user.full_name},\n\nYou requested a password reset. Click this link to reset your password: ${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you did not request this, please ignore this email.`,
+                html: `<p>Hi ${user.full_name},</p><p>You requested a password reset. Click this link to reset your password: <a href="${resetLink}">Reset Password</a></p><p>This link will expire in 1 hour.</p><p>If you did not request this, please ignore this email.</p>`,
+            });
+        }
+        // Always send a success message to prevent user enumeration
+        res.status(200).json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+    } catch (error) {
+        console.error("Forgot password error:", error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+apiRouter.post('/reset-password', async (req, res) => {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Token and new password are required.' });
+    try {
+        const [[user]] = await pool.query('SELECT id FROM users WHERE password_reset_token = ? AND password_reset_expires > NOW()', [token]);
+        if (!user) return res.status(400).json({ error: 'Password reset token is invalid or has expired.' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await pool.query('UPDATE users SET password = ?, password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?', [hashedPassword, user.id]);
+        
+        res.status(200).json({ message: 'Password has been successfully reset.' });
+    } catch (error) {
+        console.error("Reset password error:", error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -653,6 +740,40 @@ const getApiKeyForUser = async (userId) => {
     return process.env.API_KEY; // Fallback to global key
 };
 
+apiRouter.post('/ai/analyze-mistake', authMiddleware, async (req, res) => {
+    const { prompt, imageBase64 } = req.body;
+    if (!prompt) return res.status(400).json({ error: "A prompt describing the mistake is required." });
+
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are a JEE test preparation expert. A student has provided an image of a question and a description of their mistake. Analyze their conceptual error. Respond ONLY with a valid JSON object with two keys: "mistake_topic" (a short, specific topic name like "Conservation of Momentum") and "explanation" (a detailed but concise explanation of the fundamental concept they misunderstood and how to correct it). Do not include any other text or markdown formatting.`;
+
+        const contentParts = [{ text: `Student's mistake description: "${prompt}"` }];
+        if (imageBase64) {
+            contentParts.unshift({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
+        }
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: contentParts },
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json'
+            },
+        });
+        
+        // Gemini with JSON output mode returns the JSON string directly in response.text
+        res.json({ response: response.text });
+    } catch (error) {
+        console.error("Gemini API error (analyze mistake):", error);
+        res.status(500).json({ error: `Failed to get analysis from AI: ${error.message}` });
+    }
+});
+
+
 apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
     const { prompt, imageBase64 } = req.body;
     
@@ -792,6 +913,7 @@ app.get('*', (req, res) => {
 const startServer = async () => {
     if (isConfigured) {
         await initializeDatabaseSchema();
+        await ensureAdminUserExists();
     }
     if (isConfigured && mailer) {
         try {
@@ -801,7 +923,7 @@ const startServer = async () => {
             console.error("SMTP mailer verification failed:", error);
         }
     } else if (isConfigured) {
-        console.warn("SMTP mailer not configured. Email verification will be skipped.");
+        console.warn("SMTP mailer not configured. Email verification and password resets will be skipped/disabled.");
     }
 
     if (!process.env.VERCEL) {

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData } from '../types';
 import ScheduleList from './ScheduleList';
 import Icon, { IconName } from './Icon';
@@ -36,8 +36,10 @@ import AchievementsWidget from './widgets/AchievementsWidget';
 // FIX: Corrected import path for component.
 import ImageToTimetableModal from './ImageToTimetableModal';
 // FIX: Corrected import path for component.
-import AIDoubtSolverModal from './AIDoubtSolverModal';
+import AIMistakeAnalysisModal from './AIMistakeAnalysisModal';
 import AIParserModal from './AIParserModal';
+import MotivationalQuoteWidget from './widgets/MotivationalQuoteWidget';
+import { motivationalQuotes } from '../data/motivationalQuotes';
 
 type ActiveTab = 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts';
 
@@ -80,7 +82,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [isLogResultModalOpen, setIsLogResultModalOpen] = useState(false);
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<ExamData | null>(null);
-    const [isAiDoubtSolverOpen, setIsAiDoubtSolverOpen] = useState(false);
+    const [isAiMistakeModalOpen, setIsAiMistakeModalOpen] = useState(false);
+
+    const quote = useMemo(() => motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)], []);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -119,6 +123,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const handleStartPractice = (homework: HomeworkData) => {
         setPracticeTask(homework);
         setIsPracticeModalOpen(true);
+    };
+
+    const handleSaveWeakness = (newWeakness: string) => {
+        const updatedWeaknesses = [...new Set([...student.CONFIG.WEAK, newWeakness])];
+        onUpdateWeaknesses(updatedWeaknesses);
     };
     
     const TabButton: React.FC<{ tabId: ActiveTab; icon: IconName; children: React.ReactNode; }> = ({ tabId, icon, children }) => (
@@ -163,6 +172,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {activeTab === 'schedule' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
+                        <MotivationalQuoteWidget quote={quote} />
                         <ActivityTracker activities={activityItems} />
                         <ScheduleList items={taskItems} onDelete={onDeleteTask} onEdit={handleEditClick} onMoveToNextDay={()=>{}} onStar={handleStarTask} onStartPractice={handleStartPractice} isSubscribed={student.CONFIG.UNACADEMY_SUB} />
                     </div>
@@ -179,7 +189,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {activeTab === 'performance' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
-                        <div className="flex justify-end"><button onClick={() => setIsLogResultModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button></div>
+                        <div className="flex justify-end gap-4">
+                            <button onClick={() => setIsAiMistakeModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600"><Icon name="book-open" /> Analyze Mistake with AI</button>
+                            <button onClick={() => setIsLogResultModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button>
+                        </div>
                         {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
                     </div>
                     <div className="space-y-8">
@@ -198,7 +211,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}
             {isExamModalOpen && <CreateEditExamModal exam={editingExam} onClose={() => { setIsExamModalOpen(false); setEditingExam(null); }} onSave={(exam) => editingExam ? onUpdateExam(exam) : onAddExam(exam)} />}
-            {isAiDoubtSolverOpen && <AIDoubtSolverModal onClose={() => setIsAiDoubtSolverOpen(false)} />}
+            {isAiMistakeModalOpen && <AIMistakeAnalysisModal onClose={() => setIsAiMistakeModalOpen(false)} onSaveWeakness={handleSaveWeakness} />}
             
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}
         </main>

@@ -1,24 +1,40 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StudentData, DoubtData } from '../types';
 import Icon from './Icon';
 
 interface CommunityDashboardProps {
   student: StudentData;
   allDoubts: DoubtData[];
-  onPostDoubt: (question: string) => void;
-  onPostSolution: (doubtId: string, solution: string) => void;
+  onPostDoubt: (question: string, image?: string) => void;
+  onPostSolution: (doubtId: string, solution: string, image?: string) => void;
 }
 
 const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDoubts, onPostDoubt, onPostSolution }) => {
   const [newDoubt, setNewDoubt] = useState('');
+  const [doubtImage, setDoubtImage] = useState<string | null>(null);
   const [solutionTexts, setSolutionTexts] = useState<{[key: string]: string}>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = (reader.result as string).split(',')[1];
+        setDoubtImage(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handlePostDoubt = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDoubt.trim()) return;
-    onPostDoubt(newDoubt);
+    onPostDoubt(newDoubt, doubtImage || undefined);
     setNewDoubt('');
+    setDoubtImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handlePostSolution = (e: React.FormEvent, doubtId: string) => {
@@ -40,9 +56,23 @@ const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDou
           className="w-full h-24 bg-gray-900/50 border border-gray-600 rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
           placeholder="Ask a question to the community..."
         />
-        <button type="submit" disabled={!newDoubt.trim()} className="mt-2 w-full sm:w-auto float-right flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
-          Post Doubt
-        </button>
+        {doubtImage && (
+            <div className="relative mt-2 w-fit">
+                <img src={`data:image/jpeg;base64,${doubtImage}`} alt="Doubt preview" className="max-h-32 rounded-md border border-gray-600" />
+                <button onClick={() => { setDoubtImage(null); if(fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white">
+                    <Icon name="trash" className="w-4 h-4" />
+                </button>
+            </div>
+        )}
+        <div className="flex items-center justify-end gap-4 mt-2">
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600">
+              <Icon name="image" /> {doubtImage ? 'Change Image' : 'Add Image'}
+            </button>
+            <button type="submit" disabled={!newDoubt.trim()} className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
+              Post Doubt
+            </button>
+        </div>
       </form>
 
       <div className="space-y-6">
@@ -54,7 +84,8 @@ const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDou
               <img src={doubt.author_photo} alt={doubt.author_name} className="w-10 h-10 rounded-full object-cover" />
               <div>
                 <p className="font-semibold text-white">{doubt.author_name} <span className="text-xs text-gray-400 font-normal">({doubt.user_sid})</span></p>
-                <p className="text-sm text-gray-300 mt-1">{doubt.question}</p>
+                <p className="text-sm text-gray-300 mt-1 whitespace-pre-wrap">{doubt.question}</p>
+                {doubt.question_image && <img src={`data:image/jpeg;base64,${doubt.question_image}`} alt="Doubt attachment" className="mt-2 max-w-sm max-h-80 rounded-md" />}
                 <p className="text-xs text-gray-500 mt-2">{new Date(doubt.created_at).toLocaleString()}</p>
               </div>
             </div>
@@ -65,7 +96,7 @@ const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDou
                     <img src={sol.solver_photo} alt={sol.solver_name} className="w-8 h-8 rounded-full object-cover" />
                     <div>
                       <p className="font-semibold text-cyan-400 text-sm">{sol.solver_name}</p>
-                      <p className="text-sm text-gray-300">{sol.solution}</p>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{sol.solution}</p>
                        <p className="text-xs text-gray-500 mt-1">{new Date(sol.created_at).toLocaleString()}</p>
                     </div>
                 </div>

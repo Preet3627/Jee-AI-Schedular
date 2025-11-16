@@ -55,16 +55,28 @@ export const authFetch = async (url: string, options: RequestInit = {}) => {
     }
 };
 
+// Helper for public fetch calls (no token)
+const publicFetch = (url: string, options: RequestInit = {}) => {
+    const fullUrl = `${API_URL}${url}`;
+    const fetchOptions = {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...options.headers },
+    };
+    return fetch(fullUrl, fetchOptions).then(handleResponse);
+};
+
 // Collection of all API call functions
 export const api = {
     // Config
     getPublicConfig: () => fetch(`${API_URL}/config/public`).then(handleResponse),
 
     // Auth
-    login: (sid: string, password: string) => fetch(`${API_URL}/login`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid, password }) }).then(handleResponse),
-    googleLogin: (credential: string) => fetch(`${API_URL}/auth/google`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ credential }) }).then(handleResponse),
-    register: (formData: any) => fetch(`${API_URL}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) }).then(handleResponse),
-    verifyEmail: (email: string, code: string) => fetch(`${API_URL}/verify-email`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }).then(handleResponse),
+    login: (sid: string, password: string) => publicFetch('/login', { method: 'POST', body: JSON.stringify({ sid, password }) }),
+    googleLogin: (credential: string) => publicFetch('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }),
+    register: (formData: any) => publicFetch('/register', { method: 'POST', body: JSON.stringify(formData) }),
+    verifyEmail: (email: string, code: string) => publicFetch('/verify-email', { method: 'POST', body: JSON.stringify({ email, code }) }),
+    forgotPassword: (email: string) => publicFetch('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+    resetPassword: (token: string, password: string) => publicFetch('/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
     
     // User Data
     getMe: () => authFetch('/me'),
@@ -84,6 +96,7 @@ export const api = {
     broadcastTask: (task: ScheduleItem) => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task }) }),
     
     // AI (secure backend endpoints)
+    analyzeMistake: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/analyze-mistake', { method: 'POST', body: JSON.stringify(data) }),
     solveDoubt: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/solve-doubt', { method: 'POST', body: JSON.stringify(data) }),
     parseTextToCsv: (text: string) => authFetch('/ai/parse-text-to-csv', { method: 'POST', body: JSON.stringify({ text }) }),
     parseImageToCsv: (imageBase64: string) => authFetch('/ai/parse-image-to-csv', { method: 'POST', body: JSON.stringify({ imageBase64 }) }),

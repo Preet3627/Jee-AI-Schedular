@@ -11,12 +11,13 @@ declare global {
 
 interface LoginScreenProps {
     onSwitchToRegister: () => void;
+    onSwitchToForgotPassword: () => void;
     backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
     googleClientId: string | null;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitchToRegister, backendStatus, googleClientId }) => {
-    const { login, googleLogin, verificationEmail, setVerificationEmail } = useAuth();
+const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitchToRegister, onSwitchToForgotPassword, backendStatus, googleClientId }) => {
+    const { login, googleLogin } = useAuth();
     const [sid, setSid] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -92,7 +93,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitchToRegister, backendSt
                         <input id="sid" name="sid" type="text" required className={inputClass} onChange={(e) => setSid(e.target.value)} value={sid} />
                     </div>
                      <div>
-                        <label htmlFor="password" className={labelClass}>Password</label>
+                        <div className="flex justify-between items-center">
+                            <label htmlFor="password" className={labelClass}>Password</label>
+                            <button type="button" onClick={onSwitchToForgotPassword} className="text-xs font-medium text-cyan-400 hover:underline">
+                                Forgot Password?
+                            </button>
+                        </div>
                         <input id="password" name="password" type="password" required className={inputClass} onChange={(e) => setPassword(e.target.value)} value={password} />
                     </div>
                      {error && <p className="text-sm text-center text-red-400">{error}</p>}

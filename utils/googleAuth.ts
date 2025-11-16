@@ -35,8 +35,8 @@ export function initClient(clientId: string, updateSigninStatus: (isSignedIn: bo
       updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
     } catch (error: any) {
        console.error("GAPI Init Error:", error);
-       const errorMessage = error.details || 'Could not initialize Google services. Please ensure third-party cookies are not blocked and try again.';
-       onError({ message: errorMessage });
+       // Pass the full error object up to the caller for detailed logging
+       onError(error);
     }
   });
 }

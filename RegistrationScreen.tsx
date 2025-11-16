@@ -42,8 +42,9 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onSwitchToLogin
         setIsGoogleLoading(true);
         setError('');
         try {
+            // googleLogin handles the full state transition. The App component will
+            // automatically re-render to the dashboard on success. No further action is needed here.
             await googleLogin(response.credential);
-            onVerificationSuccess(); // Google login implies verification
         } catch (err: any) {
             setError(err.message || 'Google sign-up failed.');
             setIsGoogleLoading(false);
