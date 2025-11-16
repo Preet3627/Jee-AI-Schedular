@@ -2,7 +2,7 @@
 import React from 'react';
 import Icon from './Icon';
 
-type ActiveTab = 'schedule' | 'planner' | 'performance' | 'doubts' | 'exams';
+type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'performance' | 'doubts' | 'exams';
 
 interface BottomToolbarProps {
     activeTab: ActiveTab;
@@ -12,14 +12,17 @@ interface BottomToolbarProps {
 
 const BottomToolbar: React.FC<BottomToolbarProps> = ({ activeTab, setActiveTab, onFabClick }) => {
     const navItems = [
+        { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
         { id: 'schedule', icon: 'schedule', label: 'Schedule' },
-        { id: 'planner', icon: 'planner', label: 'Planner' },
-        { id: 'performance', icon: 'performance', label: 'Performance' },
+        { id: 'performance', icon: 'performance', label: 'Stats' },
         { id: 'doubts', icon: 'community', label: 'Doubts' },
     ] as const;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-16 bg-gray-900/70 border-t border-[var(--glass-border)] backdrop-blur-lg z-40 md:hidden">
+        <div 
+          className="fixed bottom-0 left-0 right-0 h-16 bg-gray-900/70 border-t border-[var(--glass-border)] backdrop-blur-lg z-40 md:hidden"
+          style={{ paddingBottom: 'var(--safe-area-inset-bottom)' }}
+        >
             <div className="flex justify-around items-center h-full max-w-7xl mx-auto px-2">
                 {navItems.map((item, index) => (
                     <React.Fragment key={item.id}>

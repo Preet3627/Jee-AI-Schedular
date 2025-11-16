@@ -46,6 +46,11 @@ const App: React.FC = () => {
         refreshUser();
     };
 
+    const handleSaveBatchTasks = async (tasks: ScheduleItem[]) => {
+        await api.saveBatchTasks(tasks);
+        refreshUser();
+    };
+
     const handleDeleteTask = async (taskId: string) => {
         await api.deleteTask(taskId);
         refreshUser();
@@ -219,7 +224,7 @@ const App: React.FC = () => {
     }, [googleClientId, backendStatus]);
 
     const renderContent = () => {
-        if (isLoading || backendStatus === 'checking') {
+        if (isLoading) {
             return <div className="flex items-center justify-center min-h-screen"><div className="text-xl animate-pulse">Initializing Interface...</div></div>;
         }
 
@@ -227,29 +232,27 @@ const App: React.FC = () => {
             return <ConfigurationErrorScreen onRetryConnection={checkBackend} backendStatus={backendStatus} />;
         }
         
-        if (backendStatus === 'offline' && !currentUser && !isDemoMode) {
-            return <BackendOfflineScreen onSelectDemoUser={enterDemoMode} onRetryConnection={checkBackend} backendStatus={backendStatus} />;
-        }
-        
+        // If user is loaded (from cache or fetch), show their dashboard.
         if (currentUser) {
             const dashboardUser = currentUser;
             return (
-                 <div style={{'--accent-color': dashboardUser.CONFIG.settings.accentColor} as React.CSSProperties} className={dashboardUser.CONFIG.settings.blurEnabled === false ? 'no-blur' : ''}>
+                 <div style={{'--accent-color': dashboardUser.CONFIG.settings.accentColor} as React.CSSProperties} className={`${dashboardUser.CONFIG.settings.blurEnabled === false ? 'no-blur' : ''} safe-padding-left safe-padding-right`}>
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                         <Header user={{ name: dashboardUser.fullName, id: dashboardUser.sid, profilePhoto: dashboardUser.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         {userRole === 'admin' ? (
                             <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBatchImport={()=>{}} onBroadcastTask={api.broadcastTask} />
                         ) : (
-                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={()=>{}} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateSettings={handleUpdateSettings} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.fullName)} googleAuthStatus={googleAuthStatus} onGoogleSignIn={gcal.handleSignIn} onGoogleSignOut={gcal.handleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />
+                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateSettings={handleUpdateSettings} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.fullName)} googleAuthStatus={googleAuthStatus} onGoogleSignIn={gcal.handleSignIn} onGoogleSignOut={gcal.handleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />
                         )}
                     </div>
                 </div>
             );
         }
         
+        // Show demo admin dashboard if in demo mode
         if (isDemoMode && userRole === 'admin') {
              return (
-                 <div style={{'--accent-color': '#0891b2'} as React.CSSProperties}>
+                 <div style={{'--accent-color': '#0891b2'} as React.CSSProperties} className="safe-padding-left safe-padding-right">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                         <Header user={{ name: 'Admin', id: 'ADMIN_DEMO', profilePhoto: currentUser?.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBatchImport={()=>{}} onBroadcastTask={() => alert("Broadcast disabled in demo mode")} />
@@ -258,6 +261,12 @@ const App: React.FC = () => {
             );
         }
 
+        // If no user and offline, show the offline screen for first-time users.
+        if (backendStatus === 'offline' && !isDemoMode) {
+            return <BackendOfflineScreen onSelectDemoUser={enterDemoMode} onRetryConnection={checkBackend} backendStatus={backendStatus} />;
+        }
+
+        // Otherwise, show the authentication screen.
         return <AuthScreen backendStatus={backendStatus} googleClientId={googleClientId} resetToken={resetToken} />;
     };
 

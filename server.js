@@ -551,6 +551,31 @@ apiRouter.post('/schedule-items', authMiddleware, async (req, res) => {
     }
 });
 
+apiRouter.post('/schedule-items/batch', authMiddleware, async (req, res) => {
+    const { tasks } = req.body;
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+        return res.status(400).json({ error: 'Tasks array is required.' });
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const query = `INSERT INTO schedule_items (user_id, item_id_str, item_data) VALUES ?
+                       ON DUPLICATE KEY UPDATE item_data = VALUES(item_data)`;
+        const values = tasks.map(task => [req.userId, task.ID, JSON.stringify(task)]);
+        
+        await connection.query(query, [values]);
+        
+        await connection.commit();
+        res.status(201).json({ success: true, count: tasks.length });
+    } catch (error) {
+        await connection.rollback();
+        console.error("Error batch saving tasks:", error);
+        res.status(500).json({ error: 'Failed to save tasks' });
+    } finally {
+        connection.release();
+    }
+});
+
 apiRouter.delete('/schedule-items/:id', authMiddleware, async (req, res) => {
     try {
         await pool.query('DELETE FROM schedule_items WHERE user_id = ? AND item_id_str = ?', [req.userId, req.params.id]);

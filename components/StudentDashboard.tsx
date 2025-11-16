@@ -11,8 +11,8 @@ import MistakeManager from './MistakeManager';
 import TodaysAgendaWidget from './widgets/TodaysAgendaWidget';
 // FIX: Corrected import path for component.
 import ReadingHoursWidget from './widgets/ReadingHoursWidget';
-// FIX: Corrected import path for component.
-import MarksAnalysisWidget from './widgets/MarksAnalysisWidget';
+// FIX: Renamed component import for clarity
+import ScoreTrendWidget from './widgets/MarksAnalysisWidget';
 // FIX: Corrected import path for utility.
 import { parseCSVData } from '../utils/cslParser';
 import CustomPracticeModal from './CustomPracticeModal';
@@ -43,8 +43,10 @@ import { motivationalQuotes } from '../data/motivationalQuotes';
 import AIChatPopup from './AIChatPopup';
 import AIDoubtSolverModal from './AIDoubtSolverModal';
 import { api } from '../api/apiService';
+import SubjectAllocationWidget from './widgets/SubjectAllocationWidget';
+import UpcomingExamsWidget from './widgets/UpcomingExamsWidget';
 
-type ActiveTab = 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts';
+type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts';
 
 interface StudentDashboardProps {
     student: StudentData;
@@ -72,7 +74,7 @@ interface StudentDashboardProps {
 
 const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateSettings, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts, onPostDoubt, onPostSolution } = props;
-    const [activeTab, setActiveTab] = useState<ActiveTab>('schedule');
+    const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isAiParserModalOpen, setisAiParserModalOpen] = useState(false);
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -103,6 +105,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+    
+    useEffect(() => {
+        // Request notification permission on first load if not already granted or denied
+        if ('Notification' in window && Notification.permission === 'default') {
+            const hasRequested = localStorage.getItem('notificationPermissionRequested');
+            if (!hasRequested) {
+                // Use a small timeout to not bombard the user immediately
+                setTimeout(() => {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            new Notification("Notifications Enabled!", {
+                                body: "You'll receive important updates and reminders.",
+                                icon: 'https://ponsrischool.in/wp-content/uploads/2025/11/Gemini_Generated_Image_ujvnj5ujvnj5ujvn.png'
+                            });
+                        }
+                    });
+                    localStorage.setItem('notificationPermissionRequested', 'true');
+                }, 3000); // 3-second delay
+            }
+        }
+    }, []);
 
     const useToolbarLayout = student.CONFIG.settings.mobileLayout === 'toolbar' && isMobile;
 
@@ -117,9 +140,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const handleCsvSave = (csv: string) => {
         try {
             const parsedData = parseCSVData(csv, student.sid);
-            if (parsedData.schedules.length > 0) onSaveBatchTasks(parsedData.schedules.map(s => s.item));
-            if (parsedData.exams.length > 0) parsedData.exams.forEach(e => onAddExam(e.item));
-            alert(`Successfully processed data!`);
+            const schedulesAdded = parsedData.schedules.length;
+            const examsAdded = parsedData.exams.length;
+
+            if (schedulesAdded > 0) {
+                onSaveBatchTasks(parsedData.schedules.map(s => s.item));
+            }
+            if (examsAdded > 0) {
+                parsedData.exams.forEach(e => onAddExam(e.item));
+            }
+
+            if (schedulesAdded > 0 || examsAdded > 0) {
+                alert(`Successfully processed data! Added ${schedulesAdded} schedule items and ${examsAdded} exams.`);
+            } else {
+                alert("No valid schedule or exam data was found in the text provided.");
+            }
+            
             setisAiParserModalOpen(false);
             setIsImageModalOpen(false);
         } catch (error: any) {
@@ -186,6 +222,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const TopTabBar = () => (
       <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[var(--glass-border)] mb-6 gap-4">
         <div className="flex items-center flex-wrap">
+          <TabButton tabId="dashboard" icon="dashboard">Dashboard</TabButton>
           <TabButton tabId="schedule" icon="schedule">Schedule</TabButton>
           <TabButton tabId="planner" icon="planner">Planner</TabButton>
           <TabButton tabId="exams" icon="trophy">Exams</TabButton>
@@ -204,6 +241,66 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
       </div>
     );
     
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'dashboard':
+                return (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-8">
+                            <MotivationalQuoteWidget quote={quote} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />
+                                <ReadingHoursWidget student={student} />
+                            </div>
+                            <ScoreTrendWidget results={student.RESULTS} />
+                        </div>
+                        <div className="space-y-8">
+                             <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />
+                             <UpcomingExamsWidget exams={student.EXAMS} />
+                             <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />
+                        </div>
+                    </div>
+                );
+            case 'schedule':
+                 return (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-8">
+                            <ActivityTracker activities={activityItems} />
+                            <ScheduleList items={taskItems} onDelete={onDeleteTask} onEdit={handleEditClick} onMoveToNextDay={()=>{}} onStar={handleStarTask} onStartPractice={handleStartPractice} isSubscribed={student.CONFIG.UNACADEMY_SUB} />
+                        </div>
+                        <div className="space-y-8">
+                             <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />
+                             <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />
+                        </div>
+                    </div>
+                 );
+            case 'planner':
+                return <PlannerView items={taskItems} onEdit={handleEditClick} />;
+            case 'exams':
+                return <ExamsView exams={student.EXAMS} onAdd={() => { setEditingExam(null); setIsExamModalOpen(true); }} onEdit={(exam) => { setEditingExam(exam); setIsExamModalOpen(true); }} onDelete={onDeleteExam} />;
+            case 'performance':
+                 return (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-8">
+                            <div className="flex justify-end gap-4">
+                                <button onClick={() => setIsAiMistakeModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600"><Icon name="book-open" /> Analyze Mistake with AI</button>
+                                <button onClick={() => setIsLogResultModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button>
+                            </div>
+                            {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
+                        </div>
+                        <div className="space-y-8">
+                             <PerformanceMetrics score={student.CONFIG.SCORE} weaknesses={student.CONFIG.WEAK} onEditWeaknesses={() => setIsEditWeaknessesModalOpen(true)} />
+                             <AchievementsWidget student={student} allDoubts={allDoubts} />
+                        </div>
+                    </div>
+                );
+            case 'doubts':
+                return <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} onAskAi={() => setIsAiDoubtSolverOpen(true)} />;
+            default:
+                return null;
+        }
+    };
+
     return (
         <main className={`mt-8 ${useToolbarLayout ? 'pb-24' : ''}`}>
             
@@ -226,40 +323,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     </div>
                 </div>
             ) : <TopTabBar />}
-            
-            {activeTab === 'schedule' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <MotivationalQuoteWidget quote={quote} />
-                        <ActivityTracker activities={activityItems} />
-                        <ScheduleList items={taskItems} onDelete={onDeleteTask} onEdit={handleEditClick} onMoveToNextDay={()=>{}} onStar={handleStarTask} onStartPractice={handleStartPractice} isSubscribed={student.CONFIG.UNACADEMY_SUB} />
-                    </div>
-                    <div className="space-y-8">
-                         <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />
-                         <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />
-                         <ReadingHoursWidget student={student} />
-                         <MarksAnalysisWidget results={student.RESULTS} />
-                    </div>
-                </div>
-            )}
-            {activeTab === 'planner' && <PlannerView items={taskItems} onEdit={handleEditClick} />}
-            {activeTab === 'exams' && <ExamsView exams={student.EXAMS} onAdd={() => { setEditingExam(null); setIsExamModalOpen(true); }} onEdit={(exam) => { setEditingExam(exam); setIsExamModalOpen(true); }} onDelete={onDeleteExam} />}
-            {activeTab === 'performance' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <div className="flex justify-end gap-4">
-                            <button onClick={() => setIsAiMistakeModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600"><Icon name="book-open" /> Analyze Mistake with AI</button>
-                            <button onClick={() => setIsLogResultModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button>
-                        </div>
-                        {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
-                    </div>
-                    <div className="space-y-8">
-                         <PerformanceMetrics score={student.CONFIG.SCORE} weaknesses={student.CONFIG.WEAK} onEditWeaknesses={() => setIsEditWeaknessesModalOpen(true)} />
-                         <AchievementsWidget student={student} allDoubts={allDoubts} />
-                    </div>
-                </div>
-            )}
-            {activeTab === 'doubts' && <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} onAskAi={() => setIsAiDoubtSolverOpen(true)} />}
+
+            {renderContent()}
 
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCsvSave} />}

@@ -33,17 +33,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isLoading, setIsLoading] = useState(true);
     const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
 
-    const handleLoginSuccess = useCallback((data: { token: string; user: StudentData }) => {
-        setToken(data.token);
-        localStorage.setItem('token', data.token);
-        setCurrentUser(data.user);
-        setUserRole(data.user.role);
-        localStorage.setItem('cachedUser', JSON.stringify(data.user));
-        setIsDemoMode(false);
-        setIsLoading(false);
-        setVerificationEmail(null);
-    }, []);
-    
     const logout = useCallback(() => {
         setCurrentUser(null);
         setUserRole(null);
@@ -53,7 +42,94 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.clear();
     }, []);
 
+    const handleLoginSuccess = useCallback((data: { token: string; user: StudentData }) => {
+        setToken(data.token);
+        localStorage.setItem('token', data.token);
+        setCurrentUser(data.user);
+        setUserRole(data.user.role);
+        localStorage.setItem('cachedUser', JSON.stringify(data.user));
+        setIsDemoMode(false);
+        setVerificationEmail(null);
+    }, []);
+    
+    const refreshUser = useCallback(async () => {
+        const currentToken = localStorage.getItem('token');
+        if (!currentToken) {
+            logout();
+            return;
+        };
+        try {
+            const user = await api.getMe();
+            setCurrentUser(user);
+            setUserRole(user.role);
+            localStorage.setItem('cachedUser', JSON.stringify(user));
+        } catch (error) {
+            console.error("Failed to refresh user. App may be offline.", error);
+            // Don't log out on network failure, allow offline mode.
+            // The global 'auth-error' event will handle actual 401s.
+        }
+    }, [logout]);
+    
+    useEffect(() => {
+        const handleAuthError = () => {
+            console.warn('Authentication error detected. Logging out.');
+            logout();
+        };
+        window.addEventListener('auth-error', handleAuthError);
+        return () => window.removeEventListener('auth-error', handleAuthError);
+    }, [logout]);
+    
+    useEffect(() => {
+        const loadInitialState = async () => {
+            const storedToken = localStorage.getItem('token');
+            const cachedUserStr = localStorage.getItem('cachedUser');
+
+            if (storedToken) {
+                if (cachedUserStr) {
+                    try {
+                        const cachedUser = JSON.parse(cachedUserStr);
+                        setCurrentUser(cachedUser);
+                        setUserRole(cachedUser.role);
+                        setIsLoading(false); // UI can render immediately with cached data
+                        await refreshUser(); // Silently refresh data in the background
+                    } catch {
+                        logout(); // Bad cache, clear everything
+                        setIsLoading(false);
+                    }
+                } else {
+                    // Have a token but no user data, must fetch before rendering
+                    await refreshUser();
+                    setIsLoading(false);
+                }
+            } else {
+                // No token, not logged in
+                setIsLoading(false);
+            }
+        };
+        loadInitialState();
+    }, []); // Run only on initial mount
+
+    const login = async (sid: string, password: string) => {
+        try {
+            const data = await api.login(sid, password);
+            handleLoginSuccess(data);
+            setIsLoading(false);
+        } catch (error: any) {
+            if (error.needsVerification) {
+                setVerificationEmail(error.email);
+            }
+            throw new Error(error.error || 'Login failed');
+        }
+    };
+
+    const googleLogin = async (credential: string) => {
+        const data = await api.googleLogin(credential);
+        handleLoginSuccess(data);
+        setIsLoading(false);
+    };
+
     const loginWithToken = useCallback(async (newToken: string) => {
+        setIsLoading(true);
         setToken(newToken);
         localStorage.setItem('token', newToken);
         try {
@@ -62,21 +138,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error) {
             console.error("Failed to fetch user with new token.", error);
             logout();
+        } finally {
+            setIsLoading(false);
         }
     }, [handleLoginSuccess, logout]);
-
-    const refreshUser = useCallback(async () => {
-        if (!token) return;
-        try {
-            const user = await api.getMe();
-            setCurrentUser(user);
-            setUserRole(user.role);
-            localStorage.setItem('cachedUser', JSON.stringify(user));
-        } catch (error) {
-            console.error("Failed to refresh user, token might be invalid.", error);
-            logout();
-        }
-    }, [token, logout]);
     
     const updateProfile = async (data: { fullName?: string; profilePhoto?: string }) => {
         if(!currentUser) return;
@@ -89,43 +154,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    useEffect(() => {
-        const handleAuthError = () => {
-            console.warn('Authentication error detected. Logging out.');
-            logout();
-        };
-        window.addEventListener('auth-error', handleAuthError);
-        return () => window.removeEventListener('auth-error', handleAuthError);
-    }, [logout]);
-    
-    useEffect(() => {
-        const loadUser = async () => {
-            if (token) {
-                await refreshUser();
-            }
-            setIsLoading(false);
-        };
-        loadUser();
-    }, [token, refreshUser]);
-    
-    const login = async (sid: string, password: string) => {
-        try {
-            const data = await api.login(sid, password);
-            handleLoginSuccess(data);
-        } catch (error: any) {
-            if (error.needsVerification) {
-                setVerificationEmail(error.email);
-            }
-            // Re-throw for the UI component to handle
-            throw new Error(error.error || 'Login failed');
-        }
-    };
-
-    const googleLogin = async (credential: string) => {
-        const data = await api.googleLogin(credential);
-        handleLoginSuccess(data);
-    };
-    
     const enterDemoMode = (role: 'student' | 'admin') => {
         setIsDemoMode(true);
         setUserRole(role);

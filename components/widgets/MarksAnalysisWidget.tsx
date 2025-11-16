@@ -1,29 +1,40 @@
+
 import React from 'react';
 import { ResultData } from '../../types';
 import Icon from '../Icon';
 
-interface MarksAnalysisWidgetProps {
+interface ScoreTrendWidgetProps {
   results: ResultData[];
 }
 
-const MarksAnalysisWidget: React.FC<MarksAnalysisWidgetProps> = ({ results }) => {
-  if (results.length < 2) {
-    return null; // Don't show the widget if there aren't enough data points for a trend
+const ScoreTrendWidget: React.FC<ScoreTrendWidgetProps> = ({ results }) => {
+  if (results.length === 0) {
+    return (
+        <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm h-full flex flex-col justify-center items-center text-center">
+            <h2 className="text-xl font-semibold text-[var(--accent-color)] tracking-widest uppercase mb-4">
+                Score Trend
+            </h2>
+            <Icon name="trophy" className="w-12 h-12 text-gray-600 mb-4" />
+            <p className="text-sm text-gray-500">Log your mock test results to see your progress trend here.</p>
+        </div>
+    );
   }
 
   const scores = results.map(r => parseInt(r.SCORE.split('/')[0]));
-  const maxScore = Math.max(...scores);
-  const minScore = Math.min(...scores);
+  const maxScore = scores.length > 1 ? Math.max(...scores) : scores[0] + 50;
+  const minScore = scores.length > 1 ? Math.min(...scores) : Math.max(0, scores[0] - 50);
+  
+  const scoreRange = (maxScore - minScore) > 0 ? (maxScore - minScore) : 1;
 
   const points = scores.map((score, index) => {
-    const x = (index / (scores.length - 1)) * 100;
-    const y = 100 - ((score - minScore) / (maxScore - minScore)) * 100;
+    const x = scores.length > 1 ? (index / (scores.length - 1)) * 100 : 50;
+    const y = 100 - ((score - minScore) / scoreRange) * 100;
     return `${x},${y}`;
   }).join(' ');
 
   const latestResult = results[results.length - 1];
-  const secondLatestResult = results[results.length - 2];
-  const trend = parseInt(latestResult.SCORE.split('/')[0]) - parseInt(secondLatestResult.SCORE.split('/')[0]);
+  const secondLatestResult = results.length > 1 ? results[results.length - 2] : null;
+  const trend = secondLatestResult ? parseInt(latestResult.SCORE.split('/')[0]) - parseInt(secondLatestResult.SCORE.split('/')[0]) : null;
 
   return (
     <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm">
@@ -52,11 +63,13 @@ const MarksAnalysisWidget: React.FC<MarksAnalysisWidgetProps> = ({ results }) =>
         <div className="absolute top-0 left-0 text-xs text-gray-400">{maxScore}</div>
         <div className="absolute bottom-0 left-0 text-xs text-gray-400">{minScore}</div>
       </div>
-      <div className={`mt-2 flex items-center justify-center gap-2 text-sm font-semibold ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-        {trend >= 0 ? '+' : ''}{trend} points from last test
-      </div>
+      {trend !== null && (
+         <div className={`mt-2 flex items-center justify-center gap-2 text-sm font-semibold ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {trend >= 0 ? '+' : ''}{trend} points from last test
+        </div>
+      )}
     </div>
   );
 };
 
-export default MarksAnalysisWidget;
+export default ScoreTrendWidget;

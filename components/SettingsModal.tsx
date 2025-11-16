@@ -28,10 +28,23 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
 
   const handleClose = () => {
     setIsExiting(true);
     setTimeout(onClose, 300);
+  };
+
+  const handleRequestNotification = async () => {
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+    if (permission === 'granted') {
+        // Here you would typically schedule notifications.
+        // For now, we just show a confirmation.
+        new Notification("Notifications Enabled!", {
+            body: "You'll now receive reminders for your schedule.",
+        });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -124,6 +137,28 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
           </div>
           
           <div className="border-t border-gray-700/50"></div>
+
+          <div>
+             <h3 className="text-base font-bold text-gray-300">App Preferences</h3>
+             <div className="mt-4 space-y-4">
+                <ToggleSwitch id="ai-chat-toggle" label="Show AI Chat Assistant" desc="Shows the floating Gemini icon on the dashboard." checked={showAiChat} onChange={setShowAiChat} />
+                <ToggleSwitch id="blur-toggle" label="Enable UI Blur Effect" desc="May improve performance on some devices." checked={blurEnabled} onChange={setBlurEnabled} />
+                <ToggleSwitch id="mobile-layout-toggle" label="Enable Simplified Mobile View" desc="Uses a bottom toolbar on small screens." checked={mobileLayout === 'toolbar'} onChange={(c) => setMobileLayout(c ? 'toolbar' : 'standard')} />
+                <ToggleSwitch id="offline-mode-toggle" label="Force Offline Mode" desc="Use cached data to save mobile data." checked={forceOfflineMode} onChange={setForceOfflineMode} />
+                <button type="button" onClick={toggleFullScreen} className="w-full px-4 py-3 text-base font-bold text-gray-300 bg-gray-700/50 rounded-lg">{isFullscreen ? 'Exit Full Screen' : 'Enter Full Screen'}</button>
+                
+                <div>
+                    <label className="text-base font-bold text-gray-300">Notifications</label>
+                    {notificationPermission === 'granted' && <p className="text-xs text-green-400 mt-1">Notifications are enabled.</p>}
+                    {notificationPermission === 'denied' && <p className="text-xs text-red-400 mt-1">Notifications are blocked. You must enable them in your browser settings.</p>}
+                    {notificationPermission === 'default' && (
+                        <button type="button" onClick={handleRequestNotification} className="w-full mt-2 px-4 py-3 text-base font-bold text-gray-300 bg-gray-700/50 rounded-lg">Enable Notifications</button>
+                    )}
+                </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700/50"></div>
           
           <div>
             <label className="text-base font-bold text-gray-300">Practice Timer</label>
@@ -132,14 +167,6 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                 <input id="per-question-time" type="number" value={perQuestionTime} onChange={e => setPerQuestionTime(parseInt(e.target.value, 10))} className={inputClass} />
             </div>
           </div>
-
-          <div className="border-t border-gray-700/50"></div>
-
-          <ToggleSwitch id="ai-chat-toggle" label="Show AI Chat Assistant" desc="Shows the floating Gemini icon on the dashboard." checked={showAiChat} onChange={setShowAiChat} />
-          <ToggleSwitch id="blur-toggle" label="Enable UI Blur Effect" desc="May improve performance on some devices." checked={blurEnabled} onChange={setBlurEnabled} />
-          <ToggleSwitch id="mobile-layout-toggle" label="Enable Simplified Mobile View" desc="Uses a bottom toolbar on small screens." checked={mobileLayout === 'toolbar'} onChange={(c) => setMobileLayout(c ? 'toolbar' : 'standard')} />
-          <ToggleSwitch id="offline-mode-toggle" label="Force Offline Mode" desc="Use cached data to save mobile data." checked={forceOfflineMode} onChange={setForceOfflineMode} />
-          <button type="button" onClick={toggleFullScreen} className="w-full px-4 py-3 text-base font-bold text-gray-300 bg-gray-700/50 rounded-lg">{isFullscreen ? 'Exit Full Screen' : 'Enter Full Screen'}</button>
 
           <div className="flex justify-end gap-4 pt-4">
             <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700">Cancel</button>

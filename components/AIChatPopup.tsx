@@ -14,59 +14,16 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
   const { currentUser } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
   
-  // Draggable state
-  const popupRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-
   useEffect(() => {
     // Scroll to bottom of chat on new message
     if (chatBodyRef.current) {
       chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     }
-  }, [history]);
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (popupRef.current) {
-      setIsDragging(true);
-      setOffset({
-        x: e.clientX - popupRef.current.offsetLeft,
-        y: e.clientY - popupRef.current.offsetTop
-      });
-    }
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging && popupRef.current) {
-      e.preventDefault();
-      setPosition({
-        x: e.clientX - offset.x,
-        y: e.clientY - offset.y
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    } else {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, offset]);
+  }, [history, isLoading]);
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,24 +46,29 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
     setImageBase64(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+  
+  const fullScreenClasses = 'w-screen h-screen top-0 left-0 bottom-0 right-0 rounded-none';
+  const popupClasses = 'w-[360px] h-[520px] bottom-24 md:bottom-6 right-6';
 
   return (
     <div 
-      ref={popupRef}
-      className="fixed bottom-6 right-6 w-[360px] h-[520px] bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl flex flex-col z-50 transition-transform"
-      style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+      className={`fixed bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl flex flex-col z-50 transition-all duration-300 ${isFullScreen ? fullScreenClasses : popupClasses}`}
     >
       <header
-        onMouseDown={handleMouseDown}
-        className="p-3 border-b border-[var(--glass-border)] flex-shrink-0 flex justify-between items-center cursor-move"
+        className="p-3 border-b border-[var(--glass-border)] flex-shrink-0 flex justify-between items-center"
       >
         <div className="flex items-center gap-2">
             <Icon name="gemini" className="w-6 h-6 text-cyan-400" />
             <h3 className="font-bold text-white">AI Assistant</h3>
         </div>
-        <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:bg-gray-700">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
+        <div className="flex items-center gap-2">
+            <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-1 rounded-full text-gray-400 hover:bg-gray-700 md:hidden">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1v4m0 0h-4m4 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 1v-4m0 0h-4m4 0l-5 5"></path></svg>
+            </button>
+            <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:bg-gray-700">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
       </header>
       
       <main ref={chatBodyRef} className="flex-grow p-3 overflow-y-auto space-y-4">
