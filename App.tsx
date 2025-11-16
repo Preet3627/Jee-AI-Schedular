@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -42,7 +43,27 @@ const App: React.FC = () => {
     }, []);
 
     const handleSaveTask = async (task: ScheduleItem) => {
-        await api.saveTask(task);
+        let taskToSave = { ...task };
+        if (currentUser?.CONFIG.isCalendarSyncEnabled && googleAuthStatus === 'signed_in' && 'TIME' in task && task.TIME) {
+            setIsSyncing(true);
+            try {
+                let eventId;
+                if ('googleEventId' in task && task.googleEventId) {
+                    eventId = await gcal.updateEvent(task.googleEventId, task);
+                } else {
+                    eventId = await gcal.createEvent(task);
+                }
+                (taskToSave as any).googleEventId = eventId;
+            } catch (syncError) {
+                console.error("Google Calendar sync failed:", syncError);
+                alert("Failed to sync task with Google Calendar. Please check permissions and try again.");
+                setIsSyncing(false);
+                return; // Stop the save process if sync fails
+            } finally {
+                setIsSyncing(false);
+            }
+        }
+        await api.saveTask(taskToSave);
         refreshUser();
     };
 
@@ -52,14 +73,75 @@ const App: React.FC = () => {
     };
 
     const handleDeleteTask = async (taskId: string) => {
+        const taskToDelete = currentUser?.SCHEDULE_ITEMS.find(t => t.ID === taskId);
+        // FIX: Check if `taskToDelete` exists and has the `googleEventId` property before accessing it, as not all `ScheduleItem` types have it.
+        if (currentUser?.CONFIG.isCalendarSyncEnabled && googleAuthStatus === 'signed_in' && taskToDelete && 'googleEventId' in taskToDelete && taskToDelete.googleEventId) {
+            try {
+                setIsSyncing(true);
+                await gcal.deleteEvent(taskToDelete.googleEventId);
+            } catch (syncError) {
+                console.error("Google Calendar delete sync failed:", syncError);
+                alert("Failed to remove task from Google Calendar, but it will be deleted from the app. You may need to remove it manually from your calendar.");
+            } finally {
+                setIsSyncing(false);
+            }
+        }
         await api.deleteTask(taskId);
         refreshUser();
     };
+    
+    const handleFullCalendarSync = async () => {
+        if (!currentUser || googleAuthStatus !== 'signed_in') return;
+        setIsSyncing(true);
+        try {
+            const tasksToUpdate: ScheduleItem[] = [];
+            const allTasks = currentUser.SCHEDULE_ITEMS;
+            
+            for (const task of allTasks) {
+                // Only sync timed tasks that aren't already synced
+                if (!('googleEventId' in task && task.googleEventId) && 'TIME' in task && task.TIME) {
+                    try {
+                        const eventId = await gcal.createEvent(task);
+                        tasksToUpdate.push({ ...task, googleEventId: eventId });
+                    } catch (error) {
+                        console.warn(`Failed to sync task ${task.ID}:`, error);
+                    }
+                }
+            }
+
+            if (tasksToUpdate.length > 0) {
+                await handleSaveBatchTasks(tasksToUpdate);
+            }
+
+            await api.updateConfig({ isCalendarSyncEnabled: true, calendarLastSync: new Date().toISOString() });
+            await refreshUser();
+            alert(`Successfully synced ${tasksToUpdate.length} new tasks to Google Calendar.`);
+
+        } catch (error) {
+            console.error("Full Google Calendar sync failed:", error);
+            alert("An error occurred during the full calendar sync.");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
 
     const handleUpdateConfig = async (configUpdate: Partial<Config>) => {
         if (!currentUser) return;
+        
+        const wasSyncDisabled = !currentUser.CONFIG.isCalendarSyncEnabled;
+        const isSyncBeingEnabled = configUpdate.isCalendarSyncEnabled === true;
+
         await api.updateConfig(configUpdate);
-        refreshUser();
+        await refreshUser();
+
+        if (wasSyncDisabled && isSyncBeingEnabled) {
+             setTimeout(() => {
+                if (window.confirm("Enable Google Calendar Sync? This will add all your scheduled tasks (as repeating weekly events) to your primary Google Calendar.")) {
+                    handleFullCalendarSync();
+                }
+            }, 100);
+        }
     };
     
     const onLogStudySession = async (session: Omit<StudySession, 'date'>) => {
@@ -132,7 +214,13 @@ const App: React.FC = () => {
 
         // A single sync with the backend for performance
         await api.fullSync(updatedUser);
-        refreshUser();
+        await refreshUser();
+
+        if (currentUser.CONFIG.isCalendarSyncEnabled) {
+            if (window.confirm("Batch import complete. Do you want to sync the newly added schedule items to your Google Calendar?")) {
+                handleFullCalendarSync();
+            }
+        }
     };
 
     const onPostDoubt = async (question: string, image?: string) => {

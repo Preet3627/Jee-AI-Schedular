@@ -108,22 +108,48 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
         return results;
     }
 
+    // --- PRE-PROCESSING STEP for single-line CSVs from Gemini ---
+    let processedCsvText = csvText.trim();
+    const newlineCount = (processedCsvText.match(/\n/g) || []).length;
+
+    // Heuristic: If we have a long string with very few newlines, it's likely a malformed single-line CSV.
+    if (processedCsvText.length > 200 && newlineCount < 5) {
+        // This regex finds a space that is immediately followed by a typical row ID (A, H, or E + digits).
+        // This pattern is a strong indicator of where a new row should begin in a malformed single-line CSV.
+        const rowStartRegex = / (?=[AHE]\d{2,})/g;
+        
+        // Ensure the header is on its own line by splitting at the first occurence of a row ID pattern.
+        const firstIdMatch = processedCsvText.match(/[AHE]\d{2,}/);
+        if (firstIdMatch && firstIdMatch.index > 0) {
+            const headerEndIndex = firstIdMatch.index;
+            const header = processedCsvText.substring(0, headerEndIndex).trim();
+            const data = processedCsvText.substring(headerEndIndex);
+            
+            // Re-assemble with a newline after the header, and then replace spaces with newlines for subsequent rows.
+            processedCsvText = header + '\n' + data.replace(rowStartRegex, '\n');
+        } else {
+             // Fallback for cases where the header split isn't clean, just try replacing spaces before IDs.
+             processedCsvText = processedCsvText.replace(rowStartRegex, '\n');
+        }
+    }
+    // --- END PRE-PROCESSING STEP ---
+
     const scheduleHeader = 'ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE'.toLowerCase();
     const examHeader = 'ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS'.toLowerCase();
     const metricsHeader = 'SID,TYPE,SCORE,MISTAKES,WEAKNESSES'.toLowerCase();
     
-    const lines = csvText.trim().split('\n');
+    const lines = processedCsvText.trim().split('\n');
     let currentBlock = '';
     const blocks: string[] = [];
 
-    // --- NEW ROBUST BLOCK SPLITTING LOGIC ---
+    // --- ROBUST BLOCK SPLITTING LOGIC ---
     let processingStarted = false;
     for (const line of lines) {
         // Skip empty lines that might be between blocks
         if (!line.trim()) continue;
 
         const normalizedLine = line.replace(/[\s"]/g, '').toLowerCase();
-        const isHeader = normalizedLine === scheduleHeader || normalizedLine === examHeader || normalizedLine === metricsHeader;
+        const isHeader = normalizedLine.includes(scheduleHeader) || normalizedLine.includes(examHeader) || normalizedLine.includes(metricsHeader);
 
         if (isHeader) {
             // Found a header, so push the previous block if it exists
@@ -146,10 +172,10 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
     
     // Fallback: If no blocks were created (e.g., no known headers found, or only one block of data),
     // treat the entire non-empty input as a single block. This makes the parser much more flexible.
-    if (blocks.length === 0 && csvText.trim()) {
-        blocks.push(csvText.trim());
+    if (blocks.length === 0 && processedCsvText.trim()) {
+        blocks.push(processedCsvText.trim());
     }
-    // --- END NEW LOGIC ---
+    // --- END LOGIC ---
     
     for (const block of blocks) {
         const parsedRows = parseCSV(block.trim());

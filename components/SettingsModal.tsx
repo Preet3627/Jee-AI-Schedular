@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { Config } from '../types';
 import Icon from './Icon';
@@ -5,8 +7,10 @@ import Icon from './Icon';
 interface SettingsModalProps {
   settings: Config['settings'];
   driveLastSync?: string;
+  isCalendarSyncEnabled?: boolean;
+  calendarLastSync?: string;
   onClose: () => void;
-  onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string }>) => void;
+  onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean }>) => void;
   onExportToIcs: () => void;
   googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
   onGoogleSignIn: () => void;
@@ -50,7 +54,7 @@ When a user asks you to generate a schedule, timetable, homework list, exam list
 
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
-  const { settings, driveLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet } = props;
+  const { settings, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet } = props;
   const [accentColor, setAccentColor] = useState(settings.accentColor || '#0891b2');
   const [blurEnabled, setBlurEnabled] = useState(settings.blurEnabled !== false);
   const [mobileLayout, setMobileLayout] = useState(settings.mobileLayout || 'standard');
@@ -58,6 +62,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [perQuestionTime, setPerQuestionTime] = useState(settings.perQuestionTime || 180);
   const [showAiChat, setShowAiChat] = useState(settings.showAiChatAssistant !== false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [calendarSync, setCalendarSync] = useState(isCalendarSyncEnabled || false);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
@@ -89,13 +94,14 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const settingsToSave: Partial<Config['settings'] & { geminiApiKey?: string }> = { 
+    const settingsToSave: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean }> = { 
         accentColor, 
         blurEnabled, 
         mobileLayout: mobileLayout as 'standard' | 'toolbar', 
         forceOfflineMode, 
         perQuestionTime,
-        showAiChatAssistant: showAiChat
+        showAiChatAssistant: showAiChat,
+        isCalendarSyncEnabled: calendarSync,
     };
     if (geminiApiKey.trim()) {
         settingsToSave.geminiApiKey = geminiApiKey.trim();
@@ -126,11 +132,11 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const animationClasses = isExiting ? 'modal-exit' : 'modal-enter';
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
 
-  const ToggleSwitch: React.FC<{ label: string; desc?: string; checked: boolean; onChange: (c: boolean) => void; id: string; }> = ({ label, desc, checked, onChange, id }) => (
-    <div>
+  const ToggleSwitch: React.FC<{ label: string; desc?: string; checked: boolean; onChange: (c: boolean) => void; id: string; disabled?: boolean; }> = ({ label, desc, checked, onChange, id, disabled }) => (
+    <div className={`${disabled ? 'opacity-50' : ''}`}>
         <label className="text-base font-bold text-gray-300 flex items-center justify-between">
             <span>{label}</span>
-            <div className="relative inline-block w-10 align-middle"><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} id={id} className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" style={{ right: checked ? '0' : 'auto', left: checked ? 'auto' : '0' }}/><label htmlFor={id} className={`toggle-label block h-6 rounded-full cursor-pointer ${checked ? 'bg-cyan-500' : 'bg-gray-600'}`}></label></div>
+            <div className="relative inline-block w-10 align-middle"><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} id={id} disabled={disabled} className={`toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`} style={{ right: checked ? '0' : 'auto', left: checked ? 'auto' : '0' }}/><label htmlFor={id} className={`toggle-label block h-6 rounded-full ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${checked ? 'bg-cyan-500' : 'bg-gray-600'}`}></label></div>
         </label>
         {desc && <p className="text-xs text-gray-500 mt-1">{desc}</p>}
     </div>
@@ -186,18 +192,35 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                     </div>
                 )}
               </div>
-              {googleAuthStatus !== 'unconfigured' && (
-                  <div className="mt-4">
-                      {googleAuthStatus === 'loading' && <p className="text-sm text-yellow-400 text-center">Connecting to Google...</p>}
-                      {googleAuthStatus === 'signed_in' ? (
-                        <div className="space-y-2"><h4 className="text-sm font-bold text-gray-300">Google Drive Backup</h4><p className="text-xs text-green-400">Account connected.</p><button type="button" onClick={onBackupToDrive} className="w-full text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg">Backup Now</button><button type="button" onClick={onRestoreFromDrive} className="w-full text-center px-4 py-2 text-sm font-semibold text-yellow-300 bg-yellow-900/50 rounded-lg">Restore from Drive</button>{driveLastSync && <p className="text-xs text-gray-500 text-center">Last sync: {new Date(driveLastSync).toLocaleString()}</p>}<button type="button" onClick={onGoogleSignOut} className="w-full mt-2 px-4 py-2 text-sm text-red-400 bg-red-900/50 rounded-lg">Disconnect Google</button></div>
-                      ) : (
-                          <button type="button" onClick={onGoogleSignIn} className="w-full mt-2 flex items-center justify-center gap-3 px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg">
+              {googleAuthStatus === 'unconfigured' ? null : googleAuthStatus === 'loading' ? (
+                <p className="text-sm text-yellow-400 text-center mt-4">Connecting to Google...</p>
+              ) : (
+                <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                    {googleAuthStatus === 'signed_in' ? (
+                        <>
+                            <p className="text-sm font-semibold text-green-400">Google Account Connected</p>
+                            <div className="mt-4 space-y-4">
+                                <ToggleSwitch id="calendar-sync-toggle" label="Sync to Google Calendar" desc="Automatically sync tasks to your calendar." checked={calendarSync} onChange={setCalendarSync} />
+                                {calendarSync && calendarLastSync && <p className="text-xs text-gray-500">Last sync: {new Date(calendarLastSync).toLocaleString()}</p>}
+                                
+                                <div>
+                                    <p className="text-sm font-bold text-gray-300">Google Drive Backup</p>
+                                    <div className="flex gap-2 mt-2">
+                                        <button type="button" onClick={onBackupToDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg">Backup</button>
+                                        <button type="button" onClick={onRestoreFromDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-yellow-300 bg-yellow-900/50 rounded-lg">Restore</button>
+                                    </div>
+                                    {driveLastSync && <p className="text-xs text-gray-500 text-center mt-1">Last backup: {new Date(driveLastSync).toLocaleString()}</p>}
+                                </div>
+                            </div>
+                             <button type="button" onClick={onGoogleSignOut} className="w-full mt-4 px-4 py-2 text-sm text-red-400 bg-red-900/50 rounded-lg">Disconnect Google</button>
+                        </>
+                    ) : (
+                         <button type="button" onClick={onGoogleSignIn} className="w-full flex items-center justify-center gap-3 px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg">
                             <Icon name="drive" className="w-5 h-5" />
                             Connect Google Account
-                          </button>
-                      )}
-                  </div>
+                        </button>
+                    )}
+                </div>
               )}
                <div className="mt-4"><button type="button" onClick={onExportToIcs} className="w-full px-4 py-2 text-sm font-semibold text-gray-300 bg-gray-700/50 rounded-lg">Export Week to Calendar (.ics)</button></div>
           </div>

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard } from '../types';
 import ScheduleList from './ScheduleList';
@@ -226,13 +227,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         setShowAiChatFab(true); // Always show the button after a key is set
     };
 
-    const handleUpdateSettings = async (settings: Partial<Config['settings'] & { geminiApiKey?: string }>) => {
+    const handleUpdateSettings = async (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean }>) => {
         const configUpdate: Partial<Config> = {};
         if (settings.geminiApiKey) {
             configUpdate.geminiApiKey = settings.geminiApiKey;
             delete settings.geminiApiKey;
         }
-        // FIX: Merge with existing settings to create a complete object, satisfying TypeScript's `Partial<Config>` type which expects `settings` to be a full object if present.
+        if (typeof settings.isCalendarSyncEnabled === 'boolean') {
+            configUpdate.isCalendarSyncEnabled = settings.isCalendarSyncEnabled;
+            delete settings.isCalendarSyncEnabled;
+        }
+        
         configUpdate.settings = { ...student.CONFIG.settings, ...settings };
         
         await onUpdateConfig(configUpdate);
@@ -437,7 +442,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCsvSave} />}
             {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={handleCsvSave} />}
             {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} />}
-            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
+            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}
             {isExamModalOpen && <CreateEditExamModal exam={editingExam} onClose={() => { setIsExamModalOpen(false); setEditingExam(null); }} onSave={(exam) => editingExam ? onUpdateExam(exam) : onAddExam(exam)} />}

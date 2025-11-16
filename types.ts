@@ -1,4 +1,5 @@
 
+
 export type Language = 'EN' | 'GU';
 
 export interface LocalizedString {
@@ -157,6 +158,8 @@ export interface Config {
     UNACADEMY_SUB: boolean;
     googleDriveFileId?: string;
     driveLastSync?: string;
+    isCalendarSyncEnabled?: boolean;
+    calendarLastSync?: string;
     geminiApiKey?: string; // This is stored encrypted on the backend ONLY.
     flashcardDecks?: FlashcardDeck[];
     settings: {
