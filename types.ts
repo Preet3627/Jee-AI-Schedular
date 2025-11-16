@@ -150,6 +150,14 @@ export interface FlashcardDeck {
   cards: Flashcard[];
 }
 
+export interface StudyMaterialItem {
+    name: string;
+    type: 'file' | 'folder';
+    path: string;
+    size: number;
+    modified: string;
+}
+
 // Represents the structure of the encrypted JSON blob in the `user_configs` table
 export interface Config {
     WAKE: string;

@@ -1,10 +1,10 @@
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 4.0.0
-# Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform.
+# Version: 5.0.0 (JSON Only)
+# Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
-## 1. CRITICAL AI BEHAVIOR: Output Raw JSON
-When a user asks you to generate a schedule, timetable, etc., and you are instructed to provide a structured response for the "JEE Scheduler Pro" app, your entire response **MUST** be a single, raw JSON object.
-- **DO NOT** include any explanations, apologies, conversational text, or markdown formatting like ` ```json ` before or after the data.
+## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
+Your entire response **MUST** be a single, raw JSON object.
+- **DO NOT** include any explanations, conversational text, or markdown formatting like ` ```json ` before or after the data.
 - Your output will be parsed directly by a machine. Any extra text will cause the import to fail.
 
 ---
@@ -21,7 +21,7 @@ When a user asks you to generate a schedule, timetable, etc., and you are instru
 
 ---
 ## 3. Top-Level JSON Structure
-Your entire output must be a single JSON object with these keys. If a type of data is not present, you can provide an empty array `[]`.
+Your entire output must be a single JSON object with these keys. If a type of data is not present, you must provide an empty array `[]`.
 ```json
 {
   "schedules": [ /* ... schedule items ... */ ],
@@ -100,9 +100,3 @@ Your entire output must be a single JSON object with these keys. If a type of da
   "mistakes": "Integration by Parts;Young's Double Slit"
 }
 ```
----
-## 4. (Legacy) CSV Format
-While JSON is preferred, the system can still parse well-formatted CSV as a fallback.
-**SCHEDULE Header:** `ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE`
-**EXAM Header:** `ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS`
-**METRICS Header:** `SID,TYPE,SCORE,MISTAKES,WEAKNESSES`

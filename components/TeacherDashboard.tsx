@@ -5,8 +5,6 @@ import AIGuide from './AIGuide';
 import MessagingModal from './MessagingModal';
 import CreateEditTaskModal from './CreateEditTaskModal';
 import AIParserModal from './AIParserModal';
-// FIX: Corrected import path to point to cslParser.
-import { parseCSVData } from '../utils/cslParser';
 
 interface TeacherDashboardProps {
     students: StudentData[];
@@ -41,33 +39,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
     
     const handleAIBroadcastSave = (data: any) => {
         try {
-            let tasksToBroadcast: ScheduleItem[] = [];
             const createLocalizedString = (text: string) => ({ EN: text || '', GU: '' });
 
-            if (data.schedules && data.schedules.length > 0) {
-                // Case 1: Data is from client-side parseCSVData, which wraps items
-                if (data.schedules[0].item) {
-                    tasksToBroadcast = data.schedules.map((s: any) => s.item);
-                } 
-                // Case 2: Data is from AI (JSON format with flat structure), needs reconstruction
-                else {
-                    tasksToBroadcast = (data.schedules || []).map((s: any): ScheduleItem => {
-                        const id = s.id || `${s.type === 'HOMEWORK' ? 'H' : 'A'}${Date.now()}${Math.random().toString(36).substring(2, 5)}`;
-                        if (s.type === 'HOMEWORK') {
-                            return {
-                                ID: id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
-                                CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
-                                SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined
-                            } as HomeworkData;
-                        }
-                        return {
-                            ID: id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
-                            DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
-                            FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
-                        } as ScheduleItem;
-                    });
+            const tasksToBroadcast: ScheduleItem[] = (data.schedules || []).map((s: any): ScheduleItem => {
+                const id = s.id || `${s.type === 'HOMEWORK' ? 'H' : 'A'}${Date.now()}${Math.random().toString(36).substring(2, 5)}`;
+                if (s.type === 'HOMEWORK') {
+                    return {
+                        ID: id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
+                        CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
+                        SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined
+                    } as HomeworkData;
                 }
-            }
+                return {
+                    ID: id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
+                    DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
+                    FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
+                } as ScheduleItem;
+            });
 
             if (tasksToBroadcast.length === 0) {
                 alert("No schedule items found in the provided text.");

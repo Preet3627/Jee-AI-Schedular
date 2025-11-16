@@ -21,10 +21,10 @@ interface SettingsModalProps {
 }
 
 const aiGuideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 4.0.0
-# Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform.
+# Version: 5.0.0 (JSON Only)
+# Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
-## 1. CRITICAL AI BEHAVIOR: Output Raw JSON
+## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
 Your entire response **MUST** be a single, raw JSON object.
 - **DO NOT** include any explanations, conversational text, or markdown formatting like \`\`\`json.
 - Your output will be parsed directly by a machine.
@@ -76,14 +76,7 @@ Your entire output must be a single JSON object with these keys. Provide empty a
   "type": "RESULT", "score": "185/300",
   "mistakes": "Integration by Parts;Young's Double Slit"
 }
-\`\`\`
-
----
-## 3. (Legacy) CSV Format
-The system can still parse well-formatted CSV as a fallback.
-**SCHEDULE Header:** \`ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE\`
-**EXAM Header:** \`ID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS\`
-**METRICS Header:** \`TYPE,SCORE,MISTAKES,WEAKNESSES\``;
+\`\`\``;
 
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
@@ -239,8 +232,8 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                                 <div>
                                     <p className="text-sm font-bold text-gray-300">Google Drive Backup</p>
                                     <div className="flex gap-2 mt-2">
-                                        <button type="button" onClick={onBackupToDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg">Backup</button>
-                                        <button type="button" onClick={onRestoreFromDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-yellow-300 bg-yellow-900/50 rounded-lg">Restore</button>
+                                        <button type="button" onClick={onBackupToDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50">Backup</button>
+                                        <button type="button" onClick={onRestoreFromDrive} className="flex-1 text-center px-4 py-2 text-sm font-semibold text-yellow-300 bg-yellow-900/50 rounded-lg hover:bg-yellow-800/50">Restore</button>
                                     </div>
                                     {driveLastSync && <p className="text-xs text-gray-500 text-center mt-1">Last backup: {new Date(driveLastSync).toLocaleString()}</p>}
                                 </div>

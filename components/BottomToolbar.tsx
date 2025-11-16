@@ -2,7 +2,7 @@
 import React from 'react';
 import Icon from './Icon';
 
-type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'performance' | 'doubts' | 'exams' | 'flashcards';
+type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'performance' | 'doubts' | 'exams' | 'flashcards' | 'material';
 
 interface BottomToolbarProps {
     activeTab: ActiveTab;
@@ -15,7 +15,7 @@ const BottomToolbar: React.FC<BottomToolbarProps> = ({ activeTab, setActiveTab, 
         { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
         { id: 'schedule', icon: 'schedule', label: 'Schedule' },
         { id: 'performance', icon: 'performance', label: 'Stats' },
-        { id: 'flashcards', icon: 'cards', label: 'Flashcards' },
+        { id: 'material', icon: 'book-open', label: 'Resources' },
     ] as const;
 
     return (

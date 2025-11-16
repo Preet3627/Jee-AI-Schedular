@@ -15,6 +15,7 @@ import { generateAvatar } from './utils/generateAvatar.js';
 import crypto from 'crypto';
 // FIX: Correct import for GoogleGenAI
 import { GoogleGenAI } from '@google/genai';
+import { parseStringPromise } from 'xml2js';
 
 // --- SERVER SETUP ---
 const app = express();
@@ -30,6 +31,7 @@ dotenv.config();
 
 // --- ENV & SETUP CHECK ---
 const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME && process.env.ENCRYPTION_KEY && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
+const isNextcloudConfigured = process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_SHARE_TOKEN;
 
 let pool = null;
 let mailer = null;
@@ -322,7 +324,7 @@ apiRouter.get('/config/public', (req, res) => {
     if (!isConfigured || !process.env.GOOGLE_CLIENT_ID) {
         return res.status(503).json({ error: 'Google integration is not configured on the server.' });
     }
-    res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID });
+    res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID, isNextcloudConfigured });
 });
 
 
@@ -750,6 +752,94 @@ apiRouter.post('/messages', authMiddleware, adminMiddleware, async (req, res) =>
     } catch (error) {
         console.error("Error sending message:", error);
         res.status(500).json({ error: "Failed to send message." });
+    }
+});
+
+
+// --- STUDY MATERIAL (NEXTCLOUD) ENDPOINTS ---
+apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
+    if (!isNextcloudConfigured) {
+        return res.status(503).json({ error: 'Study material repository is not configured.' });
+    }
+
+    const requestedPath = req.query.path || '/';
+    const { NEXTCLOUD_URL, NEXTCLOUD_SHARE_TOKEN, NEXTCLOUD_SHARE_PASSWORD } = process.env;
+    const webdavUrl = `${NEXTCLOUD_URL}/public.php/webdav${requestedPath}`;
+
+    try {
+        const auth = 'Basic ' + Buffer.from(`${NEXTCLOUD_SHARE_TOKEN}:${NEXTCLOUD_SHARE_PASSWORD || ''}`).toString('base64');
+        const response = await fetch(webdavUrl, {
+            method: 'PROPFIND',
+            headers: { 'Authorization': auth, 'Depth': '1' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Nextcloud server responded with status ${response.status}`);
+        }
+
+        const xmlData = await response.text();
+        const jsonData = await parseStringPromise(xmlData, { explicitArray: false, mergeAttrs: true });
+        
+        const items = (jsonData['d:multistatus']['d:response'] || [])
+            .map((item) => {
+                const fullPath = item['d:href'];
+                const prop = item['d:propstat']['d:prop'];
+                // Skip the folder itself in its own listing
+                if (decodeURIComponent(fullPath).endsWith(requestedPath)) return null;
+
+                const isCollection = !!prop['d:resourcetype']['d:collection'];
+                const name = decodeURIComponent(fullPath).split('/').filter(Boolean).pop();
+
+                return {
+                    name,
+                    path: decodeURIComponent(fullPath).replace('/public.php/webdav', ''),
+                    type: isCollection ? 'folder' : 'file',
+                    size: prop['d:getcontentlength'] || 0,
+                    modified: prop['d:getlastmodified'] || '',
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => { // Sort folders first, then alphabetically
+                if (a.type === b.type) return a.name.localeCompare(b.name);
+                return a.type === 'folder' ? -1 : 1;
+            });
+        
+        res.json(items);
+
+    } catch (error) {
+        console.error("Nextcloud browse error:", error);
+        res.status(500).json({ error: "Failed to retrieve study materials." });
+    }
+});
+
+apiRouter.get('/study-material/content', authMiddleware, async (req, res) => {
+    if (!isNextcloudConfigured) {
+        return res.status(503).json({ error: 'Study material repository is not configured.' });
+    }
+    const requestedPath = req.query.path;
+    if (!requestedPath) return res.status(400).json({ error: 'File path is required.' });
+
+    const { NEXTCLOUD_URL, NEXTCLOUD_SHARE_TOKEN, NEXTCLOUD_SHARE_PASSWORD } = process.env;
+    const fileUrl = `${NEXTCLOUD_URL}/public.php/webdav${requestedPath}`;
+
+    try {
+        const auth = 'Basic ' + Buffer.from(`${NEXTCLOUD_SHARE_TOKEN}:${NEXTCLOUD_SHARE_PASSWORD || ''}`).toString('base64');
+        const response = await fetch(fileUrl, {
+            headers: { 'Authorization': auth }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Nextcloud server responded with status ${response.status}`);
+        }
+        
+        // Pipe the file stream directly to the client
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+        res.setHeader('Content-Length', response.headers.get('content-length') || '0');
+        response.body.pipe(res);
+
+    } catch (error) {
+        console.error("Nextcloud content error:", error);
+        res.status(500).json({ error: "Failed to retrieve file content." });
     }
 });
 

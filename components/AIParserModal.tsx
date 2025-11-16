@@ -1,8 +1,8 @@
 
+
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
-import { parseCSVData } from '../utils/cslParser';
 
 interface AIParserModalProps {
   onClose: () => void;
@@ -37,16 +37,9 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) =
           onDataReady(jsonData);
           return; // Success
         }
-      } catch (e) { /* Not JSON, proceed to next step */ }
+      } catch (e) { /* Not JSON, proceed to call AI */ }
       
-      // Attempt 2: Parse as CSV directly
-      const csvData = parseCSVData(inputText);
-      if (csvData.schedules.length > 0 || csvData.exams.length > 0 || csvData.metrics.length > 0) {
-        onDataReady(csvData);
-        return; // Success
-      }
-
-      // Attempt 3: Call AI to convert unstructured text to JSON
+      // Attempt 2: Call AI to convert unstructured text to JSON
       const result = await api.parseText(inputText);
       onDataReady(result);
 
@@ -65,13 +58,13 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) =
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-2">AI Data Import</h2>
-        <p className="text-sm text-gray-400 mb-4">Paste any text about your schedule (unstructured text, JSON, or CSV). The app will intelligently convert it into structured data.</p>
+        <p className="text-sm text-gray-400 mb-4">Paste any text about your schedule (unstructured text or pre-formatted JSON). The app will intelligently convert it into structured data.</p>
         
         <textarea
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           className="w-full h-48 bg-gray-900 border border-gray-600 rounded-md p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          placeholder="e.g., 'Wednesday at 7pm I have a physics deep dive on rotational motion...' OR paste pre-formatted JSON/CSV."
+          placeholder="e.g., 'Wednesday at 7pm I have a physics deep dive on rotational motion...' OR paste pre-formatted JSON."
         />
 
         {error && <p className="text-sm text-red-400 mt-2 text-center">{error}</p>}

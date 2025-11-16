@@ -1,11 +1,12 @@
 
+
 import React from 'react';
 
 const guideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 4.0.0
-# Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform.
+# Version: 5.0.0 (JSON Only)
+# Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
-## 1. CRITICAL AI BEHAVIOR: Output Raw JSON
+## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
 When a user asks you to generate a schedule, timetable, etc., and you are instructed to provide a structured response for the "JEE Scheduler Pro" app, your entire response **MUST** be a single, raw JSON object.
 - **DO NOT** include any explanations, apologies, conversational text, or markdown formatting like \`\`\`json\`\`\` before or after the data.
 - Your output will be parsed directly by a machine. Any extra text will cause the import to fail.
@@ -24,7 +25,7 @@ When a user asks you to generate a schedule, timetable, etc., and you are instru
 
 ---
 ## 3. Top-Level JSON Structure
-Your entire output must be a single JSON object with these keys. If a type of data is not present, you can provide an empty array \`[]\`.
+Your entire output must be a single JSON object with these keys. If a type of data is not present, you must provide an empty array \`[]\`.
 \`\`\`json
 {
   "schedules": [ /* ... schedule items ... */ ],
@@ -102,20 +103,14 @@ Your entire output must be a single JSON object with these keys. If a type of da
   "score": "185/300",
   "mistakes": "Integration by Parts;Young's Double Slit"
 }
-\`\`\`
----
-## 4. (Legacy) CSV Format
-While JSON is preferred, the system can still parse well-formatted CSV as a fallback.
-**SCHEDULE Header:** \`ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE\`
-**EXAM Header:** \`ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS\`
-**METRICS Header:** \`SID,TYPE,SCORE,MISTAKES,WEAKNESSES\``;
+\`\`\``;
 
 const AIGuide: React.FC = () => {
     return (
         <div className="bg-gray-800/70 p-6 rounded-lg border border-gray-700 max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-white mb-4">AI Agent Guide</h2>
             <p className="text-gray-400 mb-6">
-                Use the following documentation to instruct a Large Language Model (like Gemini) to generate valid JSON or CSV data for batch importing schedules, exams, or student metrics.
+                Use the following documentation to instruct a Large Language Model (like Gemini) to generate valid JSON data for batch importing schedules, exams, or student metrics.
             </p>
             <div className="bg-gray-900 p-4 rounded-md border border-gray-600 max-h-[60vh] overflow-y-auto">
                 <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">{guideText}</pre>

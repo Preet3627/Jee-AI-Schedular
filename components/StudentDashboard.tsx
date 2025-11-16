@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard } from '../types';
+import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem } from '../types';
 import ScheduleList from './ScheduleList';
 import Icon, { IconName } from './Icon';
 // FIX: Corrected import path for component.
@@ -14,8 +14,6 @@ import TodaysAgendaWidget from './widgets/TodaysAgendaWidget';
 import ReadingHoursWidget from './widgets/ReadingHoursWidget';
 // FIX: Renamed component import for clarity
 import ScoreTrendWidget from './widgets/MarksAnalysisWidget';
-// FIX: Corrected import path for utility.
-import { parseCSVData } from '../utils/cslParser';
 import CustomPracticeModal from './CustomPracticeModal';
 // FIX: Corrected import path for component.
 import HomeworkWidget from './widgets/HomeworkWidget';
@@ -51,8 +49,10 @@ import CreateEditDeckModal from './flashcards/CreateEditDeckModal';
 import DeckViewModal from './flashcards/DeckViewModal';
 import CreateEditFlashcardModal from './flashcards/CreateEditFlashcardModal';
 import FlashcardReviewModal from './flashcards/FlashcardReviewModal';
+import StudyMaterialView from './StudyMaterialView';
+import FileViewerModal from './FileViewerModal';
 
-type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards';
+type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
 interface StudentDashboardProps {
     student: StudentData;
@@ -115,6 +115,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
     const [reviewingDeck, setReviewingDeck] = useState<FlashcardDeck | null>(null);
 
+    // Study Material State
+    const [viewingFile, setViewingFile] = useState<StudyMaterialItem | null>(null);
+
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
         window.addEventListener('resize', handleResize);
@@ -155,61 +158,40 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const handleDataImport = (structuredData: any) => {
         try {
             const createLocalizedString = (text: string) => ({ EN: text || '', GU: '' });
-            let schedules: ScheduleItem[] = [];
-            let exams: ExamData[] = [];
+            
+            const schedules: ScheduleItem[] = (structuredData.schedules || []).map((s: any) => {
+                if (s.type === 'HOMEWORK') {
+                    return {
+                        ID: s.id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
+                        CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
+                        SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined
+                    } as HomeworkData;
+                }
+                return {
+                    ID: s.id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
+                    DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
+                    FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
+                } as ScheduleItem;
+            });
+
+            const exams: ExamData[] = (structuredData.exams || []).map((e: any) => ({
+                ID: e.id, subject: e.subject.toUpperCase(), title: e.title, date: e.date,
+                time: e.time, syllabus: e.syllabus
+            }));
+            
             let results: ResultData[] = [];
             let weaknesses: string[] = [];
-
-            // Case 1: Data is from client-side parseCSVData
-            if (structuredData.schedules && structuredData.schedules[0]?.item) {
-                schedules = structuredData.schedules.map((s: any) => s.item);
-                exams = structuredData.exams.map((e: any) => e.item);
-                structuredData.metrics.forEach((m: any) => {
-                    if (m.item.type === 'RESULT') {
-                        results.push({
-                            ID: `R${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
-                            DATE: new Date().toISOString().split('T')[0],
-                            SCORE: m.item.score, MISTAKES: m.item.mistakes
-                        });
-                    } else if (m.item.type === 'WEAKNESS') {
-                        weaknesses.push(...m.item.weaknesses);
-                    }
-                });
-            } 
-            // Case 2: Data is from AI (JSON format with flat structure)
-            else {
-                schedules = (structuredData.schedules || []).map((s: any) => {
-                    if (s.type === 'HOMEWORK') {
-                        return {
-                            ID: s.id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
-                            CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
-                            SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined
-                        } as HomeworkData;
-                    }
-                    return {
-                        ID: s.id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
-                        DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
-                        FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
-                    } as ScheduleItem;
-                });
-
-                exams = (structuredData.exams || []).map((e: any) => ({
-                    ID: e.id, subject: e.subject.toUpperCase(), title: e.title, date: e.date,
-                    time: e.time, syllabus: e.syllabus
-                }));
-
-                (structuredData.metrics || []).forEach((m: any) => {
-                    if (m.type === 'RESULT' && m.score && m.mistakes) {
-                        results.push({
-                            ID: `R${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
-                            DATE: new Date().toISOString().split('T')[0], SCORE: m.score,
-                            MISTAKES: m.mistakes.split(';').map((s: string) => s.trim()).filter(Boolean)
-                        });
-                    } else if (m.type === 'WEAKNESS' && m.weaknesses) {
-                        weaknesses.push(...m.weaknesses.split(';').map((s: string) => s.trim()).filter(Boolean));
-                    }
-                });
-            }
+            (structuredData.metrics || []).forEach((m: any) => {
+                if (m.type === 'RESULT' && m.score && m.mistakes) {
+                    results.push({
+                        ID: `R${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
+                        DATE: new Date().toISOString().split('T')[0], SCORE: m.score,
+                        MISTAKES: m.mistakes.split(';').map((s: string) => s.trim()).filter(Boolean)
+                    });
+                } else if (m.type === 'WEAKNESS' && m.weaknesses) {
+                    weaknesses.push(...m.weaknesses.split(';').map((s: string) => s.trim()).filter(Boolean));
+                }
+            });
 
             const importData = { schedules, exams, results, weaknesses };
             const totalItems = schedules.length + exams.length + results.length + (weaknesses.length > 0 ? 1 : 0);
@@ -224,7 +206,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 ].filter(Boolean).join(', ');
                 alert(`Import successful! Added: ${messages}.`);
             } else {
-                 alert("No valid data was found to import. Please check the format or use the AI Guide.");
+                 alert("No valid data was found to import. Please check the JSON format or use the AI Guide.");
             }
 
             setisAiParserModalOpen(false);
@@ -358,6 +340,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         <div className="flex items-center flex-wrap">
           <TabButton tabId="dashboard" icon="dashboard">Dashboard</TabButton>
           <TabButton tabId="schedule" icon="schedule">Schedule</TabButton>
+          <TabButton tabId="material" icon="book-open">Study Material</TabButton>
           <TabButton tabId="flashcards" icon="cards">Flashcards</TabButton>
           <TabButton tabId="exams" icon="trophy">Exams</TabButton>
           <TabButton tabId="performance" icon="performance">Performance</TabButton>
@@ -420,6 +403,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                         </div>
                     </div>
                  );
+            case 'material':
+                return <StudyMaterialView onViewFile={setViewingFile} />;
             case 'flashcards':
                 return <FlashcardManager 
                             decks={student.CONFIG.flashcardDecks || []}
@@ -497,6 +482,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {viewingDeck && <DeckViewModal deck={viewingDeck} onClose={() => setViewingDeck(null)} onAddCard={() => { setEditingCard(null); setIsCreateCardModalOpen(true); }} onEditCard={(card) => { setEditingCard(card); setIsCreateCardModalOpen(true); }} onDeleteCard={(cardId) => handleDeleteCard(viewingDeck.id, cardId)} onStartReview={() => { setReviewingDeck(viewingDeck); setViewingDeck(null); }} />}
             {isCreateCardModalOpen && viewingDeck && <CreateEditFlashcardModal card={editingCard} deckId={viewingDeck.id} onClose={() => { setIsCreateCardModalOpen(false); setEditingCard(null); }} onSave={handleSaveCard} />}
             {reviewingDeck && <FlashcardReviewModal deck={reviewingDeck} onClose={() => setReviewingDeck(null)} />}
+            
+            {/* Study Material Modal */}
+            {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
 
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}
         </main>

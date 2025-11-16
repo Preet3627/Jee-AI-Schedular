@@ -93,6 +93,9 @@ export const api = {
     postDoubt: (question: string, question_image?: string) => authFetch('/doubts', { method: 'POST', body: JSON.stringify({ question, question_image }) }),
     postSolution: (doubtId: string, solution: string, solution_image?: string) => authFetch(`/doubts/${doubtId}/solutions`, { method: 'POST', body: JSON.stringify({ solution, solution_image }) }),
 
+    // Study Material
+    getStudyMaterial: (path: string) => authFetch(`/study-material/browse?path=${encodeURIComponent(path)}`),
+
     // Admin
     getStudents: () => authFetch('/admin/students'),
     broadcastTask: (task: ScheduleItem) => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task }) }),
