@@ -1,4 +1,9 @@
-// This is a basic service worker file that will be managed by vite-plugin-pwa
+// This file is now configured for Workbox's injectManifest strategy.
+import { precacheAndRoute } from 'workbox-precaching';
+
+// This is the injection point that the Vite PWA plugin needs.
+// It will be replaced with a list of assets to precache.
+precacheAndRoute(self.__WB_MANIFEST);
 
 // Listen for push notifications
 self.addEventListener('push', (event) => {
@@ -12,8 +17,8 @@ self.addEventListener('push', (event) => {
         const title = data.title || "JEE Scheduler Pro";
         const options = {
             body: data.body,
-            icon: '/icon-192.png', // Make sure you have an icon at this path in your public folder
-            badge: '/badge-72.png', // A smaller icon for the notification bar
+            icon: 'https://ponsrischool.in/wp-content/uploads/2025/11/Gemini_Generated_Image_ujvnj5ujvnj5ujvn.png',
+            badge: 'https://ponsrischool.in/wp-content/uploads/2025/11/Gemini_Generated_Image_ujvnj5ujvnj5ujvn.png',
         };
         event.waitUntil(self.registration.showNotification(title, options));
     } catch (e) {
@@ -41,4 +46,13 @@ self.addEventListener('notificationclick', (event) => {
             }
         })
     );
+});
+
+// Activate the new service worker as soon as it's installed
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
 });
