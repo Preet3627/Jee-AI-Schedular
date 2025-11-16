@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ResultData } from '../types';
 import Icon from './Icon';
@@ -35,12 +34,14 @@ const TestAnalysisReport: React.FC<TestAnalysisReportProps> = ({ result, onAnaly
                         <div key={subject}>
                             <div className="flex justify-between text-sm mb-1">
                                 <span className="font-semibold text-gray-300">{subject}</span>
-                                <span className="text-gray-400">{Math.round(time / 60)} min</span>
+                                {/* FIX: Cast `time` to number to allow division. */}
+                                <span className="text-gray-400">{Math.round(Number(time) / 60)} min</span>
                             </div>
                             <div className="w-full bg-gray-700 rounded-full h-2.5">
                                 <div 
                                     className="bg-cyan-500 h-2.5 rounded-full" 
-                                    style={{ width: `${(time / maxTime) * 100}%` }}
+                                    // FIX: Cast `time` to number to allow division.
+                                    style={{ width: `${(Number(time) / maxTime) * 100}%` }}
                                 ></div>
                             </div>
                         </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ScheduleItem, ScheduleCardData, HomeworkData, FlashcardDeck } from '../types';
 import Icon from './Icon';
@@ -55,6 +54,8 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             FOCUS_DETAIL: { EN: formData.details, GU: "" },
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
+            // FIX: Add missing googleEventId if it exists on the original task
+            googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
         } as HomeworkData;
     } else { // ACTION or FLASHCARD_REVIEW
         finalTask = {
@@ -68,6 +69,8 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             TIME: formData.time,
             deckId: taskType === 'FLASHCARD_REVIEW' ? formData.deckId : undefined,
+            // FIX: Add missing googleEventId if it exists on the original task
+            googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
         } as ScheduleCardData;
     }
 
@@ -116,30 +119,38 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
               </div>
            </div>
            <div>
-              <label className="text-sm font-bold text-gray-400">Subject Tag</label>
-              <input required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value.toUpperCase()})} className={inputClass} placeholder="e.g., PHYSICS, MATHS" />
-           </div>
+              <label className="text-sm font-bold text-gray-400">Subject</label>
+              <select required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className={inputClass}>
+                  <option value="PHYSICS">Physics</option>
+                  <option value="CHEMISTRY">Chemistry</option>
+                  <option value="MATHS">Maths</option>
+                  <option value="OTHER">Other</option>
+              </select>
+          </div>
 
-           {taskType === 'HOMEWORK' && (
-                <div>
-                    <label className="text-sm font-bold text-gray-400">Question Ranges</label>
-                    <input value={formData.qRanges} onChange={e => setFormData({...formData, qRanges: e.target.value})} className={inputClass} placeholder="e.g., Ex 1.1: 1-15; PYQ: 1-10" />
-                </div>
-            )}
-            
-            {taskType === 'FLASHCARD_REVIEW' && (
-                <div>
-                    <label className="text-sm font-bold text-gray-400">Flashcard Deck</label>
-                    <select required value={formData.deckId} onChange={e => setFormData({...formData, deckId: e.target.value})} className={inputClass}>
-                        {decks.length === 0 && <option disabled>No decks available. Create one first.</option>}
-                        {decks.map(deck => <option key={deck.id} value={deck.id}>{deck.name}</option>)}
-                    </select>
-                </div>
-            )}
+          {taskType === 'HOMEWORK' && (
+            <div>
+              <label className="text-sm font-bold text-gray-400">Question Ranges</label>
+              <input value={formData.qRanges} onChange={e => setFormData({...formData, qRanges: e.target.value})} className={inputClass} placeholder="e.g., Ex 1.1: 1-10; PYQs: 15-20" />
+            </div>
+          )}
+          
+          {taskType === 'FLASHCARD_REVIEW' && (
+            <div>
+              <label className="text-sm font-bold text-gray-400">Flashcard Deck</label>
+              <select required value={formData.deckId} onChange={e => setFormData({...formData, deckId: e.target.value})} className={`${inputClass} disabled:opacity-50`} disabled={decks.length === 0}>
+                {decks.length > 0 ? (
+                    decks.map(d => <option key={d.id} value={d.id}>{d.name}</option>)
+                ) : (
+                    <option>No decks available</option>
+                )}
+              </select>
+            </div>
+          )}
 
           <div className="flex justify-end gap-4 pt-4">
-            <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors">Cancel</button>
-            <button type="submit" className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90 transition-opacity">Save Task</button>
+            <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">Cancel</button>
+            <button type="submit" className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90">Save Task</button>
           </div>
         </form>
       </div>

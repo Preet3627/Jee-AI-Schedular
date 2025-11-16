@@ -1309,9 +1309,4 @@ const startServer = async () => {
 startServer();
 
 // Export the app for Vercel's serverless environment
-export default app;--- START OF FILE utils/deleteCslParser.ts ---
-
-// This file can be deleted. The app now uses a JSON-first import strategy.
-// The CSV parsing logic has been removed to improve reliability and simplify the codebase.
-// All CSV-related functionality is now deprecated.
---- END OF FILE utils/deleteCslParser.ts ---
+export default app;
