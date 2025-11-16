@@ -50,6 +50,7 @@ export interface HomeworkData {
   isUserCreated?: boolean;
   isStarred?: boolean;
   googleEventId?: string;
+  answers?: Record<string, string>; // e.g., { "1": "A", "2": "12.5" }
 }
 
 export interface ActivityData {
@@ -156,6 +157,12 @@ export interface StudyMaterialItem {
     path: string;
     size: number;
     modified: string;
+}
+
+export interface PracticeQuestion {
+  number: number;
+  text: string;
+  options: string[];
 }
 
 // Represents the structure of the encrypted JSON blob in the `user_configs` table

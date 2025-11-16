@@ -179,6 +179,13 @@ const initializeDatabaseSchema = async () => {
               INDEX (sender_sid, recipient_sid)
             )
         `);
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS broadcast_tasks (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              item_data JSON NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
         console.log("Database schema verified successfully.");
     } catch (error) {
         console.error("FATAL: Could not initialize database schema.", error);
@@ -255,6 +262,34 @@ const adminMiddleware = (req, res, next) => {
 const apiRouter = express.Router();
 
 // --- HELPERS ---
+const syncBroadcastsForUser = async (userId, connection) => {
+    // If no connection is passed, get one from the pool
+    const conn = connection || await pool.getConnection();
+    try {
+        const [broadcasts] = await conn.query('SELECT item_data FROM broadcast_tasks');
+        if (broadcasts.length > 0) {
+            const values = broadcasts.map(b => {
+                const itemData = typeof b.item_data === 'string' ? JSON.parse(b.item_data) : b.item_data;
+                return [userId, itemData.ID, JSON.stringify(itemData)];
+            });
+            // Use IGNORE to prevent errors if a task was somehow already added.
+            if (values.length > 0) {
+                await conn.query(
+                    `INSERT IGNORE INTO schedule_items (user_id, item_id_str, item_data) VALUES ?`,
+                    [values]
+                );
+            }
+        }
+    } catch (error) {
+        console.error(`Failed to sync broadcasts for user ${userId}:`, error);
+        // Don't throw, as registration is more critical than this sync.
+    } finally {
+        if (!connection) { // Release connection only if it was created in this function
+            conn.release();
+        }
+    }
+};
+
 const getUserData = async (userId) => {
     const [[user]] = await pool.query('SELECT id, sid, email, full_name, role, profile_photo, is_verified FROM users WHERE id = ?', [userId]);
     if (!user) return null;
@@ -335,21 +370,31 @@ apiRouter.use(configurationCheckMiddleware);
 apiRouter.post('/register', async (req, res) => {
     const { sid, fullName, email, password } = req.body;
     if (!sid || !password || !fullName || !email) return res.status(400).json({ error: 'All fields are required' });
+    const connection = await pool.getConnection();
     try {
-        const [[existingUser]] = await pool.query('SELECT id FROM users WHERE sid = ? OR email = ?', [sid, email]);
-        if (existingUser) return res.status(409).json({ error: 'Student ID or Email already exists' });
+        await connection.beginTransaction();
+        const [[existingUser]] = await connection.query('SELECT id FROM users WHERE sid = ? OR email = ?', [sid, email]);
+        if (existingUser) {
+            await connection.rollback();
+            return res.status(409).json({ error: 'Student ID or Email already exists' });
+        }
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const profilePhoto = generateAvatar(fullName);
-        
+        let userId;
+
         if (mailer) {
             const code = Math.floor(100000 + Math.random() * 900000).toString();
             const expires = Date.now() + 15 * 60 * 1000; // 15 minutes
             
-            await pool.query(
+            const [result] = await connection.query(
                 'INSERT INTO users (sid, email, password, full_name, profile_photo, verification_code, verification_expires) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [sid, email, hashedPassword, fullName, profilePhoto, code, new Date(expires)]
             );
+            userId = result.insertId;
+
+            await syncBroadcastsForUser(userId, connection);
+            await connection.commit();
             
             await mailer.sendMail({
                 from: `"JEE Scheduler Pro" <${process.env.SMTP_USER}>`,
@@ -361,17 +406,24 @@ apiRouter.post('/register', async (req, res) => {
             res.status(200).json({ message: 'Verification code sent to your email.', email });
         } else {
             // Auto-verify if mailer is not set up
-            const [result] = await pool.query(
+            const [result] = await connection.query(
                 'INSERT INTO users (sid, email, password, full_name, profile_photo, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
                 [sid, email, hashedPassword, fullName, profilePhoto, true]
             );
-            const userId = result.insertId;
+            userId = result.insertId;
+
+            await syncBroadcastsForUser(userId, connection);
+            await connection.commit();
+
             const token = jwt.sign({ id: userId, sid: sid }, JWT_SECRET, { expiresIn: '7d' });
             res.status(201).json({ token, message: "Registered and auto-verified (mailer not configured)." });
         }
     } catch (error) {
+        await connection.rollback();
         console.error("Registration error:", error);
         res.status(500).json({ error: 'Server error during registration process.' });
+    } finally {
+        connection.release();
     }
 });
 
@@ -433,8 +485,10 @@ apiRouter.post('/auth/google', async (req, res) => {
         const { email, name, sub: googleId, picture } = payload;
         
         let [[user]] = await pool.query('SELECT id, sid FROM users WHERE google_id = ? OR email = ?', [googleId, email]);
+        let isNewUser = false;
 
         if (!user) {
+            isNewUser = true;
             const [result] = await pool.query(
                 'INSERT INTO users (sid, email, full_name, google_id, profile_photo, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
                 [email, email, name, googleId, picture, true]
@@ -445,6 +499,10 @@ apiRouter.post('/auth/google', async (req, res) => {
             await pool.query('UPDATE users SET google_id = ?, profile_photo = IF(profile_photo LIKE "https://api.dicebear.com%", ?, profile_photo) WHERE id = ?', [googleId, picture, user.id]);
         }
         
+        if(isNewUser) {
+            await syncBroadcastsForUser(user.id);
+        }
+
         const userData = await getUserData(user.id);
         const token = jwt.sign({ id: user.id, sid: user.sid }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token, user: userData });
@@ -1025,13 +1083,15 @@ RULES:
 3.  **DATA CORRECTION:** Automatically fix common formatting issues. Convert dates to \`YYYY-MM-DD\` format. Convert times to \`HH:MM\` format.
 4.  **MULTI-SCHEMA:** The input may contain multiple data types. Populate all relevant arrays in the output JSON.
 5.  **ID GENERATION:** Generate a unique alphanumeric ID for every single schedule or exam item.
-6.  **STRICT SCHEMA OUTPUT:** Your output JSON MUST strictly adhere to the following structure:
+6.  **ANSWER KEY GENERATION:** If the user asks for an answer key (e.g., "create a homework for ... and also find its answer key"), you MUST find the key and populate the 'answers' field.
+7.  **STRICT SCHEMA OUTPUT:** Your output JSON MUST strictly adhere to the following structure:
     {
-      "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "time": string?, "title": string, "detail": string, "subject": string, "q_ranges": string?, "sub_type": string? } ],
+      "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "time": string?, "title": string, "detail": string, "subject": string, "q_ranges": string?, "sub_type": string?, "answers": object? } ],
       "exams": [ { "id": string, "type": "EXAM", "subject": string, "title": string, "date": string, "time": string, "syllabus": string } ],
       "metrics": [ { "type": "RESULT" | "WEAKNESS", "score": string?, "mistakes": string?, "weaknesses": string? } ]
     }
-    For metrics, 'mistakes' and 'weaknesses' should be semicolon-separated strings.`;
+    For metrics, 'mistakes' and 'weaknesses' should be semicolon-separated strings.
+    For HOMEWORK schedules, 'answers' is an optional JSON object mapping question numbers (as strings) to answers (strings), e.g., {"1": "A", "2": "14.2"}.`;
 
         const prompt = `Convert the following text into a structured JSON object based on the system instruction schema.\n\nUSER TEXT TO CONVERT:\n${text}`;
         
@@ -1233,6 +1293,134 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
     }
 });
 
+apiRouter.post('/ai/generate-flashcards', authMiddleware, async (req, res) => {
+    const { topic, syllabus } = req.body;
+    if (!topic) return res.status(400).json({ error: "A topic is required." });
+
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are an expert academic content creator for JEE aspirants. Your task is to generate a series of flashcards (question/answer pairs) based on a given topic.
+        - Prioritize fundamental concepts, important formulas, and common points of confusion.
+        - If a syllabus is provided, ensure the flashcards are highly relevant to that context.
+        - Keep the 'front' (question) concise and clear.
+        - Keep the 'back' (answer) accurate and to the point.
+        - Your entire response MUST be a single, valid JSON object with one key: "flashcards". The value should be an array of objects, each with "front" and "back" string properties.
+        - Do not include any other text, explanations, or markdown formatting.`;
+
+        const prompt = `Generate 5-10 flashcards for the topic: "${topic}".
+        ${syllabus ? `Focus on concepts relevant to this syllabus: "${syllabus}".` : ''}
+        The goal is a quick formula and concept review.`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: { 
+                systemInstruction,
+                responseMimeType: 'application/json'
+            },
+        });
+
+        res.json(JSON.parse(response.text));
+    } catch (error) {
+        console.error("Gemini API error (flashcards):", error);
+        res.status(500).json({ error: `Failed to generate flashcards with AI: ${error.message}` });
+    }
+});
+
+apiRouter.post('/ai/generate-answer-key', authMiddleware, async (req, res) => {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: "A prompt is required." });
+
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are an expert data extraction AI. Your task is to find an answer key for a specific test based on the user's prompt and format it as a single raw JSON object.
+        - The JSON object should map question numbers (as strings) to their correct answers (as strings).
+        - For MCQs, use "A", "B", "C", "D". For numerical questions, use the number as a string (e.g., "14.25").
+        - If the user provides a simple list of answers like "A C D B 12.5", assume they are for questions 1, 2, 3, 4, 5 and format the JSON accordingly.
+        - Your entire output MUST be a single, raw JSON object. Do not include explanations, conversational text, or markdown formatting like \`\`\`json.
+        Example output: { "1": "A", "2": "C", "3": "D", "4": "B", "5": "12.5" }`;
+        
+        const fullPrompt = `Find and format the answer key for: "${prompt}"`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: fullPrompt,
+            config: { 
+                systemInstruction,
+                responseMimeType: 'application/json'
+            },
+        });
+
+        // The response should be a JSON string. We send it as is for the client to parse.
+        res.json({ answerKey: response.text });
+    } catch (error) {
+        console.error("Gemini API error (generate answer key):", error);
+        res.status(500).json({ error: `Failed to generate answer key: ${error.message}` });
+    }
+});
+
+apiRouter.post('/ai/generate-practice-test', authMiddleware, async (req, res) => {
+    const { topic, numQuestions, difficulty } = req.body;
+    if (!topic || !numQuestions || !difficulty) {
+        return res.status(400).json({ error: "Topic, number of questions, and difficulty are required." });
+    }
+
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are an expert JEE test generator. Your task is to create a practice test based on user specifications.
+        **CRITICAL: Your entire output MUST be a single, valid JSON object and nothing else.** Do not include markdown, explanations, or any text outside the JSON.
+        The JSON object must have two top-level keys: "questions" and "answers".
+
+        1.  **"questions"**: An array of question objects. Each object must have:
+            - "number": The question number (integer, starting from 1).
+            - "text": The full question text (string).
+            - "options": An array of 4 strings representing the multiple-choice options.
+
+        2.  **"answers"**: A JSON object mapping the question number (as a string) to the correct option letter (A, B, C, or D).
+
+        Example Output Structure:
+        {
+          "questions": [
+            {
+              "number": 1,
+              "text": "What is the capital of France?",
+              "options": ["(A) Berlin", "(B) Madrid", "(C) Paris", "(D) Rome"]
+            }
+          ],
+          "answers": {
+            "1": "C"
+          }
+        }`;
+        
+        const fullPrompt = `Generate a ${difficulty} level practice test with ${numQuestions} questions on the topic of "${topic}" for a JEE aspirant.`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: fullPrompt,
+            config: { 
+                systemInstruction,
+                responseMimeType: 'application/json'
+            },
+        });
+        
+        // The AI should return a clean JSON string.
+        res.json(JSON.parse(response.text));
+
+    } catch (error) {
+        console.error("Gemini API error (generate practice test):", error);
+        res.status(500).json({ error: `Failed to generate practice test: ${error.message}` });
+    }
+});
+
 
 // --- ADMIN ENDPOINTS ---
 apiRouter.get('/admin/students', authMiddleware, adminMiddleware, async (req, res) => {
@@ -1247,26 +1435,15 @@ apiRouter.get('/admin/students', authMiddleware, adminMiddleware, async (req, re
 
 apiRouter.post('/admin/broadcast-task', authMiddleware, adminMiddleware, async (req, res) => {
     const { task } = req.body;
-    const connection = await pool.getConnection();
     try {
-        await connection.beginTransaction();
-        const [students] = await connection.query("SELECT id FROM users WHERE role = 'student'");
-        const broadcastValues = students.map(student => [student.id, task.ID, JSON.stringify(task)]);
-        if (broadcastValues.length > 0) {
-            await connection.query(
-                `INSERT INTO schedule_items (user_id, item_id_str, item_data) VALUES ?
-                 ON DUPLICATE KEY UPDATE item_data = VALUES(item_data)`,
-                [broadcastValues]
-            );
-        }
-        await connection.commit();
-        res.status(200).json({ success: true, message: `Task broadcasted to ${students.length} students.` });
+        await pool.query(
+            'INSERT INTO broadcast_tasks (item_data) VALUES (?)',
+            [JSON.stringify(task)]
+        );
+        res.status(200).json({ success: true, message: `Task saved for broadcast to all current and future students.` });
     } catch (error) {
-        await connection.rollback();
         console.error("Broadcast error:", error);
         res.status(500).json({ error: 'Broadcast failed' });
-    } finally {
-        connection.release();
     }
 });
 

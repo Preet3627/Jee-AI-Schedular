@@ -127,7 +127,10 @@ export const api = {
     analyzeMistake: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/analyze-mistake', { method: 'POST', body: JSON.stringify(data) }),
     solveDoubt: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/solve-doubt', { method: 'POST', body: JSON.stringify(data) }),
     parseText: (text: string) => authFetch('/ai/parse-text', { method: 'POST', body: JSON.stringify({ text }) }),
-    parseImageToCsv: (imageBase64: string) => authFetch('/ai/parse-image-to-csv', { method: 'POST', body: JSON.stringify({ imageBase64 }) }),
+    parseImage: (imageBase64: string) => authFetch('/ai/parse-image-to-json', { method: 'POST', body: JSON.stringify({ imageBase64 }) }),
     analyzeTestResults: (data: { imageBase64: string; userAnswers: Record<string, string>; timings: Record<string, number>, syllabus: string }) => authFetch('/ai/analyze-test-results', { method: 'POST', body: JSON.stringify(data) }),
     analyzeSpecificMistake: (data: { imageBase64: string; prompt: string; }) => authFetch('/ai/analyze-specific-mistake', { method: 'POST', body: JSON.stringify(data) }),
+    generateFlashcards: (data: { topic: string; syllabus?: string; }) => authFetch('/ai/generate-flashcards', { method: 'POST', body: JSON.stringify(data) }),
+    generateAnswerKey: (prompt: string) => authFetch('/ai/generate-answer-key', { method: 'POST', body: JSON.stringify({ prompt }) }),
+    generatePracticeTest: (data: { topic: string; numQuestions: number; difficulty: string; }) => authFetch('/ai/generate-practice-test', { method: 'POST', body: JSON.stringify(data) }),
 };

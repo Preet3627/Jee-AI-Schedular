@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { FlashcardDeck } from '../../types';
 import Icon from '../Icon';
@@ -10,16 +9,22 @@ interface FlashcardManagerProps {
   onDeleteDeck: (deckId: string) => void;
   onViewDeck: (deck: FlashcardDeck) => void;
   onStartReview: (deckId: string) => void;
+  onGenerateWithAI: () => void;
 }
 
-const FlashcardManager: React.FC<FlashcardManagerProps> = ({ decks, onAddDeck, onEditDeck, onDeleteDeck, onViewDeck, onStartReview }) => {
+const FlashcardManager: React.FC<FlashcardManagerProps> = ({ decks, onAddDeck, onEditDeck, onDeleteDeck, onViewDeck, onStartReview, onGenerateWithAI }) => {
   return (
     <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-white">My Flashcard Decks</h2>
-        <button onClick={onAddDeck} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
-          <Icon name="plus" /> New Deck
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={onGenerateWithAI} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gray-700/80 hover:bg-gray-700">
+            <Icon name="gemini" /> Generate with AI
+          </button>
+          <button onClick={onAddDeck} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
+            <Icon name="plus" /> New Deck
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -47,7 +52,7 @@ const FlashcardManager: React.FC<FlashcardManagerProps> = ({ decks, onAddDeck, o
           <div className="col-span-full text-center text-gray-500 py-12 border-2 border-dashed border-gray-700 rounded-lg">
             <Icon name="cards" className="w-12 h-12 mx-auto text-gray-600" />
             <p className="mt-4 font-semibold">No flashcard decks found.</p>
-            <p className="text-sm">Click "New Deck" to create your first one.</p>
+            <p className="text-sm">Click "New Deck" to create your first one, or use the AI generator.</p>
           </div>
         )}
       </div>

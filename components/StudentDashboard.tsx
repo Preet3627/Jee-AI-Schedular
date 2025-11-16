@@ -33,8 +33,6 @@ import EditWeaknessesModal from './EditWeaknessesModal';
 // FIX: Corrected import path for component.
 import AchievementsWidget from './widgets/AchievementsWidget';
 // FIX: Corrected import path for component.
-import ImageToTimetableModal from './ImageToTimetableModal';
-// FIX: Corrected import path for component.
 import AIMistakeAnalysisModal from './AIMistakeAnalysisModal';
 import AIParserModal from './AIParserModal';
 import DailyInsightWidget from './widgets/DailyInsightWidget';
@@ -51,6 +49,7 @@ import CreateEditFlashcardModal from './flashcards/CreateEditFlashcardModal';
 import FlashcardReviewModal from './flashcards/FlashcardReviewModal';
 import StudyMaterialView from './StudyMaterialView';
 import FileViewerModal from './FileViewerModal';
+import AIGenerateFlashcardsModal from './flashcards/AIGenerateFlashcardsModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -85,7 +84,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [scheduleView, setScheduleView] = useState<'upcoming' | 'past'>('upcoming');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isAiParserModalOpen, setisAiParserModalOpen] = useState(false);
-    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [isPracticeModalOpen, setIsPracticeModalOpen] = useState(false);
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<ScheduleItem | null>(null);
@@ -109,6 +107,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
     // Flashcard State
     const [isCreateDeckModalOpen, setIsCreateDeckModalOpen] = useState(false);
+    const [isAiFlashcardModalOpen, setIsAiFlashcardModalOpen] = useState(false);
     const [editingDeck, setEditingDeck] = useState<FlashcardDeck | null>(null);
     const [viewingDeck, setViewingDeck] = useState<FlashcardDeck | null>(null);
     const [isCreateCardModalOpen, setIsCreateCardModalOpen] = useState(false);
@@ -211,7 +210,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             }
 
             setisAiParserModalOpen(false);
-            setIsImageModalOpen(false);
         } catch (error: any) {
             alert(`Error processing data: ${error.message}`);
         }
@@ -417,6 +415,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                             onDeleteDeck={handleDeleteDeck}
                             onViewDeck={setViewingDeck}
                             onStartReview={handleStartReviewSession}
+                            onGenerateWithAI={() => setIsAiFlashcardModalOpen(true)}
                         />;
             case 'exams':
                 return <ExamsView exams={student.EXAMS} onAdd={() => { setEditingExam(null); setIsExamModalOpen(true); }} onEdit={(exam) => { setEditingExam(exam); setIsExamModalOpen(true); }} onDelete={onDeleteExam} />;
@@ -471,7 +470,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} />}
-            {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={() => {}} />}
             {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
             {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
@@ -484,6 +482,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             
             {/* Flashcard Modals */}
             {isCreateDeckModalOpen && <CreateEditDeckModal deck={editingDeck} onClose={() => { setIsCreateDeckModalOpen(false); setEditingDeck(null); }} onSave={handleSaveDeck} />}
+            {isAiFlashcardModalOpen && <AIGenerateFlashcardsModal student={student} onClose={() => setIsAiFlashcardModalOpen(false)} onSaveDeck={handleSaveDeck} />}
             {viewingDeck && <DeckViewModal deck={viewingDeck} onClose={() => setViewingDeck(null)} onAddCard={() => { setEditingCard(null); setIsCreateCardModalOpen(true); }} onEditCard={(card) => { setEditingCard(card); setIsCreateCardModalOpen(true); }} onDeleteCard={(cardId) => handleDeleteCard(viewingDeck.id, cardId)} onStartReview={() => { setReviewingDeck(viewingDeck); setViewingDeck(null); }} />}
             {isCreateCardModalOpen && viewingDeck && <CreateEditFlashcardModal card={editingCard} deckId={viewingDeck.id} onClose={() => { setIsCreateCardModalOpen(false); setEditingCard(null); }} onSave={handleSaveCard} />}
             {reviewingDeck && <FlashcardReviewModal deck={reviewingDeck} onClose={() => setReviewingDeck(null)} />}

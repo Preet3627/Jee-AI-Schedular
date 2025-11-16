@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { FlashcardDeck } from '../../types';
+import { FlashcardDeck, Flashcard } from '../../types';
 import Icon from '../Icon';
 
 interface FlashcardReviewModalProps {
@@ -10,13 +10,16 @@ interface FlashcardReviewModalProps {
 
 const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClose }) => {
   const [isExiting, setIsExiting] = useState(false);
-  const [shuffledCards, setShuffledCards] = useState([...deck.cards]);
+  const [shuffledCards, setShuffledCards] = useState<Flashcard[]>([]);
+  const [needsReview, setNeedsReview] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isReviewComplete, setIsReviewComplete] = useState(false);
+  const [reviewStage, setReviewStage] = useState<'initial' | 're-review'>('initial');
 
   useEffect(() => {
     // Shuffle cards on component mount
-    setShuffledCards(prev => [...prev].sort(() => Math.random() - 0.5));
+    setShuffledCards([...deck.cards].sort(() => Math.random() - 0.5));
   }, [deck]);
 
   const handleClose = () => {
@@ -24,21 +27,38 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
     setTimeout(onClose, 300);
   };
 
-  const handleNext = () => {
-    setIsFlipped(false);
-    setCurrentIndex(prev => (prev + 1) % shuffledCards.length);
-  };
+  const advanceCard = (addToReview: boolean) => {
+      if (addToReview) {
+          setNeedsReview(prev => [...prev, shuffledCards[currentIndex]]);
+      }
 
-  const handlePrev = () => {
-    setIsFlipped(false);
-    setCurrentIndex(prev => (prev - 1 + shuffledCards.length) % shuffledCards.length);
+      if (currentIndex + 1 >= shuffledCards.length) {
+          // End of current round
+          if (needsReview.length > 0 && addToReview) { // if the last card was also marked for review
+              const nextReviewCards = [...needsReview, shuffledCards[currentIndex]].sort(() => Math.random() - 0.5);
+              setShuffledCards(nextReviewCards);
+              setNeedsReview([]);
+              setCurrentIndex(0);
+              setReviewStage('re-review');
+          } else if (needsReview.length > 0) {
+              setShuffledCards([...needsReview].sort(() => Math.random() - 0.5));
+              setNeedsReview([]);
+              setCurrentIndex(0);
+              setReviewStage('re-review');
+          } else {
+              setIsReviewComplete(true);
+          }
+      } else {
+          setCurrentIndex(prev => prev + 1);
+      }
+      setIsFlipped(false);
   };
-
+  
   const currentCard = shuffledCards[currentIndex];
   const animationClasses = isExiting ? 'modal-exit' : 'modal-enter';
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
 
-  if (!currentCard) {
+  if (!currentCard && !isReviewComplete) {
       return (
         <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
             <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
@@ -55,42 +75,61 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
         <header className="flex-shrink-0 mb-4 flex justify-between items-center text-white">
             <div>
                 <h2 className="text-2xl font-bold">{deck.name}</h2>
-                <p className="text-sm text-gray-400">Card {currentIndex + 1} of {shuffledCards.length}</p>
+                {!isReviewComplete && (
+                   <p className="text-sm text-gray-400">
+                     {reviewStage === 're-review' && <span className="text-yellow-400 font-semibold">Reviewing missed cards... </span>}
+                     Card {currentIndex + 1} of {shuffledCards.length}
+                   </p>
+                )}
             </div>
             <button onClick={handleClose} className="p-2 rounded-full hover:bg-white/10 text-gray-300">
                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </header>
 
-        <div 
-            className="flex-grow perspective-1000 cursor-pointer"
-            onClick={() => setIsFlipped(!isFlipped)}
-        >
-            <div className={`relative w-full h-full min-h-[300px] transition-transform duration-500 transform-style-preserve-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
-                {/* Front */}
-                <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl">
-                    <p className="text-2xl text-white text-center">{currentCard.front}</p>
+        <div className="flex-grow perspective-1000">
+            {isReviewComplete ? (
+                 <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl">
+                    <Icon name="trophy" className="w-20 h-20 text-yellow-400" />
+                    <p className="text-2xl text-white text-center mt-4">Review Complete!</p>
                 </div>
-                {/* Back */}
-                <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-gray-800/80 border border-[var(--glass-border)] rounded-xl transform rotate-y-180">
-                     <p className="text-xl text-gray-300 text-center">{currentCard.back}</p>
+            ) : (
+                <div 
+                    className="relative w-full h-full min-h-[300px] transition-transform duration-500 transform-style-preserve-3d"
+                    style={{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'}}
+                    onClick={() => setIsFlipped(!isFlipped)}
+                >
+                    {/* Front */}
+                    <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl cursor-pointer">
+                        <p className="text-2xl text-white text-center">{currentCard?.front}</p>
+                    </div>
+                    {/* Back */}
+                    <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-gray-800/80 border border-[var(--glass-border)] rounded-xl transform rotate-y-180 cursor-pointer">
+                        <p className="text-xl text-gray-300 text-center">{currentCard?.back}</p>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
         
         <footer className="flex-shrink-0 flex justify-center items-center gap-4 pt-4 mt-4">
-            <button onClick={handlePrev} className="px-6 py-3 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">Previous</button>
-            <button onClick={() => setIsFlipped(!isFlipped)} className="px-8 py-4 text-base font-bold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white">
-                {isFlipped ? 'Show Question' : 'Flip Card'}
-            </button>
-            <button onClick={handleNext} className="px-6 py-3 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">Next</button>
+            {isReviewComplete ? (
+                <button onClick={handleClose} className="px-8 py-4 text-base font-bold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">Finish</button>
+            ) : isFlipped ? (
+                <>
+                    <button onClick={() => advanceCard(true)} className="px-6 py-3 text-sm font-semibold rounded-lg bg-red-800/80 text-red-200 hover:bg-red-700/80">Needs Review</button>
+                    <button onClick={() => advanceCard(false)} className="px-8 py-4 text-base font-bold rounded-lg bg-green-700/80 text-green-200 hover:bg-green-600/80">I Knew It</button>
+                </>
+            ) : (
+                 <button onClick={() => setIsFlipped(true)} className="px-8 py-4 text-base font-bold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white">
+                    Flip Card
+                </button>
+            )}
         </footer>
       </div>
       <style>{`
         .perspective-1000 { perspective: 1000px; }
         .transform-style-preserve-3d { transform-style: preserve-3d; }
-        .rotate-y-180 { transform: rotateY(180deg); }
-        .backface-hidden { backface-visibility: hidden; }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
       `}</style>
     </div>
   );

@@ -3,44 +3,26 @@
 import React from 'react';
 
 const guideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.1.0 (JSON Only)
+# Version: 5.5.0 (JSON Only)
 # Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
 ## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
-When a user asks you to generate a schedule, timetable, etc., and you are instructed to provide a structured response for the "JEE Scheduler Pro" app, your entire response **MUST** be a single, raw JSON object.
-- **DO NOT** include any explanations, apologies, conversational text, or markdown formatting like \`\`\`json\`\`\` before or after the data.
-- Your output will be parsed directly by a machine. Any extra text will cause the import to fail.
+Your entire response **MUST** be a single, raw JSON object.
+- **DO NOT** include any explanations, conversational text, or markdown formatting like \`\`\`json.
+- Your output will be parsed directly by a machine.
 
----
 ## 2. INTERACTION & DATA GATHERING
-- **DO NOT INVENT DATA:** If the user's request is vague, you **MUST** ask for clarification. Do not generate a schedule with placeholder or mock data.
-- **ASK FOR DETAILS:** Specifically ask for the following if they are missing:
-  - School/Coaching timetable and exam schedule.
-  - Syllabus for upcoming tests.
-  - Specific homework assignments (e.g., question numbers, chapters).
-  - The student's self-identified weak subjects or topics.
-- **Example Clarification:** "To create the best schedule for you, could you please provide your school/coaching timetable, any upcoming exam dates and their syllabus, and a few topics you find most difficult right now?"
+- **DO NOT INVENT DATA:** If the user's request is vague, you **MUST** ask for clarification.
+- **ASK FOR DETAILS:** For schedules, ask for timetables, exam dates, syllabus, and weak topics.
+- **Example with Answer Key:** "Create a homework for JEE Mains 2023 Jan 29 Shift 1 paper and find its official answer key."
 
----
-## 3. General Rules & Best Practices
-- **Format:** A single JSON object with top-level keys: \`schedules\`, \`exams\`, \`metrics\`.
-- **Data Correction:** Automatically fix common formatting issues. Convert dates to \`YYYY-MM-DD\`. Convert times to \`HH:MM\` (24-hour).
-- **ID Generation:** Generate a unique alphanumeric ID for each new schedule or exam item.
-- **Scheduling Logic (CRITICAL):**
-    - For weekdays (Monday-Saturday), schedule study \`ACTION\` tasks between **17:00 (5 PM) and 23:30 (11:30 PM)**.
-    - If a major mock exam is on a Sunday, do NOT schedule other tasks between **07:00 (7 AM) and 13:00 (1 PM)**.
-- **\`type\` Field (CRITICAL):**
-  - If a task involves solving specific questions, its \`type\` **MUST** be \`HOMEWORK\`.
-  - If it is a timed study block, its \`type\` **MUST** be \`ACTION\`.
-
----
-## 4. Top-Level JSON Structure
-Your entire output must be a single JSON object with these keys. If a type of data is not present, you must provide an empty array \`[]\`.
+## 3. Top-Level JSON Structure (for User Import)
+Your entire output must be a single JSON object with these keys. Provide empty arrays \`[]\` for types not present.
 \`\`\`json
 {
-  "schedules": [ /* ... schedule items ... */ ],
-  "exams": [ /* ... exam items ... */ ],
-  "metrics": [ /* ... metric items ... */ ]
+  "schedules": [ /* ... */ ],
+  "exams": [ /* ... */ ],
+  "metrics": [ /* ... */ ]
 }
 \`\`\`
 
@@ -57,20 +39,7 @@ Your entire output must be a single JSON object with these keys. If a type of da
 | \`subject\`   | string | \`PHYSICS\`, \`CHEMISTRY\`, \`MATHS\`, etc.                 | \`"PHYSICS"\`                           |
 | \`q_ranges\`  | string | **For \`HOMEWORK\` only.** Semicolon-separated.         | \`"L1:1-10@p45;PYQ:5-15"\`              |
 | \`sub_type\`  | string | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`ANALYSIS\`, etc.  | \`"DEEP_DIVE"\`                         |
-
-**\`schedules\` Example:**
-\`\`\`json
-{
-  "id": "A102",
-  "type": "ACTION",
-  "day": "WEDNESDAY",
-  "time": "20:00",
-  "title": "Rotational Dynamics",
-  "detail": "Focus on Free Body Diagrams, solve 10 PYQs.",
-  "subject": "PHYSICS",
-  "sub_type": "DEEP_DIVE"
-}
-\`\`\`
+| \`answers\`   | object | **For \`HOMEWORK\` only.** Optional. If asked, you MUST generate this. Maps question numbers to answers, e.g., \`{"1": "A", "2": "C", "3": "12.5"}\`. | \`{"1": "A", "2": "D"}\` |
 
 ---
 ### 4.2 \`exams\` Array Items
@@ -84,19 +53,6 @@ Your entire output must be a single JSON object with these keys. If a type of da
 | \`time\`     | string | \`HH:MM\` format.                            | \`"09:00"\`                                |
 | \`syllabus\` | string | Comma-separated list of topics.            | \`"Rotational Motion,Thermodynamics"\`   |
 
-**\`exams\` Example:**
-\`\`\`json
-{
-  "id": "E301",
-  "type": "EXAM",
-  "subject": "FULL",
-  "title": "Kota Major Test #1",
-  "date": "2024-08-18",
-  "time": "07:00",
-  "syllabus": "Full Syllabus Paper 1"
-}
-\`\`\`
-
 ---
 ### 4.3 \`metrics\` Array Items
 | Key          | Type   | Description                                       | Example                                  |
@@ -106,14 +62,23 @@ Your entire output must be a single JSON object with these keys. If a type of da
 | \`mistakes\`   | string | **For \`RESULT\` only.** Semicolon-separated.       | \`"Integration;Young's Double Slit"\`      |
 | \`weaknesses\` | string | **For \`WEAKNESS\` only.** Semicolon-separated.     | \`"Definite Integration;Wave Optics"\`     |
 
-**\`metrics\` Example:**
-\`\`\`json
-{
-  "type": "RESULT",
-  "score": "185/300",
-  "mistakes": "Integration by Parts;Young's Double Slit"
-}
-\`\`\``;
+---
+## 5. Additional Schemas (for specific AI features)
+### 5.1 \`practice_test\` Object
+- **Purpose:** To generate a complete practice test on a given topic.
+- **Top-level keys:** \`questions\`, \`answers\`.
+
+#### 5.1.1 \`questions\` Array Items
+| Key       | Type          | Description                             | Example                                      |
+|-----------|---------------|-----------------------------------------|----------------------------------------------|
+| \`number\`  | number        | The question number, starting from 1.   | \`1\`                                          |
+| \`text\`    | string        | The full question text.                 | \`"What is the capital of France?"\`            |
+| \`options\` | array[string] | An array of 4 string options.           | \`["(A) Berlin", "(B) Madrid", "(C) Paris"]\`   |
+
+#### 5.1.2 \`answers\` Object
+- A JSON object mapping the question number (as a string) to the correct option letter (A, B, C, or D).
+- **Example:** \`{"1": "C"}\`
+`;
 
 const AIGuide: React.FC = () => {
     return (
