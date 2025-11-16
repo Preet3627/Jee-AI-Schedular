@@ -7,7 +7,7 @@ interface SettingsModalProps {
   settings: Config['settings'];
   driveLastSync?: string;
   onClose: () => void;
-  onSave: (settings: Partial<Config['settings']>) => void;
+  onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string }>) => void;
   onExportToIcs: () => void;
   googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
   onGoogleSignIn: () => void;
@@ -23,6 +23,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [mobileLayout, setMobileLayout] = useState(settings.mobileLayout || 'standard');
   const [forceOfflineMode, setForceOfflineMode] = useState(settings.forceOfflineMode || false);
   const [perQuestionTime, setPerQuestionTime] = useState(settings.perQuestionTime || 180);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -33,7 +34,17 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ accentColor, blurEnabled, mobileLayout: mobileLayout as 'standard' | 'toolbar', forceOfflineMode, perQuestionTime });
+    const settingsToSave: Partial<Config['settings'] & { geminiApiKey?: string }> = { 
+        accentColor, 
+        blurEnabled, 
+        mobileLayout: mobileLayout as 'standard' | 'toolbar', 
+        forceOfflineMode, 
+        perQuestionTime 
+    };
+    if (geminiApiKey.trim()) {
+        settingsToSave.geminiApiKey = geminiApiKey.trim();
+    }
+    onSave(settingsToSave);
     handleClose();
   };
 
@@ -85,8 +96,10 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
            <div>
               <h3 className="text-base font-bold text-gray-300">Integrations & Data</h3>
                <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
-                <p className="text-sm font-semibold text-cyan-400">AI Features</p>
-                <p className="text-xs text-gray-400">AI-powered text/image parsing and doubt solving are enabled by the administrator.</p>
+                <p className="text-sm font-semibold text-cyan-400">Gemini API Key</p>
+                <p className="text-xs text-gray-400 mb-2">Provide your own key to use AI features. Your key is stored securely and is never visible to others.</p>
+                 <input type="password" value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} className={inputClass} placeholder="Enter new API key to update" />
+                 {settings.hasGeminiKey && !geminiApiKey && <p className="text-xs text-green-400 mt-1">An API key is already saved for your account.</p>}
               </div>
               {googleAuthStatus !== 'unconfigured' && (
                   <div className="mt-4">

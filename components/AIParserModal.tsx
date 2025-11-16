@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
+import { parseCSVData } from '../utils/cslParser';
 
 interface AIParserModalProps {
   onClose: () => void;
@@ -29,6 +30,15 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave }) => {
     setError('');
 
     try {
+      // First, try to parse it directly as CSV.
+      const directParseResult = parseCSVData(inputText);
+      if (directParseResult.schedules.length > 0 || directParseResult.exams.length > 0) {
+        // It looks like valid CSV, so we can save it directly without calling the AI.
+        onSave(inputText);
+        return;
+      }
+
+      // If not valid CSV, proceed with the AI call.
       const result = await api.parseTextToCsv(inputText);
       onSave(result.csv);
     } catch (err: any) {
@@ -46,7 +56,7 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave }) => {
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-2">AI Text Parser</h2>
-        <p className="text-sm text-gray-400 mb-4">Paste any text describing a schedule or exam list, and the AI will attempt to convert it into a valid format for import.</p>
+        <p className="text-sm text-gray-400 mb-4">Paste any text describing a schedule (or raw CSV data), and the AI will attempt to convert it into a valid format for import.</p>
         
         <textarea
           value={inputText}

@@ -125,12 +125,14 @@ export interface Config {
     UNACADEMY_SUB: boolean;
     googleDriveFileId?: string;
     driveLastSync?: string;
+    geminiApiKey?: string; // This is stored encrypted on the backend ONLY.
     settings: {
         accentColor: string;
         blurEnabled: boolean;
         mobileLayout: 'standard' | 'toolbar';
         forceOfflineMode: boolean;
         perQuestionTime: number; // Default time in seconds per MCQ
+        hasGeminiKey?: boolean; // A safe flag for the frontend
     };
 }
 

@@ -97,6 +97,85 @@ if (isConfigured) {
     console.error("FATAL ERROR: Server environment variables are not configured. The server will run in a misconfigured state.");
 }
 
+// --- DATABASE SCHEMA INITIALIZATION ---
+const initializeDatabaseSchema = async () => {
+    if (!pool) return;
+    const connection = await pool.getConnection();
+    try {
+        console.log("Verifying database schema...");
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS users (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              sid VARCHAR(255) UNIQUE NOT NULL,
+              email VARCHAR(255) UNIQUE NOT NULL,
+              password VARCHAR(255),
+              full_name VARCHAR(255) NOT NULL,
+              profile_photo TEXT,
+              is_verified BOOLEAN DEFAULT false,
+              role ENUM('student', 'admin') DEFAULT 'student',
+              google_id VARCHAR(255) UNIQUE,
+              verification_code VARCHAR(10),
+              verification_expires DATETIME,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS user_configs (
+              user_id INT PRIMARY KEY,
+              config TEXT NOT NULL,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS schedule_items (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              user_id INT NOT NULL,
+              item_id_str VARCHAR(255) NOT NULL,
+              item_data JSON NOT NULL,
+              UNIQUE KEY (user_id, item_id_str),
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS doubts (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              user_id INT NOT NULL,
+              question TEXT NOT NULL,
+              question_image MEDIUMTEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS solutions (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              doubt_id INT NOT NULL,
+              user_id INT NOT NULL,
+              solution TEXT NOT NULL,
+              solution_image MEDIUMTEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (doubt_id) REFERENCES doubts(id) ON DELETE CASCADE,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS messages (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              sender_sid VARCHAR(255) NOT NULL,
+              recipient_sid VARCHAR(255) NOT NULL,
+              content TEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              INDEX (sender_sid, recipient_sid)
+            )
+        `);
+        console.log("Database schema verified successfully.");
+    } catch (error) {
+        console.error("FATAL: Could not initialize database schema.", error);
+    } finally {
+        connection.release();
+    }
+};
+
 // --- MIDDLEWARE ---
 const configurationCheckMiddleware = (req, res, next) => {
     if (!isConfigured || !pool) {
@@ -168,6 +247,13 @@ const getUserData = async (userId) => {
 
     const decryptedConfig = decrypt(userConfigRow.config);
     const configObject = JSON.parse(decryptedConfig);
+
+    // Add a safe flag for the frontend to know if a key is set, without exposing the key.
+    if (!configObject.settings) configObject.settings = {};
+    configObject.settings.hasGeminiKey = !!configObject.geminiApiKey;
+
+    // IMPORTANT: Remove any sensitive keys before sending the config to the client.
+    delete configObject.geminiApiKey;
     
     // This is now a complete StudentData object
     return { 
@@ -394,12 +480,20 @@ apiRouter.post('/config', authMiddleware, async (req, res) => {
         const [[userConfig]] = await pool.query("SELECT config FROM user_configs WHERE user_id = ?", [req.userId]);
         const currentConfig = userConfig?.config ? JSON.parse(decrypt(userConfig.config)) : {};
         
+        // Securely handle Gemini API key update
+        let newConfig = { ...currentConfig };
+        if (updates.geminiApiKey) {
+            newConfig.geminiApiKey = updates.geminiApiKey;
+            // Do not let the rest of the updates overwrite this
+            delete updates.geminiApiKey;
+        }
+
         const newSettings = updates.settings 
             ? { ...currentConfig.settings, ...updates.settings }
             : currentConfig.settings;
             
-        const newConfig = { 
-            ...currentConfig, 
+        newConfig = { 
+            ...newConfig, 
             ...updates,
             settings: newSettings
         };
@@ -425,10 +519,15 @@ apiRouter.post('/user-data/full-sync', authMiddleware, async (req, res) => {
         const { userData } = req.body;
         
         const { SCHEDULE_ITEMS, id, sid, email, fullName, profilePhoto, isVerified, role, RESULTS, EXAMS, STUDY_SESSIONS, DOUBTS, CONFIG } = userData;
+        
+        // Preserve sensitive data like API keys that aren't sent to the frontend
+        const [[userConfig]] = await pool.query("SELECT config FROM user_configs WHERE user_id = ?", [req.userId]);
+        const currentConfig = userConfig?.config ? JSON.parse(decrypt(userConfig.config)) : {};
 
         // 1. Update the main config blob
         const configToSave = {
             ...CONFIG,
+            geminiApiKey: currentConfig.geminiApiKey, // Preserve existing key
             RESULTS,
             EXAMS,
             STUDY_SESSIONS,
@@ -543,19 +642,30 @@ apiRouter.post('/messages', authMiddleware, adminMiddleware, async (req, res) =>
 
 
 // --- AI ENDPOINTS ---
+const getApiKeyForUser = async (userId) => {
+    const [[userConfigRow]] = await pool.query("SELECT config FROM user_configs WHERE user_id = ?", [userId]);
+    if (userConfigRow) {
+        const config = JSON.parse(decrypt(userConfigRow.config));
+        if (config.geminiApiKey) {
+            return config.geminiApiKey;
+        }
+    }
+    return process.env.API_KEY; // Fallback to global key
+};
+
 apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
     const { prompt, imageBase64 } = req.body;
     
     if (!prompt) {
         return res.status(400).json({ error: "A prompt is required." });
     }
-    if (!process.env.API_KEY) {
-        console.error("Gemini API key not configured on server.");
-        return res.status(500).json({ error: "AI service is not configured." });
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) {
+        return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
     }
 
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey });
         
         const contents = { parts: [{ text: prompt }] };
         if (imageBase64) {
@@ -579,10 +689,11 @@ apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
 apiRouter.post('/ai/parse-text-to-csv', authMiddleware, async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: "Text is required." });
-    if (!process.env.API_KEY) return res.status(500).json({ error: "AI service is not configured." });
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
 
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey });
         const systemInstruction = `You are a data conversion expert. Your task is to convert unstructured text describing a student's schedule, exams, or results into a valid CSV format according to the provided schema. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Use the current date to infer any missing date information if required. Generate unique IDs for each item. Today's date is ${new Date().toLocaleDateString()}`;
         const prompt = `Please convert the following text into a valid CSV. Available CSV Schemas: 1. SCHEDULE: ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE; 2. EXAM: ID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS. Determine the correct schema from the text and generate the CSV. Text to convert:\n---\n${text}\n---`;
         
@@ -602,10 +713,11 @@ apiRouter.post('/ai/parse-text-to-csv', authMiddleware, async (req, res) => {
 apiRouter.post('/ai/parse-image-to-csv', authMiddleware, async (req, res) => {
     const { imageBase64 } = req.body;
     if (!imageBase64) return res.status(400).json({ error: "Image data is required." });
-    if (!process.env.API_KEY) return res.status(500).json({ error: "AI service is not configured." });
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
 
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey });
         const systemInstruction = `You are a data conversion expert specializing in academic timetables. Your task is to analyze an image of a weekly schedule and convert it into a valid CSV format according to the provided schema. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Infer details logically. For example, if a class is "Physics", the SUBJECT_TAG is "PHYSICS" and the CARD_TITLE could be "Physics Class". Create a unique ID for each entry. The required CSV format is: ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG. All tasks are of TYPE 'ACTION'.`;
         
         const response = await ai.models.generateContent({
@@ -678,6 +790,9 @@ app.get('*', (req, res) => {
 
 // --- SERVER START ---
 const startServer = async () => {
+    if (isConfigured) {
+        await initializeDatabaseSchema();
+    }
     if (isConfigured && mailer) {
         try {
             await mailer.verify();
