@@ -341,6 +341,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         <div className="flex items-center flex-wrap">
           <TabButton tabId="dashboard" icon="dashboard">Dashboard</TabButton>
           <TabButton tabId="schedule" icon="schedule">Schedule</TabButton>
+          <TabButton tabId="planner" icon="planner">Planner</TabButton>
           <TabButton tabId="material" icon="book-open">Study Material</TabButton>
           <TabButton tabId="flashcards" icon="cards">Flashcards</TabButton>
           <TabButton tabId="exams" icon="trophy">Exams</TabButton>
@@ -404,6 +405,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                         </div>
                     </div>
                  );
+             case 'planner':
+                return <PlannerView items={taskItems} onEdit={handleEditClick} />;
             case 'material':
                 return <StudyMaterialView student={student} onUpdateConfig={onUpdateConfig} onViewFile={setViewingFile} />;
             case 'flashcards':
@@ -469,7 +472,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} />}
             {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={() => {}} />}
-            {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} />}
+            {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
             {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}

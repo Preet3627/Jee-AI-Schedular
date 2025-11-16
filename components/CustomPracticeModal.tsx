@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import McqTimer from './McqTimer';
 import Icon from './Icon';
 import { getQuestionNumbersFromRanges } from '../utils/qRangesParser';
-import { HomeworkData, ResultData, StudentData } from '../types';
+import { HomeworkData, ResultData, StudentData, ScheduleItem } from '../types';
 
 interface CustomPracticeModalProps {
   onClose: () => void;
@@ -12,17 +12,37 @@ interface CustomPracticeModalProps {
   onLogResult: (result: ResultData) => void;
   onUpdateWeaknesses: (weaknesses: string[]) => void;
   student: StudentData;
+  onSaveTask: (task: ScheduleItem) => void;
 }
 
 type PracticeMode = 'custom' | 'jeeMains';
 
-const CustomPracticeModal: React.FC<CustomPracticeModalProps> = ({ onClose, onSessionComplete, initialTask, defaultPerQuestionTime, onLogResult, student, onUpdateWeaknesses }) => {
-  const [mode, setMode] = useState<PracticeMode>('custom');
+const parseAnswers = (text: string): Record<number, string> => {
+    const answers: Record<number, string> = {};
+    if (!text) return answers;
+    const entries = text.split(/[,;\n]/);
+    entries.forEach(entry => {
+        const parts = entry.split(':');
+        if (parts.length === 2) {
+            const qNum = parseInt(parts[0].trim(), 10);
+            const answer = parts[1].trim();
+            if (!isNaN(qNum) && answer) {
+                answers[qNum] = answer;
+            }
+        }
+    });
+    return answers;
+};
+
+const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
+  const { onClose, onSessionComplete, initialTask, defaultPerQuestionTime, onLogResult, student, onUpdateWeaknesses, onSaveTask } = props;
+  const [mode, setMode] = useState<PracticeMode>(initialTask ? 'custom' : 'jeeMains');
   const [qRanges, setQRanges] = useState(initialTask?.Q_RANGES || '');
   const [subject, setSubject] = useState(initialTask?.SUBJECT_TAG.EN || 'PHYSICS');
-  const [category, setCategory] = useState('Custom');
+  const [category, setCategory] = useState(initialTask ? 'Homework Practice' : 'Custom');
   const [perQuestionTime, setPerQuestionTime] = useState(defaultPerQuestionTime);
   const [syllabus, setSyllabus] = useState('');
+  const [correctAnswersText, setCorrectAnswersText] = useState('');
   const [isTimerStarted, setIsTimerStarted] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -56,6 +76,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = ({ onClose, onSe
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
   
   const presetCategories = ["Level-1", "Level-2", "PYQ", "Classroom Discussion 1", "Classroom Discussion 2", "Classroom Discussion 3"];
+  const parsedCorrectAnswers = useMemo(() => parseAnswers(correctAnswersText), [correctAnswersText]);
 
   return (
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
@@ -74,6 +95,9 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = ({ onClose, onSe
             onLogResult={onLogResult}
             onUpdateWeaknesses={onUpdateWeaknesses}
             student={student}
+            correctAnswers={parsedCorrectAnswers}
+            onSaveTask={onSaveTask}
+            initialTask={initialTask}
           />
         ) : (
           <div>
@@ -107,6 +131,13 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = ({ onClose, onSe
                     <label className="text-sm font-bold text-gray-400">Question Ranges (e.g., 1-15; 20-25 @p45)</label>
                     <textarea value={qRanges} onChange={(e) => setQRanges(e.target.value)} className="w-full h-24 bg-gray-900/70 border border-[var(--glass-border)] rounded-lg p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 mt-1" placeholder="e.g., 1-25; 30-35; 40 @p50" />
                   </div>
+                   {initialTask && (
+                        <div className="mt-4">
+                            <label className="text-sm font-bold text-gray-400">Correct Answers (Optional)</label>
+                            <textarea value={correctAnswersText} onChange={(e) => setCorrectAnswersText(e.target.value)} className="w-full h-24 bg-gray-900/70 border border-[var(--glass-border)] rounded-lg p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 mt-1" placeholder="e.g., 1:A, 2:C, 3:12.5" />
+                            <p className="text-xs text-gray-500 mt-1">For live answer checking and auto re-attempt tasks.</p>
+                        </div>
+                   )}
                 </>
             ) : (
                 <div className="space-y-4">

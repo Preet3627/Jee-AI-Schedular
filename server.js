@@ -887,10 +887,11 @@ apiRouter.get('/study-material/content', authMiddleware, async (req, res) => {
             throw new Error(`Nextcloud server responded with status ${response.status}`);
         }
         
-        // Pipe the file stream directly to the client
+        // Instead of piping, buffer the response to prevent streaming issues.
+        const fileBuffer = await response.arrayBuffer();
         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
-        res.setHeader('Content-Length', response.headers.get('content-length') || '0');
-        response.body.pipe(res);
+        res.setHeader('Content-Length', fileBuffer.byteLength);
+        res.send(Buffer.from(fileBuffer));
 
     } catch (error) {
         console.error("Nextcloud content error:", error);
@@ -1308,4 +1309,9 @@ const startServer = async () => {
 startServer();
 
 // Export the app for Vercel's serverless environment
-export default app;
+export default app;--- START OF FILE utils/deleteCslParser.ts ---
+
+// This file can be deleted. The app now uses a JSON-first import strategy.
+// The CSV parsing logic has been removed to improve reliability and simplify the codebase.
+// All CSV-related functionality is now deprecated.
+--- END OF FILE utils/deleteCslParser.ts ---

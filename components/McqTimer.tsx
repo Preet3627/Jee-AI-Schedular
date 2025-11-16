@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Icon from './Icon';
 import { playNextSound, playStopSound, playMarkSound, vibrate } from '../utils/sounds';
 import { api } from '../api/apiService';
 import AnswerKeyUploadModal from './AnswerKeyUploadModal';
-import { ResultData, StudentData } from '../types';
+import { ResultData, StudentData, HomeworkData, ScheduleItem, ScheduleCardData } from '../types';
 import TestAnalysisReport from './TestAnalysisReport';
 import SpecificMistakeAnalysisModal from './SpecificMistakeAnalysisModal';
 
@@ -22,10 +21,18 @@ interface McqTimerProps {
   category: string;
   syllabus: string;
   student: StudentData;
+  correctAnswers?: Record<number, string>;
+  onSaveTask?: (task: ScheduleItem) => void;
+  initialTask?: HomeworkData | null;
 }
 
 const McqTimer: React.FC<McqTimerProps> = (props) => {
-    const { questionNumbers, perQuestionTime, onClose, onSessionComplete, onLogResult, onUpdateWeaknesses, practiceMode, subject, category, syllabus, student } = props;
+    const { 
+        questionNumbers, perQuestionTime, onClose, onSessionComplete, 
+        onLogResult, onUpdateWeaknesses, practiceMode, subject, category, 
+        syllabus, student, correctAnswers, onSaveTask, initialTask 
+    } = props;
+
     const [isActive, setIsActive] = useState(false);
     const [totalSeconds, setTotalSeconds] = useState(practiceMode === 'jeeMains' ? 180 * 60 : perQuestionTime * questionNumbers.length);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -100,6 +107,38 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
 
     const handleSaveAndNext = () => {
         playNextSound();
+        
+        // --- Homework Answer Checking Logic ---
+        if (correctAnswers && onSaveTask && initialTask && answers[currentQuestionNumber]) {
+            const userAnswer = answers[currentQuestionNumber];
+            const correctAnswer = correctAnswers[currentQuestionNumber];
+
+            if (correctAnswer && userAnswer.trim().toLowerCase() !== correctAnswer.trim().toLowerCase()) {
+                const isReattempt = initialTask.CARD_TITLE.EN.startsWith('[RE-ATTEMPT]');
+                if (!isReattempt) {
+                    const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+                    const todayIndex = new Date().getDay();
+                    const nextDay = days[(todayIndex + 1) % 7];
+
+                    const reattemptTask: ScheduleCardData = {
+                        ID: `A${Date.now()}${currentQuestionNumber}`,
+                        type: 'ACTION',
+                        isUserCreated: true,
+                        DAY: { EN: nextDay, GU: '' },
+                        TIME: '21:00',
+                        CARD_TITLE: { EN: `[RE-ATTEMPT] Q.${currentQuestionNumber} of: ${initialTask.CARD_TITLE.EN}`, GU: '' },
+                        FOCUS_DETAIL: { EN: `You got this question wrong. Try solving it again. The correct answer was: ${correctAnswer}. If you're still stuck, ask your teacher.`, GU: '' },
+                        SUBJECT_TAG: initialTask.SUBJECT_TAG,
+                        SUB_TYPE: 'ANALYSIS'
+                    };
+                    onSaveTask(reattemptTask);
+                } else {
+                    alert(`You got this question wrong again for Q.${currentQuestionNumber}. It's a good idea to ask your teacher for help on this topic.`);
+                }
+            }
+        }
+        // --- End of Logic ---
+
         navigate(currentQuestionIndex + 1);
     };
     

@@ -1,4 +1,3 @@
-
 declare const gapi: any;
 
 const FOLDER_NAME = 'JEE_Scheduler_Pro_Backups';
@@ -40,44 +39,63 @@ const getAppFolderId = async (): Promise<string> => {
  * @returns The file ID of the created/updated file.
  */
 export const uploadData = async (data: string, fileId?: string): Promise<string> => {
-    const fileMetadata: { name: string; mimeType: string; parents?: string[] } = {
-        name: FILE_NAME,
-        mimeType: 'application/json',
-    };
+    const boundary = '-------314159265358979323846';
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const close_delim = `\r\n--${boundary}--`;
 
-    const blobData = new Blob([data], { type: 'application/json' });
-    const form = new FormData();
-    
+    let requestBody: string;
+    let path: string;
+    let method: 'POST' | 'PATCH';
+
+    if (fileId) {
+        // ---- UPDATE EXISTING FILE ----
+        path = `/upload/drive/v3/files/${fileId}`;
+        method = 'PATCH';
+        
+        // For update, the metadata only needs to specify the mimeType, not name or parents.
+        const metadata = { mimeType: 'application/json' };
+        
+        requestBody =
+            delimiter +
+            'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+            JSON.stringify(metadata) +
+            delimiter +
+            'Content-Type: application/json\r\n\r\n' +
+            data +
+            close_delim;
+    } else {
+        // ---- CREATE NEW FILE ----
+        path = '/upload/drive/v3/files';
+        method = 'POST';
+        
+        const folderId = await getAppFolderId();
+        const metadata = {
+            name: FILE_NAME,
+            mimeType: 'application/json',
+            parents: [folderId],
+        };
+
+        requestBody =
+            delimiter +
+            'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+            JSON.stringify(metadata) +
+            delimiter +
+            'Content-Type: application/json\r\n\r\n' +
+            data +
+            close_delim;
+    }
+
     try {
-        if (fileId) {
-            // Updating an existing file. Metadata for mimeType is needed.
-            form.append('metadata', new Blob([JSON.stringify({ mimeType: 'application/json' })], { type: 'application/json' }));
-            form.append('file', blobData);
-            
-            const response = await gapi.client.request({
-                path: `/upload/drive/v3/files/${fileId}`,
-                method: 'PATCH',
-                params: { uploadType: 'multipart' },
-                body: form,
-            });
-            return response.result.id;
-
-        } else {
-            // Creating a new file.
-            const folderId = await getAppFolderId();
-            fileMetadata.parents = [folderId];
-            
-            form.append('metadata', new Blob([JSON.stringify(fileMetadata)], { type: 'application/json' }));
-            form.append('file', blobData);
-
-            const response = await gapi.client.request({
-                path: '/upload/drive/v3/files',
-                method: 'POST',
-                params: { uploadType: 'multipart' },
-                body: form
-            });
-            return response.result.id;
-        }
+        const response = await gapi.client.request({
+            path,
+            method,
+            params: { uploadType: 'multipart' },
+            headers: {
+                'Content-Type': `multipart/related; boundary=${boundary}`
+            },
+            body: requestBody,
+        });
+        return response.result.id;
     } catch (error) {
         console.error("Google Drive upload error:", error);
         throw new Error("Failed to upload data to Google Drive.");
