@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
@@ -5,10 +6,10 @@ import { parseCSVData } from '../utils/cslParser';
 
 interface AIParserModalProps {
   onClose: () => void;
-  onSave: (csv: string) => void;
+  onDataReady: (data: any) => void;
 }
 
-const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave }) => {
+const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,20 +30,29 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave }) => {
     setError('');
 
     try {
-      // First, try to parse it directly as CSV.
-      const directParseResult = parseCSVData(inputText);
-      if (directParseResult.schedules.length > 0 || directParseResult.exams.length > 0 || directParseResult.metrics.length > 0) {
-        // It looks like valid CSV, so we can save it directly without calling the AI.
-        onSave(inputText);
-        return;
+      // Attempt 1: Parse as JSON directly
+      try {
+        const jsonData = JSON.parse(inputText);
+        if (jsonData && (jsonData.schedules || jsonData.exams || jsonData.metrics)) {
+          onDataReady(jsonData);
+          return; // Success
+        }
+      } catch (e) { /* Not JSON, proceed to next step */ }
+      
+      // Attempt 2: Parse as CSV directly
+      const csvData = parseCSVData(inputText);
+      if (csvData.schedules.length > 0 || csvData.exams.length > 0 || csvData.metrics.length > 0) {
+        onDataReady(csvData);
+        return; // Success
       }
 
-      // If not valid CSV, proceed with the AI call.
-      const result = await api.parseTextToCsv(inputText);
-      onSave(result.csv);
+      // Attempt 3: Call AI to convert unstructured text to JSON
+      const result = await api.parseText(inputText);
+      onDataReady(result);
+
     } catch (err: any) {
       console.error("AI Parser error:", err);
-      setError(err.error || 'Failed to parse text. The AI service may be unavailable.');
+      setError(err.error || 'Failed to parse text. The AI service may be unavailable or the format is unrecognized.');
     } finally {
       setIsLoading(false);
     }
@@ -55,13 +65,13 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave }) => {
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-2">AI Data Import</h2>
-        <p className="text-sm text-gray-400 mb-4">Paste any text about your schedule, exams, or test results. The AI will intelligently convert it into structured data. You can also paste pre-formatted CSV with mixed data types.</p>
+        <p className="text-sm text-gray-400 mb-4">Paste any text about your schedule (unstructured text, JSON, or CSV). The app will intelligently convert it into structured data.</p>
         
         <textarea
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           className="w-full h-48 bg-gray-900 border border-gray-600 rounded-md p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          placeholder="e.g., 'Wednesday at 7pm I have a physics deep dive on rotational motion. On friday I have maths homework from chapter 5 questions 10-20.'"
+          placeholder="e.g., 'Wednesday at 7pm I have a physics deep dive on rotational motion...' OR paste pre-formatted JSON/CSV."
         />
 
         {error && <p className="text-sm text-red-400 mt-2 text-center">{error}</p>}

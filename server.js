@@ -1,4 +1,5 @@
 
+
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -863,7 +864,7 @@ apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
     }
 });
 
-apiRouter.post('/ai/parse-text-to-csv', authMiddleware, async (req, res) => {
+apiRouter.post('/ai/parse-text', authMiddleware, async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: "Text is required." });
     const apiKey = await getApiKeyForUser(req.userId);
@@ -871,52 +872,33 @@ apiRouter.post('/ai/parse-text-to-csv', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are an expert data transformation AI. Your sole purpose is to convert unstructured text, including messy CSVs from other AIs, into a single, clean, structured CSV output that strictly follows the provided schemas.
+        const systemInstruction = `You are an expert data transformation AI. Your sole purpose is to convert unstructured text into a single, clean, structured JSON object.
 RULES:
-1.  **CSV ONLY:** Your entire output MUST be raw CSV text. Do not include explanations, apologies, conversational text, or markdown formatting like \`\`\`csv.
-2.  **CLEANUP:** The input may contain surrounding text or markdown. Ignore it and extract only the data.
-3.  **FLEXIBLE HEADERS:** Be flexible with input column headers. Map variations like "Task Name" or "Title" to \`CARD_TITLE\`, "Subject" to \`SUBJECT_TAG\`, and "Date" to the correct date field (\`DAY\` for schedules, \`DATE\` for exams).
-4.  **DATA CORRECTION:** Automatically fix common formatting issues. Convert dates like "August 15th, 2024" or "next tuesday" to the correct \`YYYY-MM-DD\` format. Convert times like "9am" or "8 PM" to \`HH:MM\` format.
-5.  **MULTI-SCHEMA & INFERENCE:** The input may contain multiple data types. Detect and generate rows for all of them. If a row is missing a \`TYPE\`, infer it: a future date suggests an \`EXAM\`; a time suggests an \`ACTION\`; question ranges suggest \`HOMEWORK\`; a score suggests a \`RESULT\`.
-6.  **ID GENERATION:** Generate a unique ID for every single SCHEDULE or EXAM row. Prefix with 'A' for ACTION, 'H' for HOMEWORK, 'E' for EXAM.
-7.  **STRICT SCHEMA OUTPUT:** While the input can be messy, your output CSV MUST strictly adhere to the headers and formats defined in the schemas below. For \`METRICS\` type \`RESULT\`, only populate \`SCORE\` and \`MISTAKES\`. For type \`WEAKNESS\`, only populate \`WEAKNESSES\`.`;
+1.  **JSON ONLY:** Your entire output MUST be a single raw JSON object. Do not include explanations, apologies, conversational text, or markdown formatting like \`\`\`json.
+2.  **CLEANUP:** The input may contain surrounding text. Ignore it and extract only the data.
+3.  **DATA CORRECTION:** Automatically fix common formatting issues. Convert dates to \`YYYY-MM-DD\` format. Convert times to \`HH:MM\` format.
+4.  **MULTI-SCHEMA:** The input may contain multiple data types. Populate all relevant arrays in the output JSON.
+5.  **ID GENERATION:** Generate a unique alphanumeric ID for every single schedule or exam item.
+6.  **STRICT SCHEMA OUTPUT:** Your output JSON MUST strictly adhere to the following structure:
+    {
+      "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "time": string?, "title": string, "detail": string, "subject": string, "q_ranges": string?, "sub_type": string? } ],
+      "exams": [ { "id": string, "type": "EXAM", "subject": string, "title": string, "date": string, "time": string, "syllabus": string } ],
+      "metrics": [ { "type": "RESULT" | "WEAKNESS", "score": string?, "mistakes": string?, "weaknesses": string? } ]
+    }
+    For metrics, 'mistakes' and 'weaknesses' should be semicolon-separated strings.`;
 
-        const prompt = `Convert the following text into one or more CSV blocks based on the schemas provided.
-
-**SCHEMAS:**
-
-**1. SCHEDULE (for classes, study sessions, homework):**
-HEADER: \`ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE\`
-- TYPE must be 'ACTION' (a timed task) or 'HOMEWORK'.
-- TIME is required for 'ACTION'.
-- Q_RANGES is for 'HOMEWORK' only (e.g., "Ex 1.1: 1-15; PYQ: 1-10").
-- SUB_TYPE for 'ACTION' can be 'DEEP_DIVE', 'ANALYSIS', or 'FLASHCARD_REVIEW'.
-
-**2. EXAM (for tests and quizzes):**
-HEADER: \`ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS\`
-- TYPE must be 'EXAM'.
-- SUBJECT can be 'PHYSICS', 'CHEMISTRY', 'MATHS', or 'FULL'.
-- DATE must be YYYY-MM-DD.
-
-**3. METRICS (for test results or weaknesses):**
-HEADER: \`SID,TYPE,SCORE,MISTAKES,WEAKNESSES\`
-- TYPE must be 'RESULT' or 'WEAKNESS'.
-- SCORE is for 'RESULT' only, format: "marks/total".
-- MISTAKES/WEAKNESSES are semicolon-separated strings.
-
----
-**USER TEXT TO CONVERT:**
-${text}
----
-`;
+        const prompt = `Convert the following text into a structured JSON object based on the system instruction schema.\n\nUSER TEXT TO CONVERT:\n${text}`;
         
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro', // Using a more powerful model for complex parsing
             contents: prompt,
-            config: { systemInstruction },
+            config: { 
+                systemInstruction,
+                responseMimeType: 'application/json'
+            },
         });
 
-        res.json({ csv: response.text.trim() });
+        res.json(JSON.parse(response.text.trim()));
     } catch (error) {
         console.error("Gemini API error (text parse):", error);
         res.status(500).json({ error: `Failed to parse text: ${error.message}` });

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StudentData, ScheduleItem } from '../types';
+import { StudentData, ScheduleItem, HomeworkData } from '../types';
 import Icon from './Icon';
 import AIGuide from './AIGuide';
 import MessagingModal from './MessagingModal';
@@ -39,10 +39,36 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
         }
     };
     
-    const handleAIBroadcastSave = (csv: string) => {
+    const handleAIBroadcastSave = (data: any) => {
         try {
-            const parsedData = parseCSVData(csv);
-            const tasksToBroadcast = parsedData.schedules.map(s => s.item);
+            let tasksToBroadcast: ScheduleItem[] = [];
+            const createLocalizedString = (text: string) => ({ EN: text || '', GU: '' });
+
+            if (data.schedules && data.schedules.length > 0) {
+                // Case 1: Data is from client-side parseCSVData, which wraps items
+                if (data.schedules[0].item) {
+                    tasksToBroadcast = data.schedules.map((s: any) => s.item);
+                } 
+                // Case 2: Data is from AI (JSON format with flat structure), needs reconstruction
+                else {
+                    tasksToBroadcast = (data.schedules || []).map((s: any): ScheduleItem => {
+                        const id = s.id || `${s.type === 'HOMEWORK' ? 'H' : 'A'}${Date.now()}${Math.random().toString(36).substring(2, 5)}`;
+                        if (s.type === 'HOMEWORK') {
+                            return {
+                                ID: id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
+                                CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
+                                SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined
+                            } as HomeworkData;
+                        }
+                        return {
+                            ID: id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
+                            DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
+                            FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
+                        } as ScheduleItem;
+                    });
+                }
+            }
+
             if (tasksToBroadcast.length === 0) {
                 alert("No schedule items found in the provided text.");
                 return;
@@ -78,8 +104,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} decks={[]} />
             )}
             {isAIBroadcastModalOpen && (
-                // FIX: Removed invalid `geminiApiKey` prop.
-                <AIParserModal onClose={() => setIsAIBroadcastModalOpen(false)} onSave={handleAIBroadcastSave} />
+                // FIX: Changed onSave to onDataReady and updated handler to process structured data.
+                <AIParserModal onClose={() => setIsAIBroadcastModalOpen(false)} onDataReady={handleAIBroadcastSave} />
             )}
         </main>
     );

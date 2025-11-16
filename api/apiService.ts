@@ -1,4 +1,5 @@
 
+
 import { StudentData, ScheduleItem, Config, ResultData, ExamData } from '../types';
 
 const API_URL = '/api';
@@ -101,7 +102,7 @@ export const api = {
     aiChat: (data: { history: any[]; prompt: string; imageBase64?: string; }) => authFetch('/ai/chat', { method: 'POST', body: JSON.stringify(data) }),
     analyzeMistake: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/analyze-mistake', { method: 'POST', body: JSON.stringify(data) }),
     solveDoubt: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/solve-doubt', { method: 'POST', body: JSON.stringify(data) }),
-    parseTextToCsv: (text: string) => authFetch('/ai/parse-text-to-csv', { method: 'POST', body: JSON.stringify({ text }) }),
+    parseText: (text: string) => authFetch('/ai/parse-text', { method: 'POST', body: JSON.stringify({ text }) }),
     parseImageToCsv: (imageBase64: string) => authFetch('/ai/parse-image-to-csv', { method: 'POST', body: JSON.stringify({ imageBase64 }) }),
     analyzeTestResults: (data: { imageBase64: string; userAnswers: Record<string, string>; timings: Record<string, number>, syllabus: string }) => authFetch('/ai/analyze-test-results', { method: 'POST', body: JSON.stringify(data) }),
     analyzeSpecificMistake: (data: { imageBase64: string; prompt: string; }) => authFetch('/ai/analyze-specific-mistake', { method: 'POST', body: JSON.stringify(data) }),

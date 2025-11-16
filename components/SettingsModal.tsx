@@ -20,39 +20,70 @@ interface SettingsModalProps {
   onApiKeySet: () => void;
 }
 
-const aiGuideText = `# Universal CSV Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 3.7.0
-# Purpose: To guide AI agents in generating CSV data for the JEE Scheduler Pro platform.
+const aiGuideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
+# Version: 4.0.0
+# Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform.
 
-## 1. CRITICAL AI BEHAVIOR: Always Use Raw CSV
-When a user asks you to generate a schedule, timetable, homework list, exam list, or a list of their mistakes, your entire response **MUST** be raw CSV text.
-- **DO NOT** include any explanations, apologies, conversational text, or markdown formatting like \`\`\`csv\`\`\` before or after the data.
-- Your output will be parsed directly by a machine. Any extra text will cause the import to fail.
+## 1. CRITICAL AI BEHAVIOR: Output Raw JSON
+Your entire response **MUST** be a single, raw JSON object.
+- **DO NOT** include any explanations, conversational text, or markdown formatting like \`\`\`json.
+- Your output will be parsed directly by a machine.
 
----
-## 2. General Rules & Best Practices
-- **Format:** Standard CSV. Each import can handle MULTIPLE data types (schemas) in a single paste.
-- **Header Row:** The first row MUST be a header row.
-- **Newlines:** Each data row MUST end with a newline character. **DO NOT** output the entire CSV on a single line.
-- **Quoting:** Fields containing commas, newlines, or double quotes MUST be enclosed in double quotes (\`"\`). Example: \`"Solve conceptual questions, focusing on FBDs."\`
-- **ID Generation:** Generate a unique alphanumeric ID for each new SCHEDULE or EXAM entry. Prefix with 'A' for ACTION, 'H' for HOMEWORK, 'E' for EXAM.
-- **Scheduling Logic (CRITICAL):**
-    - For weekdays (Monday to Saturday), schedule all study-related \`ACTION\` tasks between **17:00 (5 PM) and 23:30 (11:30 PM)**.
-    - On Sundays, you can schedule tasks at any time, with one exception.
-    - **Kota Test Exception:** If a "Kota test" or similar major mock exam is scheduled on a Sunday, do NOT schedule any other tasks between **07:00 (7 AM) and 13:00 (1 PM)** to avoid conflicts.
+## 2. Top-Level JSON Structure
+Your entire output must be a single JSON object with these keys. Provide empty arrays \`[]\` for types not present.
+\`\`\`json
+{
+  "schedules": [ /* ... schedule items ... */ ],
+  "exams": [ /* ... exam items ... */ ],
+  "metrics": [ /* ... metric items ... */ ]
+}
+\`\`\`
 
 ---
-## 3. Data Type: SCHEDULE (for Study Sessions & Homework)
-**Header:** \`ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE\`
-**CRITICAL RULE for \`TYPE\`:** If a task involves solving specific questions (e.g., "Ex 1.1, Qs 1-10"), its \`TYPE\` **MUST** be \`HOMEWORK\`. If it is a timed study block without specific question numbers, its \`TYPE\` **MUST** be \`ACTION\`.
+### 2.1 \`schedules\` Array Items
+- **Required keys:** \`id\`, \`type\` ("ACTION" or "HOMEWORK"), \`day\`, \`title\`, \`detail\`, \`subject\`.
+- **Conditional keys:** \`time\` (for "ACTION"), \`q_ranges\` (for "HOMEWORK"), \`sub_type\` (for "ACTION").
+
+**Example:**
+\`\`\`json
+{
+  "id": "A102", "type": "ACTION", "day": "WEDNESDAY", "time": "20:00",
+  "title": "Rotational Dynamics", "detail": "Solve 10 PYQs.",
+  "subject": "PHYSICS", "sub_type": "DEEP_DIVE"
+}
+\`\`\`
 
 ---
-## 4. Data Type: EXAM
-**Header:** \`ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS\`
+### 2.2 \`exams\` Array Items
+- **Required keys:** \`id\`, \`type\` ("EXAM"), \`subject\`, \`title\`, \`date\`, \`time\`, \`syllabus\`.
+
+**Example:**
+\`\`\`json
+{
+  "id": "E301", "type": "EXAM", "subject": "FULL", "title": "Kota Major Test #1",
+  "date": "2024-08-18", "time": "07:00", "syllabus": "Full Syllabus Paper 1"
+}
+\`\`\`
 
 ---
-## 5. Data Type: METRICS (for Results & Mistakes)
-**Header:** \`SID,TYPE,SCORE,MISTAKES,WEAKNESSES\``;
+### 2.3 \`metrics\` Array Items
+- **Required keys:** \`type\` ("RESULT" or "WEAKNESS").
+- **Conditional keys:** \`score\` & \`mistakes\` (for "RESULT"), \`weaknesses\` (for "WEAKNESS"). Mistakes/weaknesses are semicolon-separated.
+
+**Example:**
+\`\`\`json
+{
+  "type": "RESULT", "score": "185/300",
+  "mistakes": "Integration by Parts;Young's Double Slit"
+}
+\`\`\`
+
+---
+## 3. (Legacy) CSV Format
+The system can still parse well-formatted CSV as a fallback.
+**SCHEDULE Header:** \`ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE\`
+**EXAM Header:** \`ID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS\`
+**METRICS Header:** \`TYPE,SCORE,MISTAKES,WEAKNESSES\``;
 
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {

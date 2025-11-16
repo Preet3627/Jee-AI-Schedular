@@ -152,56 +152,85 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         setIsCreateModalOpen(true);
     };
 
-    const handleCsvSave = (csv: string) => {
+    const handleDataImport = (structuredData: any) => {
         try {
-            const parsedData = parseCSVData(csv, student.sid);
-            const newSchedules = parsedData.schedules.map(s => s.item);
-            const newExams = parsedData.exams.map(e => e.item);
-            
-            const newResults: ResultData[] = [];
-            const newWeaknesses: string[] = [];
-            
-            parsedData.metrics.forEach(metric => {
-                if (metric.item.type === 'RESULT' && metric.item.score && metric.item.mistakes) {
-                    newResults.push({
-                        ID: `R${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
-                        DATE: new Date().toISOString().split('T')[0], // Default to today for imported results
-                        SCORE: metric.item.score,
-                        MISTAKES: metric.item.mistakes,
-                    });
-                } else if (metric.item.type === 'WEAKNESS' && metric.item.weaknesses) {
-                    newWeaknesses.push(...metric.item.weaknesses);
-                }
-            });
-            
-            const importData = {
-                schedules: newSchedules,
-                exams: newExams,
-                results: newResults,
-                weaknesses: newWeaknesses
-            };
-            
-            const totalItems = newSchedules.length + newExams.length + newResults.length + (newWeaknesses.length > 0 ? 1 : 0);
-            
-            if (totalItems > 0) {
-                onBatchImport(importData); // Use the new efficient batch handler
-                
-                // Build and show a detailed confirmation message
-                const messages = [];
-                if (newSchedules.length > 0) messages.push(`${newSchedules.length} schedule item(s)`);
-                if (newExams.length > 0) messages.push(`${newExams.length} exam(s)`);
-                if (newResults.length > 0) messages.push(`${newResults.length} result(s)`);
-                if (newWeaknesses.length > 0) messages.push(`weakness entries`);
-                
-                alert(`Import successful! Added: ${messages.join(', ')}.`);
-            } else {
-                alert("No valid data was found in the text provided. Please check the format or use the AI Guide.");
+            const createLocalizedString = (text: string) => ({ EN: text || '', GU: '' });
+            let schedules: ScheduleItem[] = [];
+            let exams: ExamData[] = [];
+            let results: ResultData[] = [];
+            let weaknesses: string[] = [];
+
+            // Case 1: Data is from client-side parseCSVData
+            if (structuredData.schedules && structuredData.schedules[0]?.item) {
+                schedules = structuredData.schedules.map((s: any) => s.item);
+                exams = structuredData.exams.map((e: any) => e.item);
+                structuredData.metrics.forEach((m: any) => {
+                    if (m.item.type === 'RESULT') {
+                        results.push({
+                            ID: `R${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
+                            DATE: new Date().toISOString().split('T')[0],
+                            SCORE: m.item.score, MISTAKES: m.item.mistakes
+                        });
+                    } else if (m.item.type === 'WEAKNESS') {
+                        weaknesses.push(...m.item.weaknesses);
+                    }
+                });
+            } 
+            // Case 2: Data is from AI (JSON format with flat structure)
+            else {
+                schedules = (structuredData.schedules || []).map((s: any) => {
+                    if (s.type === 'HOMEWORK') {
+                        return {
+                            ID: s.id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
+                            CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
+                            SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined
+                        } as HomeworkData;
+                    }
+                    return {
+                        ID: s.id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
+                        DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
+                        FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
+                    } as ScheduleItem;
+                });
+
+                exams = (structuredData.exams || []).map((e: any) => ({
+                    ID: e.id, subject: e.subject.toUpperCase(), title: e.title, date: e.date,
+                    time: e.time, syllabus: e.syllabus
+                }));
+
+                (structuredData.metrics || []).forEach((m: any) => {
+                    if (m.type === 'RESULT' && m.score && m.mistakes) {
+                        results.push({
+                            ID: `R${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
+                            DATE: new Date().toISOString().split('T')[0], SCORE: m.score,
+                            MISTAKES: m.mistakes.split(';').map((s: string) => s.trim()).filter(Boolean)
+                        });
+                    } else if (m.type === 'WEAKNESS' && m.weaknesses) {
+                        weaknesses.push(...m.weaknesses.split(';').map((s: string) => s.trim()).filter(Boolean));
+                    }
+                });
             }
-            
+
+            const importData = { schedules, exams, results, weaknesses };
+            const totalItems = schedules.length + exams.length + results.length + (weaknesses.length > 0 ? 1 : 0);
+
+            if (totalItems > 0) {
+                onBatchImport(importData);
+                const messages = [
+                    schedules.length > 0 && `${schedules.length} schedule item(s)`,
+                    exams.length > 0 && `${exams.length} exam(s)`,
+                    results.length > 0 && `${results.length} result(s)`,
+                    weaknesses.length > 0 && `weakness entries`
+                ].filter(Boolean).join(', ');
+                alert(`Import successful! Added: ${messages}.`);
+            } else {
+                 alert("No valid data was found to import. Please check the format or use the AI Guide.");
+            }
+
             setisAiParserModalOpen(false);
             setIsImageModalOpen(false);
         } catch (error: any) {
-            alert(`Error parsing data: ${error.message}`);
+            alert(`Error processing data: ${error.message}`);
         }
     };
     
@@ -451,8 +480,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {renderContent()}
 
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
-            {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCsvSave} />}
-            {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={handleCsvSave} />}
+            {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} />}
+            {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={() => {}} />}
             {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} />}
             {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
