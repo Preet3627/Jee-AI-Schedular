@@ -170,6 +170,7 @@ export interface Config {
     calendarLastSync?: string;
     geminiApiKey?: string; // This is stored encrypted on the backend ONLY.
     flashcardDecks?: FlashcardDeck[];
+    pinnedMaterials?: string[]; // Array of item paths
     settings: {
         accentColor: string;
         blurEnabled: boolean;

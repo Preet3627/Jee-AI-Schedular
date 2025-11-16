@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StudentData, ScheduleItem, HomeworkData } from '../types';
+import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
 import AIGuide from './AIGuide';
 import MessagingModal from './MessagingModal';
@@ -11,11 +11,10 @@ interface TeacherDashboardProps {
     onToggleUnacademySub: (sid: string) => void;
     onDeleteUser: (sid: string) => void;
     onAddTeacher?: (teacherData: any) => void;
-    onBatchImport: (csl: string) => void;
     onBroadcastTask: (task: ScheduleItem) => void;
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleUnacademySub, onDeleteUser, onAddTeacher, onBatchImport, onBroadcastTask }) => {
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleUnacademySub, onDeleteUser, onAddTeacher, onBroadcastTask }) => {
     const [activeTab, setActiveTab] = useState<'grid' | 'broadcast' | 'guide'>('grid');
     const [messagingStudent, setMessagingStudent] = useState<StudentData | null>(null);
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
@@ -39,34 +38,55 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
     
     const handleAIBroadcastSave = (data: any) => {
         try {
+            if (!data || typeof data !== 'object') {
+                throw new Error("Received invalid data format from AI.");
+            }
+            
             const createLocalizedString = (text: string) => ({ EN: text || '', GU: '' });
 
-            const tasksToBroadcast: ScheduleItem[] = (data.schedules || []).map((s: any): ScheduleItem => {
-                const id = s.id || `${s.type === 'HOMEWORK' ? 'H' : 'A'}${Date.now()}${Math.random().toString(36).substring(2, 5)}`;
+            const schedules = Array.isArray(data.schedules) ? data.schedules : [];
+
+            const tasksToBroadcast: ScheduleItem[] = schedules.map((s: any): ScheduleItem | null => {
+                // Basic validation for a schedule item
+                if (!s || !s.id || !s.type || !s.day || !s.title || !s.detail || !s.subject) {
+                    console.warn("Skipping invalid schedule item from AI:", s);
+                    return null;
+                }
+
                 if (s.type === 'HOMEWORK') {
                     return {
-                        ID: id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
+                        ID: s.id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
                         CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
                         SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined
                     } as HomeworkData;
+                } else if (s.type === 'ACTION') {
+                     if (!s.time) {
+                        console.warn("Skipping ACTION item without a time:", s);
+                        return null; // ACTION type requires a TIME
+                     }
+                    return {
+                        ID: s.id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
+                        DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
+                        FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
+                    } as ScheduleCardData;
                 }
-                return {
-                    ID: id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
-                    DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
-                    FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
-                } as ScheduleItem;
-            });
+                
+                console.warn("Skipping unknown schedule type from AI:", s);
+                return null;
+
+            }).filter((item): item is ScheduleItem => item !== null);
 
             if (tasksToBroadcast.length === 0) {
-                alert("No schedule items found in the provided text.");
+                alert("No valid schedule items were found in the provided data to broadcast.");
                 return;
             }
+
             if(window.confirm(`This will broadcast ${tasksToBroadcast.length} tasks to all students. Continue?`)) {
                 tasksToBroadcast.forEach(onBroadcastTask);
                 setIsAIBroadcastModalOpen(false);
             }
         } catch (error: any) {
-            alert(`Error parsing data: ${error.message}`);
+            alert(`Error processing data: ${error.message}`);
         }
     };
 
@@ -92,7 +112,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} decks={[]} />
             )}
             {isAIBroadcastModalOpen && (
-                // FIX: Changed onSave to onDataReady and updated handler to process structured data.
                 <AIParserModal onClose={() => setIsAIBroadcastModalOpen(false)} onDataReady={handleAIBroadcastSave} />
             )}
         </main>

@@ -404,7 +404,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     </div>
                  );
             case 'material':
-                return <StudyMaterialView onViewFile={setViewingFile} />;
+                return <StudyMaterialView student={student} onUpdateConfig={onUpdateConfig} onViewFile={setViewingFile} />;
             case 'flashcards':
                 return <FlashcardManager 
                             decks={student.CONFIG.flashcardDecks || []}

@@ -95,6 +95,7 @@ export const api = {
 
     // Study Material
     getStudyMaterial: (path: string) => authFetch(`/study-material/browse?path=${encodeURIComponent(path)}`),
+    getStudyMaterialDetails: (paths: string[]) => authFetch('/study-material/details', { method: 'POST', body: JSON.stringify({ paths }) }),
 
     // Admin
     getStudents: () => authFetch('/admin/students'),

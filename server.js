@@ -782,17 +782,23 @@ apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
         
         const items = (jsonData['d:multistatus']['d:response'] || [])
             .map((item) => {
-                const fullPath = item['d:href'];
-                const prop = item['d:propstat']['d:prop'];
-                // Skip the folder itself in its own listing
-                if (decodeURIComponent(fullPath).endsWith(requestedPath)) return null;
+                const clientPath = decodeURIComponent(item['d:href']).replace('/public.php/webdav', '');
+                
+                // Normalize paths by removing trailing slashes for comparison, but keep root as '/'
+                const normalize = (p) => (p.length > 1 && p.endsWith('/')) ? p.slice(0, -1) : p;
+                
+                // This correctly filters out the entry for the directory itself, while keeping subdirectories.
+                if (normalize(clientPath) === normalize(requestedPath)) {
+                    return null;
+                }
 
+                const prop = item['d:propstat']['d:prop'];
                 const isCollection = !!prop['d:resourcetype']['d:collection'];
-                const name = decodeURIComponent(fullPath).split('/').filter(Boolean).pop();
+                const name = decodeURIComponent(item['d:href']).split('/').filter(Boolean).pop();
 
                 return {
                     name,
-                    path: decodeURIComponent(fullPath).replace('/public.php/webdav', ''),
+                    path: clientPath,
                     type: isCollection ? 'folder' : 'file',
                     size: prop['d:getcontentlength'] || 0,
                     modified: prop['d:getlastmodified'] || '',
@@ -809,6 +815,55 @@ apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error("Nextcloud browse error:", error);
         res.status(500).json({ error: "Failed to retrieve study materials." });
+    }
+});
+
+apiRouter.post('/study-material/details', authMiddleware, async (req, res) => {
+    if (!isNextcloudConfigured) {
+        return res.status(503).json({ error: 'Study material repository is not configured.' });
+    }
+    const { paths } = req.body;
+    if (!Array.isArray(paths)) {
+        return res.status(400).json({ error: 'An array of paths is required.' });
+    }
+    
+    const { NEXTCLOUD_URL, NEXTCLOUD_SHARE_TOKEN, NEXTCLOUD_SHARE_PASSWORD } = process.env;
+    const auth = 'Basic ' + Buffer.from(`${NEXTCLOUD_SHARE_TOKEN}:${NEXTCLOUD_SHARE_PASSWORD || ''}`).toString('base64');
+    
+    try {
+        const itemPromises = paths.map(async (p) => {
+            const webdavUrl = `${NEXTCLOUD_URL}/public.php/webdav${p}`;
+            const response = await fetch(webdavUrl, {
+                method: 'PROPFIND',
+                headers: { 'Authorization': auth, 'Depth': '0' } // Depth 0 for single item
+            });
+            if (!response.ok) return null;
+
+            const xmlData = await response.text();
+            const jsonData = await parseStringPromise(xmlData, { explicitArray: false, mergeAttrs: true });
+            
+            const item = jsonData['d:multistatus']['d:response'];
+            if (!item) return null;
+
+            const prop = item['d:propstat']['d:prop'];
+            const isCollection = !!prop['d:resourcetype']['d:collection'];
+            const name = decodeURIComponent(item['d:href']).split('/').filter(Boolean).pop();
+
+            return {
+                name,
+                path: decodeURIComponent(item['d:href']).replace('/public.php/webdav', ''),
+                type: isCollection ? 'folder' : 'file',
+                size: prop['d:getcontentlength'] || 0,
+                modified: prop['d:getlastmodified'] || '',
+            };
+        });
+
+        const results = (await Promise.all(itemPromises)).filter(Boolean);
+        res.json(results);
+
+    } catch (error) {
+        console.error("Nextcloud details error:", error);
+        res.status(500).json({ error: "Failed to retrieve item details." });
     }
 });
 
@@ -964,7 +1019,7 @@ apiRouter.post('/ai/parse-text', authMiddleware, async (req, res) => {
         const ai = new GoogleGenAI({ apiKey });
         const systemInstruction = `You are an expert data transformation AI. Your sole purpose is to convert unstructured text into a single, clean, structured JSON object.
 RULES:
-1.  **JSON ONLY:** Your entire output MUST be a single raw JSON object. Do not include explanations, apologies, conversational text, or markdown formatting like \`\`\`json.
+1.  **JSON ONLY:** Your entire output MUST be a single raw JSON object. Do not include explanations, conversational text, or markdown formatting like \`\`\`json.
 2.  **CLEANUP:** The input may contain surrounding text. Ignore it and extract only the data.
 3.  **DATA CORRECTION:** Automatically fix common formatting issues. Convert dates to \`YYYY-MM-DD\` format. Convert times to \`HH:MM\` format.
 4.  **MULTI-SCHEMA:** The input may contain multiple data types. Populate all relevant arrays in the output JSON.
@@ -980,7 +1035,7 @@ RULES:
         const prompt = `Convert the following text into a structured JSON object based on the system instruction schema.\n\nUSER TEXT TO CONVERT:\n${text}`;
         
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro', // Using a more powerful model for complex parsing
+            model: 'gemini-2.5-pro',
             contents: prompt,
             config: { 
                 systemInstruction,
@@ -989,14 +1044,27 @@ RULES:
         });
 
         try {
-            // Attempt to parse the response text as JSON.
+            // First attempt to parse
             const parsedJson = JSON.parse(response.text.trim());
             res.json(parsedJson);
         } catch (parseError) {
-            // This catch block executes if Gemini returns a non-JSON string.
-            console.error("AI returned invalid JSON:", response.text);
-            // Throw a new error to be caught by the outer catch block.
-            throw new Error("AI returned a response in an unexpected format. Please try again.");
+            // If parsing fails, ask the AI to fix it (self-correction)
+            console.warn("AI returned malformed JSON, attempting self-correction. Original text:", response.text);
+
+            const correctionPrompt = `The following text is supposed to be a single valid JSON object, but it has errors. Please fix it and return only the corrected JSON. Do not add any markdown, explanations, or any text other than the raw JSON object.\n\nMALFORMED TEXT:\n${response.text}`;
+            
+            const correctionResponse = await ai.models.generateContent({
+                model: 'gemini-2.5-flash', // Use a fast model for correction
+                contents: correctionPrompt,
+                config: {
+                    systemInstruction: "You are a JSON correction expert. Your only task is to fix malformed JSON. You MUST return ONLY a valid, raw JSON object.",
+                    responseMimeType: 'application/json'
+                },
+            });
+
+            // Try parsing the corrected response. This will throw if it's still invalid, which will be caught by the outer catch block.
+            const correctedJson = JSON.parse(correctionResponse.text.trim());
+            res.json(correctedJson);
         }
 
     } catch (error) {
