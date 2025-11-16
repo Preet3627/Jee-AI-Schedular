@@ -1,7 +1,8 @@
+
 import React from 'react';
 
 const guideText = `# Universal CSV Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 3.4.0
+# Version: 3.5.0
 # Purpose: To guide AI agents in generating CSV data for the JEE Scheduler Pro platform.
 
 ## 0. About JEE Scheduler Pro
@@ -57,7 +58,7 @@ When a user asks you to generate a schedule, timetable, homework list, exam list
 | \`FOCUS_DETAIL\` | A descriptive explanation. Use quotes if it contains a comma.      | **Yes**                  | \`"Fix FBD, Tension errors in pulleys."\`     |
 | \`SUBJECT_TAG\`  | \`PHYSICS\`, \`CHEMISTRY\`, \`MATHS\`, or a descriptive tag.             | **Yes**                  | \`PHYSICS\`                                   |
 | \`Q_RANGES\`     | **For \`HOMEWORK\` only.** Semicolon-separated question ranges.      | No                       | \`"L1:1-10@p45;PYQ:5-15"\`                    |
-| \`SUB_TYPE\`     | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`MORNING_DRILL\`, \`ANALYSIS\`.    | No                       | \`MORNING_DRILL\`                           |
+| \`SUB_TYPE\`     | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`MORNING_DRILL\`, \`ANALYSIS\`, \`FLASHCARD_REVIEW\`.    | No                       | \`FLASHCARD_REVIEW\`                           |
 
 **Example CSV (SCHEDULE):**
 \`\`\`csv
@@ -65,6 +66,7 @@ ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
 A101,S001,ACTION,MONDAY,19:00,"Trig Identities Drill","15-minute speed drill of core trig identities.",MATHS,,MORNING_DRILL
 H101,S001,HOMEWORK,TUESDAY,,"Maths Homework","Complete exercises on indefinite integration.",MATHS,"Ex 7.2: 1-20@p305",
 A102,S001,ACTION,WEDNESDAY,20:00,"Rotational Dynamics","Focus on Free Body Diagrams. Solve 10 PYQs.",PHYSICS,,DEEP_DIVE
+A104,S001,ACTION,THURSDAY,21:00,"Flashcard Review: Organic Chem","Review all cards in the 'Organic Chemistry Reactions' deck.",CHEMISTRY,,FLASHCARD_REVIEW
 A103,S001,ACTION,SUNDAY,17:00,"Mock Test Analysis","Review last mock test, focus on Chemistry errors.",KOTA_TEST,,ANALYSIS
 \`\`\`
 

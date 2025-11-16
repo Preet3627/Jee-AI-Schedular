@@ -1,9 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import McqTimer from './McqTimer';
 import Icon from './Icon';
 import { getQuestionNumbersFromRanges } from '../utils/qRangesParser';
-// FIX: Added ResultData and StudentData to types import.
 import { HomeworkData, ResultData, StudentData } from '../types';
 
 interface CustomPracticeModalProps {
@@ -11,9 +9,8 @@ interface CustomPracticeModalProps {
   onSessionComplete: (duration: number, questions_solved: number, questions_skipped: number[]) => void;
   initialTask?: HomeworkData | null;
   defaultPerQuestionTime: number;
-  // FIX: Added missing props to be passed to McqTimer.
-  onLogResult?: (result: ResultData) => void;
-  onUpdateWeaknesses?: (weaknesses: string[]) => void;
+  onLogResult: (result: ResultData) => void;
+  onUpdateWeaknesses: (weaknesses: string[]) => void;
   student: StudentData;
 }
 

@@ -31,7 +31,7 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave }) => {
     try {
       // First, try to parse it directly as CSV.
       const directParseResult = parseCSVData(inputText);
-      if (directParseResult.schedules.length > 0 || directParseResult.exams.length > 0) {
+      if (directParseResult.schedules.length > 0 || directParseResult.exams.length > 0 || directParseResult.metrics.length > 0) {
         // It looks like valid CSV, so we can save it directly without calling the AI.
         onSave(inputText);
         return;

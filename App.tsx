@@ -56,8 +56,9 @@ const App: React.FC = () => {
         refreshUser();
     };
 
-    const handleUpdateSettings = async (settings: Partial<Config['settings']>) => {
-        await api.updateConfig({ settings: { ...currentUser!.CONFIG.settings, ...settings } });
+    const handleUpdateConfig = async (configUpdate: Partial<Config>) => {
+        if (!currentUser) return;
+        await api.updateConfig(configUpdate);
         refreshUser();
     };
     
@@ -105,6 +106,35 @@ const App: React.FC = () => {
         refreshUser();
     };
 
+    const handleBatchImport = async (data: { schedules: ScheduleItem[], exams: ExamData[], results: ResultData[], weaknesses: string[] }) => {
+        if (!currentUser) return;
+        
+        // Deep clone to avoid mutation issues with React state
+        const updatedUser = JSON.parse(JSON.stringify(currentUser));
+
+        // Add new items
+        updatedUser.SCHEDULE_ITEMS.push(...data.schedules);
+        updatedUser.EXAMS.push(...data.exams);
+        updatedUser.RESULTS.push(...data.results);
+
+        // Update config with new weaknesses and latest score
+        const newWeaknesses = new Set([...updatedUser.CONFIG.WEAK, ...data.weaknesses]);
+        data.results.forEach(r => {
+            r.MISTAKES.forEach(m => newWeaknesses.add(m));
+        });
+        updatedUser.CONFIG.WEAK = Array.from(newWeaknesses);
+
+        if (data.results.length > 0) {
+            // Find the result with the latest date to set as the current score
+            const sortedResults = [...updatedUser.RESULTS].sort((a, b) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime());
+            updatedUser.CONFIG.SCORE = sortedResults[0].SCORE;
+        }
+
+        // A single sync with the backend for performance
+        await api.fullSync(updatedUser);
+        refreshUser();
+    };
+
     const onPostDoubt = async (question: string, image?: string) => {
         await api.postDoubt(question, image);
         const doubtsData = await api.getAllDoubts();
@@ -129,6 +159,7 @@ const App: React.FC = () => {
                 // CONFIG excludes sensitive settings
                 CONFIG: {
                     WEAK: currentUser.CONFIG.WEAK,
+                    flashcardDecks: currentUser.CONFIG.flashcardDecks,
                 }
             };
             const fileId = await gdrive.uploadData(JSON.stringify(backupData), currentUser.CONFIG.googleDriveFileId);
@@ -242,7 +273,7 @@ const App: React.FC = () => {
                         {userRole === 'admin' ? (
                             <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBatchImport={()=>{}} onBroadcastTask={api.broadcastTask} />
                         ) : (
-                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateSettings={handleUpdateSettings} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.fullName)} googleAuthStatus={googleAuthStatus} onGoogleSignIn={gcal.handleSignIn} onGoogleSignOut={gcal.handleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />
+                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateConfig={handleUpdateConfig} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.fullName)} onBatchImport={handleBatchImport} googleAuthStatus={googleAuthStatus} onGoogleSignIn={gcal.handleSignIn} onGoogleSignOut={gcal.handleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />
                         )}
                     </div>
                 </div>

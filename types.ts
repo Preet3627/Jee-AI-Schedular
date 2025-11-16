@@ -30,10 +30,11 @@ export interface ScheduleCardData {
   UNACADEMY_QUERY?: string;
   ACTION_COMMAND?: string;
   type: 'ACTION';
-  SUB_TYPE?: 'MORNING_DRILL' | 'DEEP_DIVE' | 'ANALYSIS';
+  SUB_TYPE?: 'MORNING_DRILL' | 'DEEP_DIVE' | 'ANALYSIS' | 'FLASHCARD_REVIEW';
   isUserCreated?: boolean;
   isStarred?: boolean;
   googleEventId?: string;
+  deckId?: string;
 }
 
 export interface HomeworkData {
@@ -135,6 +136,19 @@ export interface StudySession {
   questions_skipped: number[];
 }
 
+export interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+}
+
+export interface FlashcardDeck {
+  id: string;
+  name: string;
+  subject: string;
+  cards: Flashcard[];
+}
+
 // Represents the structure of the encrypted JSON blob in the `user_configs` table
 export interface Config {
     WAKE: string;
@@ -144,6 +158,7 @@ export interface Config {
     googleDriveFileId?: string;
     driveLastSync?: string;
     geminiApiKey?: string; // This is stored encrypted on the backend ONLY.
+    flashcardDecks?: FlashcardDeck[];
     settings: {
         accentColor: string;
         blurEnabled: boolean;

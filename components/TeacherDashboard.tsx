@@ -75,7 +75,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 <MessagingModal student={messagingStudent} onClose={() => setMessagingStudent(null)} isDemoMode={false} />
             )}
             {isBroadcastModalOpen && (
-                <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} />
+                <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} decks={[]} />
             )}
             {isAIBroadcastModalOpen && (
                 // FIX: Removed invalid `geminiApiKey` prop.

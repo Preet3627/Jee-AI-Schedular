@@ -11,11 +11,12 @@ interface ScheduleListProps {
     onMoveToNextDay: (id: string) => void;
     onStar: (id: string) => void;
     onStartPractice: (homework: HomeworkData) => void;
+    onStartReviewSession: (deckId: string) => void;
     onMarkDoubt?: (topic: string, q_id: string) => void; // Optional for now
     isSubscribed: boolean;
 }
 
-const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onMarkDoubt, isSubscribed }) => {
+const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onMarkDoubt, isSubscribed }) => {
     const { t } = useLocalization();
 
     const daysOfWeek = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
@@ -44,7 +45,7 @@ const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, on
     return (
         <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm">
             <h2 className="text-xl font-semibold text-cyan-400 tracking-widest uppercase mb-6">
-                {t({ EN: "Weekly Schedule", GU: "સાપ્તાહિક શેડ્યૂલ" })}
+                {t({ EN: "Weekly Schedule", GU: "સાપ્ताહિક શેડ્યૂલ" })}
             </h2>
             <div className="space-y-4">
                 {sortedItems.length > 0 ? (
@@ -60,6 +61,7 @@ const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, on
                                 onMoveToNextDay={onMoveToNextDay}
                                 onStar={onStar}
                                 onStartPractice={onStartPractice}
+                                onStartReviewSession={onStartReviewSession}
                                 onMarkDoubt={onMarkDoubt}
                                 isSubscribed={isSubscribed}
                                 isPast={isPast}

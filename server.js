@@ -276,7 +276,7 @@ const getUserData = async (userId) => {
         const defaultConfig = {
             WAKE: '06:00', SCORE: '0/300', WEAK: [], UNACADEMY_SUB: false,
             settings: { accentColor: '#0891b2', blurEnabled: true, mobileLayout: 'standard', forceOfflineMode: false, perQuestionTime: 180 },
-            RESULTS: [], EXAMS: [], STUDY_SESSIONS: [], DOUBTS: [],
+            RESULTS: [], EXAMS: [], STUDY_SESSIONS: [], DOUBTS: [], flashcardDecks: [],
         };
         const encryptedDefaultConfig = encrypt(JSON.stringify(defaultConfig));
         await pool.query(
@@ -765,6 +765,37 @@ const getApiKeyForUser = async (userId) => {
     return process.env.API_KEY; // Fallback to global key
 };
 
+apiRouter.post('/ai/daily-insight', authMiddleware, async (req, res) => {
+    const { weaknesses } = req.body;
+    const apiKey = await getApiKeyForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are a helpful AI assistant for JEE aspirants. Your task is to provide a daily motivational quote and a relevant, useful piece of academic information (like a formula, a key concept, or a common mistake to avoid) based on the student's list of weaknesses.
+        Your response MUST be a single, valid JSON object with two keys: "quote" and "insight".
+        - "quote": A short, motivational quote for a student.
+        - "insight": A string containing a relevant formula or important point related to one of the student's weaknesses. Make it concise and easy to understand.`;
+        
+        const prompt = `Student's current weaknesses: ${weaknesses.join(', ')}. Generate a quote and an insight.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json'
+            },
+        });
+        
+        res.json(JSON.parse(response.text));
+    } catch (error) {
+        console.error("Gemini API error (daily insight):", error);
+        res.status(500).json({ error: `Failed to get daily insight from AI: ${error.message}` });
+    }
+});
+
+
 apiRouter.post('/ai/analyze-mistake', authMiddleware, async (req, res) => {
     const { prompt, imageBase64 } = req.body;
     if (!prompt) return res.status(400).json({ error: "A prompt describing the mistake is required." });
@@ -840,21 +871,15 @@ apiRouter.post('/ai/parse-text-to-csv', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are an expert data transformation AI. Your sole purpose is to convert unstructured text from students into structured, multi-schema CSV data.
+        const systemInstruction = `You are an expert data transformation AI. Your sole purpose is to convert unstructured text, including messy CSVs from other AIs, into a single, clean, structured CSV output that strictly follows the provided schemas.
 RULES:
-1.  **CSV ONLY:** Your entire output must be raw CSV text. Do not include explanations, apologies, or markdown like \`\`\`csv.
-2.  **Multi-Schema Support:** The user's text may contain information for schedules, exams, and results simultaneously. You MUST detect and generate CSV rows for all of them in a single output.
-3.  **Unique IDs:** Generate a unique ID for every single SCHEDULE or EXAM row. Prefix with 'A' for ACTION, 'H' for HOMEWORK, 'E' for EXAM.
-4.  **Infer Missing Data:** Use logic and the current date (${new Date().toISOString().split('T')[0]}) to fill in missing details like dates. For days of the week, assume they are in the upcoming week.
-5.  **Quoting:** Use double quotes for any field containing commas.`;
-
-        // Helper to get next Friday's date for the example
-        const today = new Date();
-        const dayOfWeek = today.getDay(); // Sunday - 0, ... , Saturday - 6
-        const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
-        const nextFriday = new Date(today);
-        nextFriday.setDate(today.getDate() + (daysUntilFriday === 0 ? 7 : daysUntilFriday));
-        const nextFridayDate = nextFriday.toISOString().split('T')[0];
+1.  **CSV ONLY:** Your entire output MUST be raw CSV text. Do not include explanations, apologies, conversational text, or markdown formatting like \`\`\`csv.
+2.  **CLEANUP:** The input may contain surrounding text or markdown. Ignore it and extract only the data.
+3.  **FLEXIBLE HEADERS:** Be flexible with input column headers. Map variations like "Task Name" or "Title" to \`CARD_TITLE\`, "Subject" to \`SUBJECT_TAG\`, and "Date" to the correct date field (\`DAY\` for schedules, \`DATE\` for exams).
+4.  **DATA CORRECTION:** Automatically fix common formatting issues. Convert dates like "August 15th, 2024" or "next tuesday" to the correct \`YYYY-MM-DD\` format. Convert times like "9am" or "8 PM" to \`HH:MM\` format.
+5.  **MULTI-SCHEMA & INFERENCE:** The input may contain multiple data types. Detect and generate rows for all of them. If a row is missing a \`TYPE\`, infer it: a future date suggests an \`EXAM\`; a time suggests an \`ACTION\`; question ranges suggest \`HOMEWORK\`; a score suggests a \`RESULT\`.
+6.  **ID GENERATION:** Generate a unique ID for every single SCHEDULE or EXAM row. Prefix with 'A' for ACTION, 'H' for HOMEWORK, 'E' for EXAM.
+7.  **STRICT SCHEMA OUTPUT:** While the input can be messy, your output CSV MUST strictly adhere to the headers and formats defined in the schemas below. For \`METRICS\` type \`RESULT\`, only populate \`SCORE\` and \`MISTAKES\`. For type \`WEAKNESS\`, only populate \`WEAKNESSES\`.`;
 
         const prompt = `Convert the following text into one or more CSV blocks based on the schemas provided.
 
@@ -865,6 +890,7 @@ HEADER: \`ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_
 - TYPE must be 'ACTION' (a timed task) or 'HOMEWORK'.
 - TIME is required for 'ACTION'.
 - Q_RANGES is for 'HOMEWORK' only (e.g., "Ex 1.1: 1-15; PYQ: 1-10").
+- SUB_TYPE for 'ACTION' can be 'DEEP_DIVE', 'ANALYSIS', or 'FLASHCARD_REVIEW'.
 
 **2. EXAM (for tests and quizzes):**
 HEADER: \`ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS\`
@@ -878,17 +904,6 @@ HEADER: \`SID,TYPE,SCORE,MISTAKES,WEAKNESSES\`
 - SCORE is for 'RESULT' only, format: "marks/total".
 - MISTAKES/WEAKNESSES are semicolon-separated strings.
 
-**EXAMPLE CONVERSION:**
-USER TEXT: "Next friday I have a major test on the full syllabus at 9am. Also, I need to study rotational dynamics on Monday at 8pm, focusing on FBDs and solving PYQs. My last test score was 190/300 and I made mistakes in thermodynamics and wave optics."
-
-YOUR CSV OUTPUT:
-ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS
-E${Date.now()},,EXAM,FULL,"Major Test",${nextFridayDate},09:00,"Full Syllabus"
-ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
-A${Date.now()+1},,ACTION,MONDAY,20:00,"Rotational Dynamics Study","Focus on FBDs and solving PYQs.",PHYSICS,,DEEP_DIVE
-SID,TYPE,SCORE,MISTAKES,WEAKNESSES
-,RESULT,"190/300","thermodynamics;wave optics",
-
 ---
 **USER TEXT TO CONVERT:**
 ${text}
@@ -896,7 +911,7 @@ ${text}
 `;
         
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-pro', // Using a more powerful model for complex parsing
             contents: prompt,
             config: { systemInstruction },
         });

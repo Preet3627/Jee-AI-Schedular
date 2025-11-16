@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData } from '../types';
+import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard } from '../types';
 import ScheduleList from './ScheduleList';
 import Icon, { IconName } from './Icon';
 // FIX: Corrected import path for component.
@@ -38,16 +38,20 @@ import ImageToTimetableModal from './ImageToTimetableModal';
 // FIX: Corrected import path for component.
 import AIMistakeAnalysisModal from './AIMistakeAnalysisModal';
 import AIParserModal from './AIParserModal';
-import MotivationalQuoteWidget from './widgets/MotivationalQuoteWidget';
-import { motivationalQuotes } from '../data/motivationalQuotes';
+import DailyInsightWidget from './widgets/DailyInsightWidget';
 import AIChatPopup from './AIChatPopup';
 import AIDoubtSolverModal from './AIDoubtSolverModal';
 import { api } from '../api/apiService';
 import SubjectAllocationWidget from './widgets/SubjectAllocationWidget';
 import UpcomingExamsWidget from './widgets/UpcomingExamsWidget';
 import TestReportModal from './TestReportModal';
+import FlashcardManager from './flashcards/FlashcardManager';
+import CreateEditDeckModal from './flashcards/CreateEditDeckModal';
+import DeckViewModal from './flashcards/DeckViewModal';
+import CreateEditFlashcardModal from './flashcards/CreateEditFlashcardModal';
+import FlashcardReviewModal from './flashcards/FlashcardReviewModal';
 
-type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts';
+type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards';
 
 interface StudentDashboardProps {
     student: StudentData;
@@ -55,7 +59,7 @@ interface StudentDashboardProps {
     onSaveBatchTasks: (tasks: ScheduleItem[]) => void;
     onDeleteTask: (taskId: string) => void;
     onToggleMistakeFixed: (resultId: string, mistake: string) => void;
-    onUpdateSettings: (settings: Partial<Config['settings'] & { geminiApiKey?: string }>) => void;
+    onUpdateConfig: (config: Partial<Config>) => void;
     onLogStudySession: (session: Omit<StudySession, 'date'>) => void;
     onUpdateWeaknesses: (weaknesses: string[]) => void;
     onLogResult: (result: ResultData) => void;
@@ -63,6 +67,7 @@ interface StudentDashboardProps {
     onUpdateExam: (exam: ExamData) => void;
     onDeleteExam: (examId: string) => void;
     onExportToIcs: () => void;
+    onBatchImport: (data: { schedules: ScheduleItem[], exams: ExamData[], results: ResultData[], weaknesses: string[] }) => void;
     googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
     onGoogleSignIn: () => void;
     onGoogleSignOut: () => void;
@@ -74,7 +79,7 @@ interface StudentDashboardProps {
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
-    const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateSettings, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts, onPostDoubt, onPostSolution } = props;
+    const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateConfig, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, onBatchImport, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts, onPostDoubt, onPostSolution } = props;
     const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isAiParserModalOpen, setisAiParserModalOpen] = useState(false);
@@ -100,7 +105,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     // AI Doubt Solver State
     const [isAiDoubtSolverOpen, setIsAiDoubtSolverOpen] = useState(false);
 
-    const quote = useMemo(() => motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)], []);
+    // Flashcard State
+    const [isCreateDeckModalOpen, setIsCreateDeckModalOpen] = useState(false);
+    const [editingDeck, setEditingDeck] = useState<FlashcardDeck | null>(null);
+    const [viewingDeck, setViewingDeck] = useState<FlashcardDeck | null>(null);
+    const [isCreateCardModalOpen, setIsCreateCardModalOpen] = useState(false);
+    const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
+    const [reviewingDeck, setReviewingDeck] = useState<FlashcardDeck | null>(null);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -142,20 +153,47 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const handleCsvSave = (csv: string) => {
         try {
             const parsedData = parseCSVData(csv, student.sid);
-            const schedulesAdded = parsedData.schedules.length;
-            const examsAdded = parsedData.exams.length;
-
-            if (schedulesAdded > 0) {
-                onSaveBatchTasks(parsedData.schedules.map(s => s.item));
-            }
-            if (examsAdded > 0) {
-                parsedData.exams.forEach(e => onAddExam(e.item));
-            }
-
-            if (schedulesAdded > 0 || examsAdded > 0) {
-                alert(`Successfully processed data! Added ${schedulesAdded} schedule items and ${examsAdded} exams.`);
+            const newSchedules = parsedData.schedules.map(s => s.item);
+            const newExams = parsedData.exams.map(e => e.item);
+            
+            const newResults: ResultData[] = [];
+            const newWeaknesses: string[] = [];
+            
+            parsedData.metrics.forEach(metric => {
+                if (metric.item.type === 'RESULT' && metric.item.score && metric.item.mistakes) {
+                    newResults.push({
+                        ID: `R${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
+                        DATE: new Date().toISOString().split('T')[0], // Default to today for imported results
+                        SCORE: metric.item.score,
+                        MISTAKES: metric.item.mistakes,
+                    });
+                } else if (metric.item.type === 'WEAKNESS' && metric.item.weaknesses) {
+                    newWeaknesses.push(...metric.item.weaknesses);
+                }
+            });
+            
+            const importData = {
+                schedules: newSchedules,
+                exams: newExams,
+                results: newResults,
+                weaknesses: newWeaknesses
+            };
+            
+            const totalItems = newSchedules.length + newExams.length + newResults.length + (newWeaknesses.length > 0 ? 1 : 0);
+            
+            if (totalItems > 0) {
+                onBatchImport(importData); // Use the new efficient batch handler
+                
+                // Build and show a detailed confirmation message
+                const messages = [];
+                if (newSchedules.length > 0) messages.push(`${newSchedules.length} schedule item(s)`);
+                if (newExams.length > 0) messages.push(`${newExams.length} exam(s)`);
+                if (newResults.length > 0) messages.push(`${newResults.length} result(s)`);
+                if (newWeaknesses.length > 0) messages.push(`weakness entries`);
+                
+                alert(`Import successful! Added: ${messages.join(', ')}.`);
             } else {
-                alert("No valid schedule or exam data was found in the text provided.");
+                alert("No valid data was found in the text provided. Please check the format or use the AI Guide.");
             }
             
             setisAiParserModalOpen(false);
@@ -189,7 +227,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     };
 
     const handleUpdateSettings = async (settings: Partial<Config['settings'] & { geminiApiKey?: string }>) => {
-        await onUpdateSettings(settings);
+        const configUpdate: Partial<Config> = {};
+        if (settings.geminiApiKey) {
+            configUpdate.geminiApiKey = settings.geminiApiKey;
+            delete settings.geminiApiKey;
+        }
+        // FIX: Merge with existing settings to create a complete object, satisfying TypeScript's `Partial<Config>` type which expects `settings` to be a full object if present.
+        configUpdate.settings = { ...student.CONFIG.settings, ...settings };
+        
+        await onUpdateConfig(configUpdate);
+
         if (settings.showAiChatAssistant !== undefined) {
             setShowAiChatFab(settings.showAiChatAssistant);
         }
@@ -214,6 +261,56 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             setIsAiChatLoading(false);
         }
     };
+
+    // --- Flashcard Handlers ---
+    const handleSaveDeck = (deck: FlashcardDeck) => {
+        const decks = student.CONFIG.flashcardDecks || [];
+        const existingIndex = decks.findIndex(d => d.id === deck.id);
+        if (existingIndex > -1) {
+            decks[existingIndex] = deck;
+        } else {
+            decks.push(deck);
+        }
+        onUpdateConfig({ flashcardDecks: decks });
+    };
+
+    const handleDeleteDeck = (deckId: string) => {
+        if (!window.confirm("Are you sure you want to delete this deck and all its cards?")) return;
+        const decks = (student.CONFIG.flashcardDecks || []).filter(d => d.id !== deckId);
+        onUpdateConfig({ flashcardDecks: decks });
+        setViewingDeck(null); // Close view if it was open
+    };
+
+    const handleSaveCard = (deckId: string, card: Flashcard) => {
+        const decks = student.CONFIG.flashcardDecks || [];
+        const deck = decks.find(d => d.id === deckId);
+        if (!deck) return;
+        
+        const cardIndex = deck.cards.findIndex(c => c.id === card.id);
+        if (cardIndex > -1) {
+            deck.cards[cardIndex] = card;
+        } else {
+            deck.cards.push(card);
+        }
+        handleSaveDeck(deck);
+        setViewingDeck({...deck}); // Re-render the deck view
+    };
+
+    const handleDeleteCard = (deckId: string, cardId: string) => {
+        const decks = student.CONFIG.flashcardDecks || [];
+        const deck = decks.find(d => d.id === deckId);
+        if (!deck) return;
+        deck.cards = deck.cards.filter(c => c.id !== cardId);
+        handleSaveDeck(deck);
+        setViewingDeck({...deck}); // Re-render the deck view
+    };
+
+    const handleStartReviewSession = (deckId: string) => {
+        const deck = student.CONFIG.flashcardDecks?.find(d => d.id === deckId);
+        if (deck) {
+            setReviewingDeck(deck);
+        }
+    };
     
     const TabButton: React.FC<{ tabId: ActiveTab; icon: IconName; children: React.ReactNode; }> = ({ tabId, icon, children }) => (
         <button onClick={() => setActiveTab(tabId)} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${activeTab === tabId ? 'text-[var(--accent-color)] border-[var(--accent-color)]' : 'text-gray-400 border-transparent hover:text-white'}`}>
@@ -226,7 +323,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         <div className="flex items-center flex-wrap">
           <TabButton tabId="dashboard" icon="dashboard">Dashboard</TabButton>
           <TabButton tabId="schedule" icon="schedule">Schedule</TabButton>
-          <TabButton tabId="planner" icon="planner">Planner</TabButton>
+          <TabButton tabId="flashcards" icon="cards">Flashcards</TabButton>
           <TabButton tabId="exams" icon="trophy">Exams</TabButton>
           <TabButton tabId="performance" icon="performance">Performance</TabButton>
           <TabButton tabId="doubts" icon="community">Doubts</TabButton>
@@ -250,7 +347,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
-                            <MotivationalQuoteWidget quote={quote} />
+                            <DailyInsightWidget weaknesses={student.CONFIG.WEAK} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />
                                 <ScoreTrendWidget results={student.RESULTS} />
@@ -269,7 +366,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
                             <ActivityTracker activities={activityItems} />
-                            <ScheduleList items={taskItems} onDelete={onDeleteTask} onEdit={handleEditClick} onMoveToNextDay={()=>{}} onStar={handleStarTask} onStartPractice={handleStartPractice} isSubscribed={student.CONFIG.UNACADEMY_SUB} />
+                            <ScheduleList items={taskItems} onDelete={onDeleteTask} onEdit={handleEditClick} onMoveToNextDay={()=>{}} onStar={handleStarTask} onStartPractice={handleStartPractice} isSubscribed={student.CONFIG.UNACADEMY_SUB} onStartReviewSession={handleStartReviewSession} />
                         </div>
                         <div className="space-y-8">
                              <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />
@@ -277,8 +374,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                         </div>
                     </div>
                  );
-            case 'planner':
-                return <PlannerView items={taskItems} onEdit={handleEditClick} />;
+            case 'flashcards':
+                return <FlashcardManager 
+                            decks={student.CONFIG.flashcardDecks || []}
+                            onAddDeck={() => { setEditingDeck(null); setIsCreateDeckModalOpen(true); }}
+                            onEditDeck={(deck) => { setEditingDeck(deck); setIsCreateDeckModalOpen(true); }}
+                            onDeleteDeck={handleDeleteDeck}
+                            onViewDeck={setViewingDeck}
+                            onStartReview={handleStartReviewSession}
+                        />;
             case 'exams':
                 return <ExamsView exams={student.EXAMS} onAdd={() => { setEditingExam(null); setIsExamModalOpen(true); }} onEdit={(exam) => { setEditingExam(exam); setIsExamModalOpen(true); }} onDelete={onDeleteExam} />;
             case 'performance':
@@ -329,7 +433,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
             {renderContent()}
 
-            {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} />}
+            {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onSave={handleCsvSave} />}
             {isImageModalOpen && <ImageToTimetableModal onClose={() => setIsImageModalOpen(false)} onSave={handleCsvSave} />}
             {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} />}
@@ -342,6 +446,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isAiChatOpen && <AIChatPopup history={aiChatHistory} onSendMessage={handleAiChatMessage} onClose={() => setIsAiChatOpen(false)} isLoading={isAiChatLoading} />}
             {viewingReport && <TestReportModal result={viewingReport} onClose={() => setViewingReport(null)} onUpdateWeaknesses={onUpdateWeaknesses} student={student} />}
             
+            {/* Flashcard Modals */}
+            {isCreateDeckModalOpen && <CreateEditDeckModal deck={editingDeck} onClose={() => { setIsCreateDeckModalOpen(false); setEditingDeck(null); }} onSave={handleSaveDeck} />}
+            {viewingDeck && <DeckViewModal deck={viewingDeck} onClose={() => setViewingDeck(null)} onAddCard={() => { setEditingCard(null); setIsCreateCardModalOpen(true); }} onEditCard={(card) => { setEditingCard(card); setIsCreateCardModalOpen(true); }} onDeleteCard={(cardId) => handleDeleteCard(viewingDeck.id, cardId)} onStartReview={() => { setReviewingDeck(viewingDeck); setViewingDeck(null); }} />}
+            {isCreateCardModalOpen && viewingDeck && <CreateEditFlashcardModal card={editingCard} deckId={viewingDeck.id} onClose={() => { setIsCreateCardModalOpen(false); setEditingCard(null); }} onSave={handleSaveCard} />}
+            {reviewingDeck && <FlashcardReviewModal deck={reviewingDeck} onClose={() => setReviewingDeck(null)} />}
+
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}
         </main>
     );

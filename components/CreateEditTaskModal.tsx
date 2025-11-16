@@ -1,21 +1,35 @@
 
 import React, { useState, useEffect } from 'react';
-import { ScheduleItem, ScheduleCardData } from '../types';
+import { ScheduleItem, ScheduleCardData, HomeworkData, FlashcardDeck } from '../types';
 import Icon from './Icon';
 
 interface CreateEditTaskModalProps {
   task: ScheduleItem | null;
   onClose: () => void;
   onSave: (task: ScheduleItem) => void;
+  decks: FlashcardDeck[];
 }
 
-const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose, onSave }) => {
+type TaskType = 'ACTION' | 'HOMEWORK' | 'FLASHCARD_REVIEW';
+
+const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose, onSave, decks }) => {
+    
+  const getInitialTaskType = (): TaskType => {
+      if (!task) return 'ACTION';
+      if (task.type === 'HOMEWORK') return 'HOMEWORK';
+      if (task.type === 'ACTION' && task.SUB_TYPE === 'FLASHCARD_REVIEW') return 'FLASHCARD_REVIEW';
+      return 'ACTION';
+  };
+
+  const [taskType, setTaskType] = useState<TaskType>(getInitialTaskType());
   const [formData, setFormData] = useState({
     title: task ? task.CARD_TITLE.EN : '',
     details: task ? task.FOCUS_DETAIL.EN : '',
     subject: task ? task.SUBJECT_TAG.EN : 'PHYSICS',
-    time: task && 'TIME' in task ? task.TIME : '20:00',
+    time: task && 'TIME' in task && task.TIME ? task.TIME : '20:00',
     day: task ? task.DAY.EN.toUpperCase() : new Date().toLocaleString('en-us', {weekday: 'long'}).toUpperCase(),
+    qRanges: task?.type === 'HOMEWORK' ? task.Q_RANGES : '',
+    deckId: task?.type === 'ACTION' && task.SUB_TYPE === 'FLASHCARD_REVIEW' ? task.deckId : (decks.length > 0 ? decks[0].id : ''),
   });
   const [isExiting, setIsExiting] = useState(false);
   const daysOfWeek = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
@@ -27,26 +41,35 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.details || !formData.subject || !formData.time || !formData.day) {
-        alert("Please fill out all fields.");
-        return;
-    }
     
     const isEditing = !!task;
+    let finalTask: ScheduleItem;
 
-    // Create a new ACTION task, either by converting an existing task or making a new one.
-    // This safely handles "upgrading" a HOMEWORK item to a scheduled ACTION item.
-    const finalTask: ScheduleCardData = {
-        ID: isEditing ? task.ID : `user_${Date.now()}`,
-        type: 'ACTION',
-        SUB_TYPE: isEditing && 'SUB_TYPE' in task && task.type === 'ACTION' ? task.SUB_TYPE : 'DEEP_DIVE',
-        isUserCreated: true, // Any custom edits make it a "user" task
-        DAY: { EN: formData.day, GU: "" },
-        CARD_TITLE: { EN: formData.title, GU: "" },
-        FOCUS_DETAIL: { EN: formData.details, GU: "" },
-        SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
-        TIME: formData.time,
-    };
+    if (taskType === 'HOMEWORK') {
+        finalTask = {
+            ID: isEditing && task.type === 'HOMEWORK' ? task.ID : `H${Date.now()}`,
+            type: 'HOMEWORK',
+            isUserCreated: true,
+            DAY: { EN: formData.day, GU: "" },
+            CARD_TITLE: { EN: formData.title, GU: "" },
+            FOCUS_DETAIL: { EN: formData.details, GU: "" },
+            SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
+            Q_RANGES: formData.qRanges,
+        } as HomeworkData;
+    } else { // ACTION or FLASHCARD_REVIEW
+        finalTask = {
+            ID: isEditing && task.type === 'ACTION' ? task.ID : `A${Date.now()}`,
+            type: 'ACTION',
+            SUB_TYPE: taskType === 'FLASHCARD_REVIEW' ? 'FLASHCARD_REVIEW' : 'DEEP_DIVE',
+            isUserCreated: true,
+            DAY: { EN: formData.day, GU: "" },
+            CARD_TITLE: { EN: formData.title, GU: "" },
+            FOCUS_DETAIL: { EN: formData.details, GU: "" },
+            SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
+            TIME: formData.time,
+            deckId: taskType === 'FLASHCARD_REVIEW' ? formData.deckId : undefined,
+        } as ScheduleCardData;
+    }
 
     onSave(finalTask);
     handleClose();
@@ -54,36 +77,66 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
 
   const animationClasses = isExiting ? 'modal-exit' : 'modal-enter';
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
+  const inputClass = "w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500";
+
 
   return (
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-4">{task ? 'Edit Task' : 'Create New Task'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          <div>
+            <label className="text-sm font-bold text-gray-400">Task Type</label>
+            <select value={taskType} onChange={e => setTaskType(e.target.value as TaskType)} className={inputClass}>
+                <option value="ACTION">Study Session</option>
+                <option value="HOMEWORK">Homework</option>
+                <option value="FLASHCARD_REVIEW">Flashcard Review</option>
+            </select>
+          </div>
+
           <div>
             <label className="text-sm font-bold text-gray-400">Title</label>
-            <input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+            <input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={inputClass} />
           </div>
            <div>
             <label className="text-sm font-bold text-gray-400">Details</label>
-            <textarea required value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} className="w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+            <textarea required value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} className={inputClass}></textarea>
           </div>
            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                <div className="sm:col-span-2">
                   <label className="text-sm font-bold text-gray-400">Day</label>
-                  <select required value={formData.day} onChange={e => setFormData({...formData, day: e.target.value})} className="w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                  <select required value={formData.day} onChange={e => setFormData({...formData, day: e.target.value})} className={inputClass}>
                      {daysOfWeek.map(d => <option key={d} value={d}>{d.charAt(0) + d.slice(1).toLowerCase()}</option>)}
                   </select>
               </div>
               <div>
                   <label className="text-sm font-bold text-gray-400">Time</label>
-                  <input type="time" required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                  <input type="time" required={taskType !== 'HOMEWORK'} value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={`${inputClass} disabled:opacity-50`} disabled={taskType === 'HOMEWORK'} />
               </div>
            </div>
            <div>
               <label className="text-sm font-bold text-gray-400">Subject Tag</label>
-              <input required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value.toUpperCase()})} className="w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="e.g., PHYSICS, MATHS" />
+              <input required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value.toUpperCase()})} className={inputClass} placeholder="e.g., PHYSICS, MATHS" />
            </div>
+
+           {taskType === 'HOMEWORK' && (
+                <div>
+                    <label className="text-sm font-bold text-gray-400">Question Ranges</label>
+                    <input value={formData.qRanges} onChange={e => setFormData({...formData, qRanges: e.target.value})} className={inputClass} placeholder="e.g., Ex 1.1: 1-15; PYQ: 1-10" />
+                </div>
+            )}
+            
+            {taskType === 'FLASHCARD_REVIEW' && (
+                <div>
+                    <label className="text-sm font-bold text-gray-400">Flashcard Deck</label>
+                    <select required value={formData.deckId} onChange={e => setFormData({...formData, deckId: e.target.value})} className={inputClass}>
+                        {decks.length === 0 && <option disabled>No decks available. Create one first.</option>}
+                        {decks.map(deck => <option key={deck.id} value={deck.id}>{deck.name}</option>)}
+                    </select>
+                </div>
+            )}
+
           <div className="flex justify-end gap-4 pt-4">
             <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors">Cancel</button>
             <button type="submit" className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90 transition-opacity">Save Task</button>
