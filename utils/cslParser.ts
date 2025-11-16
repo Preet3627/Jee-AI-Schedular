@@ -133,10 +133,6 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
         }
     }
     // --- END PRE-PROCESSING STEP ---
-
-    const scheduleHeader = 'ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE'.toLowerCase();
-    const examHeader = 'ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS'.toLowerCase();
-    const metricsHeader = 'SID,TYPE,SCORE,MISTAKES,WEAKNESSES'.toLowerCase();
     
     const lines = processedCsvText.trim().split('\n');
     let currentBlock = '';
@@ -149,7 +145,19 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
         if (!line.trim()) continue;
 
         const normalizedLine = line.replace(/[\s"]/g, '').toLowerCase();
-        const isHeader = normalizedLine.includes(scheduleHeader) || normalizedLine.includes(examHeader) || normalizedLine.includes(metricsHeader);
+
+        // More robust header detection based on key fields, not the exact full string.
+        // This allows for column reordering, missing optional columns, or minor variations.
+        const scheduleKeys = ['id', 'type', 'day', 'card_title', 'subject_tag'];
+        const examKeys = ['id', 'type', 'subject', 'title', 'date'];
+        const metricsKeys = ['type', 'score', 'mistakes', 'weaknesses'];
+
+        const isScheduleHeader = scheduleKeys.every(key => normalizedLine.includes(key));
+        const isExamHeader = examKeys.every(key => normalizedLine.includes(key));
+        // For metrics, it's a valid header if it contains 'type' and at least one of the data columns.
+        const isMetricsHeader = normalizedLine.includes('type') && metricsKeys.some(key => normalizedLine.includes(key));
+
+        const isHeader = isScheduleHeader || isExamHeader || isMetricsHeader;
 
         if (isHeader) {
             // Found a header, so push the previous block if it exists
@@ -222,7 +230,7 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
                     results.exams.push({ sid, item: examItem });
                 }
             }
-        } else if (keySet.has('SCORE') || keySet.has('MISTAKES') || keySet.has('WEAKNESSES')) { // Metrics block
+        } else if (keySet.has('SCORE') || keySet.has('MISTAKES') || keySet.has('WEAKNESSES') || (keySet.has('TYPE') && (keySet.has('SID') || keySet.has('SCORE')))) { // Metrics block
             for (const row of parsedRows) {
                 const type = row.TYPE?.toUpperCase();
                 const sid = row.SID || defaultSid;
