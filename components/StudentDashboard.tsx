@@ -82,6 +82,7 @@ interface StudentDashboardProps {
 const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateConfig, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, onBatchImport, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts, onPostDoubt, onPostSolution } = props;
     const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+    const [scheduleView, setScheduleView] = useState<'upcoming' | 'past'>('upcoming');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isAiParserModalOpen, setisAiParserModalOpen] = useState(false);
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -371,7 +372,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
                             <ActivityTracker activities={activityItems} />
-                            <ScheduleList items={taskItems} onDelete={onDeleteTask} onEdit={handleEditClick} onMoveToNextDay={()=>{}} onStar={handleStarTask} onStartPractice={handleStartPractice} isSubscribed={student.CONFIG.UNACADEMY_SUB} onStartReviewSession={handleStartReviewSession} />
+                            <ScheduleList 
+                                items={taskItems} 
+                                onDelete={onDeleteTask} 
+                                onEdit={handleEditClick} 
+                                onMoveToNextDay={()=>{}} 
+                                onStar={handleStarTask} 
+                                onStartPractice={handleStartPractice} 
+                                isSubscribed={student.CONFIG.UNACADEMY_SUB} 
+                                onStartReviewSession={handleStartReviewSession}
+                                view={scheduleView}
+                                onViewChange={setScheduleView}
+                            />
                         </div>
                         <div className="space-y-8">
                              <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />

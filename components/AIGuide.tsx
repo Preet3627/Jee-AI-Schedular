@@ -1,19 +1,26 @@
 import React from 'react';
 
 const guideText = `# Universal CSV Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 3.6.0
+# Version: 3.7.0
 # Purpose: To guide AI agents in generating CSV data for the JEE Scheduler Pro platform.
 
 ## 0. About JEE Scheduler Pro
 JEE Scheduler Pro is an advanced, AI-powered study planner for students preparing for the JEE exams. It offers personalized weekly schedules, performance tracking, a community doubt-solving forum, and exam management. The platform is secure, using encryption to protect student data. Your role as an AI agent is to generate realistic and structured data that students can import to quickly set up their study plans.
 
-## 1. General Rules & Best Practices
-- **Format:** Standard CSV. Each import can handle MULTIPLE data types (schemas) in a single file/paste.
+---
+## 1. CRITICAL AI BEHAVIOR: Always Use Raw CSV
+When a user asks you to generate a schedule, timetable, homework list, exam list, or a list of their mistakes, your entire response **MUST** be raw CSV text.
+- **DO NOT** include any explanations, apologies, conversational text, or markdown formatting like \`\`\`csv\`\`\` before or after the data.
+- Your output will be parsed directly by a machine. Any extra text will cause the import to fail.
+
+---
+## 2. General Rules & Best Practices
+- **Format:** Standard CSV. Each import can handle MULTIPLE data types (schemas) in a single paste.
 - **Header Row:** The first row MUST be a header row. The parser is flexible with header names (e.g., "Task" can map to "CARD_TITLE").
+- **Newlines:** Each data row MUST end with a newline character. **DO NOT** output the entire CSV on a single line.
 - **Delimiter:** Comma \`,\`.
-- **Quoting:** Fields with commas MUST be enclosed in double quotes (e.g., "Fix FBD, Tension errors").
+- **Quoting:** Fields containing commas, newlines, or double quotes MUST be enclosed in double quotes (\`"\`). Example: \`"Solve conceptual questions, focusing on FBDs."\`
 - **ID Generation:** Generate a unique alphanumeric ID for each new SCHEDULE or EXAM entry. Prefix with 'A' for ACTION, 'H' for HOMEWORK, 'E' for EXAM.
-- **Input Cleanup:** The user's input may be messy. Your output must be clean. IGNORE any surrounding conversational text or markdown formatting (like \`\`\`) and extract only the data.
 - **Scheduling Logic (CRITICAL):**
     - For weekdays (Monday to Saturday), schedule all study-related \`ACTION\` tasks between **17:00 (5 PM) and 23:30 (11:30 PM)**.
     - On Sundays, you can schedule tasks at any time, with one exception.
@@ -21,7 +28,7 @@ JEE Scheduler Pro is an advanced, AI-powered study planner for students preparin
 
 ---
 
-## 1.5. Multi-Schema Support (IMPORTANT)
+## 3. Multi-Schema Support (IMPORTANT)
 The system can process multiple data types in a single CSV import. If a user provides text that describes a new task, an upcoming exam, and a recent test score, you should generate CSV rows for ALL schemas in your response.
 
 **Complex Multi-Schema Example:**
@@ -38,12 +45,7 @@ SID,TYPE,SCORE,MISTAKES,WEAKNESSES
 \`\`\`
 ---
 
-## 2. CRITICAL AI BEHAVIOR: Always Use CSV
-When a user asks you to generate a schedule, timetable, homework list, exam list, or a list of their mistakes, you MUST ALWAYS format your entire response as valid CSV data according to the schemas documented below. Do not add any conversational text, explanations, or markdown formatting like backticks (\`\`\`) around the CSV. The user's application will parse your raw text output directly.
-
----
-
-## 3. Data Type: SCHEDULE (for Study Sessions & Homework)
+## 4. Data Type: SCHEDULE (for Study Sessions & Homework)
 **Purpose:** Adds tasks to a student's weekly schedule. This can be used to generate a full weekly template. The system will interpret the 'DAY' field cyclically.
 
 **Header:**
@@ -54,7 +56,7 @@ When a user asks you to generate a schedule, timetable, homework list, exam list
 |----------------|--------------------------------------------------------------------|--------------------------|---------------------------------------------|
 | \`ID\`           | Unique ID. Use \`A\` prefix for ACTION, \`H\` for HOMEWORK.            | **Yes**                  | \`A101\`, \`H202\`                              |
 | \`SID\`          | Student ID. Can be left blank for student imports.                 | No                       | \`S001\`                                      |
-| \`TYPE\`         | \`ACTION\` (a timed study block) or \`HOMEWORK\`.                      | **Yes**                  | \`ACTION\`                                    |
+| \`TYPE\`         | \`ACTION\` (a timed study block) or \`HOMEWORK\`. **See rule below.**    | **Yes**                  | \`ACTION\`                                    |
 | \`DAY\`          | Full day name in English (MONDAY, TUESDAY, etc.).                  | **Yes**                  | \`FRIDAY\`                                    |
 | \`TIME\`         | Time in HH:MM format (24-hour). Required for \`ACTION\`.             | **Yes for \`ACTION\`**     | \`20:30\`                                     |
 | \`CARD_TITLE\`   | Concise title of the task.                                         | **Yes**                  | \`Rotational Dynamics Deep Dive\`             |
@@ -63,19 +65,21 @@ When a user asks you to generate a schedule, timetable, homework list, exam list
 | \`Q_RANGES\`     | **For \`HOMEWORK\` only.** Semicolon-separated question ranges.      | No                       | \`"L1:1-10@p45;PYQ:5-15"\`                    |
 | \`SUB_TYPE\`     | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`MORNING_DRILL\`, \`ANALYSIS\`, \`FLASHCARD_REVIEW\`.    | No                       | \`FLASHCARD_REVIEW\`                           |
 
+**CRITICAL RULE for \`TYPE\`:** If a task involves solving specific questions (e.g., "Ex 1.1, Qs 1-10" or "Solve 20 PYQs"), its \`TYPE\` **MUST** be \`HOMEWORK\`. If it is a timed study block without specific question numbers, its \`TYPE\` **MUST** be \`ACTION\`.
+
 **Example CSV (SCHEDULE):**
 \`\`\`csv
 ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
 A101,,ACTION,MONDAY,19:00,"Trig Identities Drill","15-minute speed drill of core trig identities.",MATHS,,MORNING_DRILL
 H101,,HOMEWORK,TUESDAY,,"Maths Homework","Complete exercises on indefinite integration.",MATHS,"Ex 7.2: 1-20@p305",
-A102,,ACTION,WEDNESDAY,20:00,"Rotational Dynamics","Focus on Free Body Diagrams. Solve 10 PYQs.",PHYSICS,,DEEP_DIVE
+A102,,ACTION,WEDNESDAY,20:00,"Rotational Dynamics","Focus on Free Body Diagrams, solve 10 PYQs.",PHYSICS,,DEEP_DIVE
 A104,,ACTION,THURSDAY,21:00,"Flashcard Review: Organic Chem","Review all cards in the 'Organic Chemistry Reactions' deck.",CHEMISTRY,,FLASHCARD_REVIEW
 A103,,ACTION,SUNDAY,17:00,"Mock Test Analysis","Review last mock test, focus on Chemistry errors.",KOTA_TEST,,ANALYSIS
 \`\`\`
 
 ---
 
-## 4. Data Type: EXAM
+## 5. Data Type: EXAM
 **Purpose:** Adds upcoming exams to the student's exam tracker.
 
 **Header:**
@@ -102,7 +106,7 @@ E302,,EXAM,CHEMISTRY,"Organic Chemistry Test",2024-08-22,14:00,"Hydrocarbons,Ald
 
 ---
 
-## 5. Data Type: METRICS (for Results & Mistakes)
+## 6. Data Type: METRICS (for Results & Mistakes)
 **Purpose:** Logs a mock test result or updates a student's priority weaknesses (mistakes).
 
 **Header:**
