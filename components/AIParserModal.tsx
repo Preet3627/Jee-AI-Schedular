@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
@@ -55,8 +54,8 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onSave }) => {
   return (
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-white mb-2">AI Text Parser</h2>
-        <p className="text-sm text-gray-400 mb-4">Paste any text describing a schedule (or raw CSV data), and the AI will attempt to convert it into a valid format for import.</p>
+        <h2 className="text-2xl font-bold text-white mb-2">AI Import Assistant</h2>
+        <p className="text-sm text-gray-400 mb-4">Paste raw text or pre-formatted CSV data. The AI will analyze and import your schedule or exams.</p>
         
         <textarea
           value={inputText}

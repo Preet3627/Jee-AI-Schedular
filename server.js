@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -840,8 +839,16 @@ apiRouter.post('/ai/parse-text-to-csv', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are a data conversion expert. Your task is to convert unstructured text describing a student's schedule, exams, or results into a valid CSV format according to the provided schema. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Use the current date to infer any missing date information if required. Generate unique IDs for each item. Today's date is ${new Date().toLocaleDateString()}`;
-        const prompt = `Please convert the following text into a valid CSV. Available CSV Schemas: 1. SCHEDULE: ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE; 2. EXAM: ID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS. Determine the correct schema from the text and generate the CSV. Text to convert:\n---\n${text}\n---`;
+        const systemInstruction = `You are a data conversion expert. Your task is to convert unstructured text describing a student's schedule, exams, or results into a valid CSV format. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Use the current date to infer any missing date information if required. Generate unique IDs for each item (e.g., A for Action, H for Homework, E for Exam). Today's date is ${new Date().toISOString().split('T')[0]}.`;
+        const prompt = `Please convert the following text into a valid CSV. Analyze the text to determine the correct schema.
+Available Schemas:
+1. SCHEDULE: ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
+2. EXAM: ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS
+
+Text to convert:
+---
+${text}
+---`;
         
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',

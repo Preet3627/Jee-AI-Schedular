@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const guideText = `# Universal CSV Documentation for AI Agents (JEE Scheduler Pro)
@@ -9,8 +8,8 @@ const guideText = `# Universal CSV Documentation for AI Agents (JEE Scheduler Pr
 JEE Scheduler Pro is an advanced, AI-powered study planner for students preparing for the JEE exams. It offers personalized weekly schedules, performance tracking, a community doubt-solving forum, and exam management. The platform is secure, using encryption to protect student data. Your role as an AI agent is to generate realistic and structured data that students can import to quickly set up their study plans.
 
 ## 1. General Rules & Best Practices
-- **Format:** Standard CSV. Each import should handle ONE data type per file/paste.
-- **Header Row:** The first row MUST be a header row matching the fields specified below.
+- **Format:** Standard CSV. Each import can handle MULTIPLE data types (schemas) in a single file/paste.
+- **Header Row:** The first row MUST be a header row matching the fields specified for a given schema.
 - **Delimiter:** Comma \`,\`.
 - **Quoting:** Fields with commas MUST be enclosed in double quotes (e.g., "Fix FBD, Tension errors").
 - **Scheduling Logic (CRITICAL):**
@@ -41,7 +40,7 @@ When a user asks you to generate a schedule, timetable, homework list, exam list
 | \`TIME\`         | Time in HH:MM format (24-hour). Required for \`ACTION\`.             | **Yes for \`ACTION\`**     | \`20:30\`                                     |
 | \`CARD_TITLE\`   | Concise title of the task.                                         | **Yes**                  | \`Rotational Dynamics Deep Dive\`             |
 | \`FOCUS_DETAIL\` | A descriptive explanation. Use quotes if it contains a comma.      | **Yes**                  | \`"Fix FBD, Tension errors in pulleys."\`     |
-| \`SUBJECT_TAG\`  | \`PHYSICS\`, \`CHEMISTRY\`, or \`MATHS\`.                                | **Yes**                  | \`PHYSICS\`                                   |
+| \`SUBJECT_TAG\`  | \`PHYSICS\`, \`CHEMISTRY\`, \`MATHS\`, or a descriptive tag.             | **Yes**                  | \`PHYSICS\`                                   |
 | \`Q_RANGES\`     | **For \`HOMEWORK\` only.** Semicolon-separated question ranges.      | No                       | \`"L1:1-10@p45;PYQ:5-15"\`                    |
 | \`SUB_TYPE\`     | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`MORNING_DRILL\`, \`ANALYSIS\`.    | No                       | \`MORNING_DRILL\`                           |
 
@@ -51,7 +50,7 @@ ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE
 A101,S001,ACTION,MONDAY,19:00,"Trig Identities Drill","15-minute speed drill of core trig identities.",MATHS,,MORNING_DRILL
 H101,S001,HOMEWORK,TUESDAY,,"Maths Homework","Complete exercises on indefinite integration.",MATHS,"Ex 7.2: 1-20@p305",
 A102,S001,ACTION,WEDNESDAY,20:00,"Rotational Dynamics","Focus on Free Body Diagrams. Solve 10 PYQs.",PHYSICS,,DEEP_DIVE
-A103,S001,ACTION,FRIDAY,21:30,"Mock Test Analysis","Review last mock test, focus on Chemistry errors.",CHEMISTRY,,ANALYSIS
+A103,S001,ACTION,SUNDAY,17:00,"Mock Test Analysis","Review last mock test, focus on Chemistry errors.",KOTA_TEST,,ANALYSIS
 \`\`\`
 
 ---

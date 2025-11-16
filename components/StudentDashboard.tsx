@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData } from '../types';
 import ScheduleList from './ScheduleList';
@@ -230,8 +229,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
           <TabButton tabId="doubts" icon="community">Doubts</TabButton>
         </div>
         <div className="flex items-center gap-2 mb-2 sm:mb-0">
+          <a href="https://nc.ponsrischool.in/index.php/s/qeBT6jwoSBB4six" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Study Material">
+            <Icon name="book-open" />
+          </a>
           <button onClick={() => setIsImageModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Import from Image"><Icon name="image" /></button>
-          <button onClick={() => setisAiParserModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600" title="Import from Text/CSL"><Icon name="upload" /></button>
+          <button onClick={() => setisAiParserModalOpen(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600" title="Import schedule from text or CSV using AI">
+            <Icon name="upload" /> AI Import
+          </button>
           <button onClick={() => setIsPracticeModalOpen(true)} className="p-2 rounded-lg bg-purple-600 hover:bg-purple-500" title="Custom Practice"><Icon name="stopwatch" /></button>
           <button onClick={() => setIsSettingsModalOpen(true)} className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600"><Icon name="settings" /></button>
           <button onClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">

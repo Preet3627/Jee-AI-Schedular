@@ -1,5 +1,3 @@
-
-
 // FIX: Correct import path to point to types from the root directory.
 import { ScheduleItem, HomeworkData, ScheduleCardData, ExamData } from '../types';
 
@@ -60,13 +58,13 @@ function parseCSV(csvText: string): Record<string, string>[] {
                     inQuotes = !inQuotes;
                 }
             } else if (char === ',' && !inQuotes) {
-                values.push(currentField);
+                values.push(currentField.trim());
                 currentField = '';
             } else {
                 currentField += char;
             }
         }
-        values.push(currentField); // Add the last field
+        values.push(currentField.trim()); // Add the last field
         return values;
     };
     
@@ -105,13 +103,13 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
                 scheduleItem = {
                     ID: row.ID, type: 'HOMEWORK', DAY: createLocalizedString(row.DAY),
                     CARD_TITLE: createLocalizedString(row.CARD_TITLE), FOCUS_DETAIL: createLocalizedString(row.FOCUS_DETAIL),
-                    SUBJECT_TAG: createLocalizedString(row.SUBJECT_TAG), Q_RANGES: row.Q_RANGES || '', TIME: row.TIME || undefined,
+                    SUBJECT_TAG: createLocalizedString(row.SUBJECT_TAG.toUpperCase()), Q_RANGES: row.Q_RANGES || '', TIME: row.TIME || undefined,
                 };
             } else { // ACTION
                 scheduleItem = {
                     ID: row.ID, type: 'ACTION', SUB_TYPE: (row.SUB_TYPE as any) || 'DEEP_DIVE', DAY: createLocalizedString(row.DAY),
                     TIME: row.TIME, CARD_TITLE: createLocalizedString(row.CARD_TITLE), FOCUS_DETAIL: createLocalizedString(row.FOCUS_DETAIL),
-                    SUBJECT_TAG: createLocalizedString(row.SUBJECT_TAG),
+                    SUBJECT_TAG: createLocalizedString(row.SUBJECT_TAG.toUpperCase()),
                 };
             }
             results.schedules.push({ sid, item: scheduleItem });
