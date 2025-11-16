@@ -988,7 +988,17 @@ RULES:
             },
         });
 
-        res.json(JSON.parse(response.text.trim()));
+        try {
+            // Attempt to parse the response text as JSON.
+            const parsedJson = JSON.parse(response.text.trim());
+            res.json(parsedJson);
+        } catch (parseError) {
+            // This catch block executes if Gemini returns a non-JSON string.
+            console.error("AI returned invalid JSON:", response.text);
+            // Throw a new error to be caught by the outer catch block.
+            throw new Error("AI returned a response in an unexpected format. Please try again.");
+        }
+
     } catch (error) {
         console.error("Gemini API error (text parse):", error);
         res.status(500).json({ error: `Failed to parse text: ${error.message}` });
