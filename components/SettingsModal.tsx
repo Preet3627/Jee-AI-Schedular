@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Config } from '../types';
 import Icon from './Icon';
@@ -17,6 +16,39 @@ interface SettingsModalProps {
   onApiKeySet: () => void;
 }
 
+const aiGuideText = `# Universal CSV Documentation for AI Agents (JEE Scheduler Pro)
+# Version: 3.6.0
+# Purpose: To guide AI agents in generating CSV data for the JEE Scheduler Pro platform.
+
+## 1. General Rules & Best Practices
+- **Format:** Standard CSV. Each import can handle MULTIPLE data types (schemas) in a single file/paste.
+- **Header Row:** The first row MUST be a header row. The parser is flexible with header names (e.g., "Task" can map to "CARD_TITLE").
+- **ID Generation:** Generate a unique alphanumeric ID for each new SCHEDULE or EXAM entry. Prefix with 'A' for ACTION, 'H' for HOMEWORK, 'E' for EXAM.
+- **Input Cleanup:** The user's input may be messy. Your output must be clean. IGNORE any surrounding conversational text or markdown formatting (like \`\`\`) and extract only the data.
+- **Scheduling Logic (CRITICAL):**
+    - For weekdays (Monday to Saturday), schedule all study-related \`ACTION\` tasks between **17:00 (5 PM) and 23:30 (11:30 PM)**.
+    - On Sundays, you can schedule tasks at any time, with one exception.
+    - **Kota Test Exception:** If a "Kota test" or similar major mock exam is scheduled on a Sunday, do NOT schedule any other tasks between **07:00 (7 AM) and 13:00 (1 PM)** to avoid conflicts.
+
+---
+## 2. CRITICAL AI BEHAVIOR: Always Use CSV
+When a user asks you to generate a schedule, timetable, homework list, exam list, or a list of their mistakes, you MUST ALWAYS format your entire response as valid CSV data according to the schemas documented below. Do not add any conversational text, explanations, or markdown formatting like backticks (\`\`\`) around the CSV. The user's application will parse your raw text output directly.
+---
+## 3. Data Type: SCHEDULE (for Study Sessions & Homework)
+**Header:**
+\`ID,SID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG,Q_RANGES,SUB_TYPE\`
+
+---
+## 4. Data Type: EXAM
+**Header:**
+\`ID,SID,TYPE,SUBJECT,TITLE,DATE,TIME,SYLLABUS\`
+
+---
+## 5. Data Type: METRICS (for Results & Mistakes)
+**Header:**
+\`SID,TYPE,SCORE,MISTAKES,WEAKNESSES\``;
+
+
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const { settings, driveLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet } = props;
   const [accentColor, setAccentColor] = useState(settings.accentColor || '#0891b2');
@@ -29,6 +61,8 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+  const [showAiGuide, setShowAiGuide] = useState(false);
+  const [guideCopied, setGuideCopied] = useState(false);
 
   const handleClose = () => {
     setIsExiting(true);
@@ -45,6 +79,12 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
             body: "You'll now receive reminders for your schedule.",
         });
     }
+  };
+  
+  const handleCopyGuide = () => {
+    navigator.clipboard.writeText(aiGuideText);
+    setGuideCopied(true);
+    setTimeout(() => setGuideCopied(false), 2000);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -119,6 +159,32 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                 <p className="text-xs text-gray-400 mb-2">Provide your own key to use AI features. Your key is stored securely and is never visible to others.</p>
                  <input type="password" value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} className={inputClass} placeholder="Enter new API key to update" />
                  {settings.hasGeminiKey && !geminiApiKey && <p className="text-xs text-green-400 mt-1">An API key is already saved for your account.</p>}
+              </div>
+              <div className="mt-4">
+                <div className="flex justify-between items-center bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                    <div>
+                        <p className="text-sm font-semibold text-cyan-400">AI Prompt Guide</p>
+                        <p className="text-xs text-gray-400">How to generate data with an AI.</p>
+                    </div>
+                    <button type="button" onClick={() => setShowAiGuide(!showAiGuide)} className="text-xs font-semibold px-3 py-1 bg-gray-700 rounded-md hover:bg-gray-600">
+                        {showAiGuide ? 'Hide' : 'Show'}
+                    </button>
+                </div>
+                {showAiGuide && (
+                    <div className="mt-2 bg-gray-900/80 p-3 rounded-lg border border-gray-700 relative">
+                        <div className="max-h-40 overflow-y-auto pr-2">
+                            <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">{aiGuideText}</pre>
+                        </div>
+                        <button 
+                            type="button" 
+                            onClick={handleCopyGuide} 
+                            className="absolute top-2 right-2 flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-md bg-gray-700 hover:bg-gray-600"
+                        >
+                            <Icon name={guideCopied ? 'check' : 'copy'} className="w-3 h-3" />
+                            {guideCopied ? 'Copied!' : 'Copy'}
+                        </button>
+                    </div>
+                )}
               </div>
               {googleAuthStatus !== 'unconfigured' && (
                   <div className="mt-4">
