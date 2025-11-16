@@ -2,15 +2,15 @@
 import { ScheduleItem, HomeworkData, ScheduleCardData, ExamData } from '../types';
 
 interface ParsedSchedule {
-    sid: string;
+    sid?: string;
     item: ScheduleItem;
 }
 interface ParsedExam {
-    sid: string;
+    sid?: string;
     item: ExamData;
 }
 interface ParsedMetric {
-    sid: string;
+    sid?: string;
     item: {
         type: 'RESULT' | 'WEAKNESS';
         score?: string;
@@ -112,7 +112,6 @@ export function parseCSVData(csvText: string, defaultSid?: string): ParsedCSVDat
     for (const row of parsedRows) {
         const type = row.TYPE?.toUpperCase();
         const sid = row.SID || defaultSid;
-        if (!sid) continue;
 
         if (type === 'ACTION' || type === 'HOMEWORK') {
             if (!row.ID || !row.DAY || !row.CARD_TITLE || !row.FOCUS_DETAIL || !row.SUBJECT_TAG) continue;
