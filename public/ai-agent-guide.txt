@@ -1,5 +1,5 @@
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.0.0 (JSON Only)
+# Version: 5.1.0 (JSON Only)
 # Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
 ## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
@@ -8,7 +8,17 @@ Your entire response **MUST** be a single, raw JSON object.
 - Your output will be parsed directly by a machine. Any extra text will cause the import to fail.
 
 ---
-## 2. General Rules & Best Practices
+## 2. INTERACTION & DATA GATHERING
+- **DO NOT INVENT DATA:** If the user's request is vague, you **MUST** ask for clarification. Do not generate a schedule with placeholder or mock data.
+- **ASK FOR DETAILS:** Specifically ask for the following if they are missing:
+  - School/Coaching timetable and exam schedule.
+  - Syllabus for upcoming tests.
+  - Specific homework assignments (e.g., question numbers, chapters).
+  - The student's self-identified weak subjects or topics.
+- **Example Clarification:** "To create the best schedule for you, could you please provide your school/coaching timetable, any upcoming exam dates and their syllabus, and a few topics you find most difficult right now?"
+
+---
+## 3. General Rules & Best Practices
 - **Format:** A single JSON object with top-level keys: `schedules`, `exams`, `metrics`.
 - **Data Correction:** Automatically fix common formatting issues. Convert dates to `YYYY-MM-DD`. Convert times to `HH:MM` (24-hour).
 - **ID Generation:** Generate a unique alphanumeric ID for each new schedule or exam item.
@@ -20,7 +30,7 @@ Your entire response **MUST** be a single, raw JSON object.
   - If it is a timed study block, its `type` **MUST** be `ACTION`.
 
 ---
-## 3. Top-Level JSON Structure
+## 4. Top-Level JSON Structure
 Your entire output must be a single JSON object with these keys. If a type of data is not present, you must provide an empty array `[]`.
 ```json
 {
@@ -31,7 +41,7 @@ Your entire output must be a single JSON object with these keys. If a type of da
 ```
 
 ---
-### 3.1 `schedules` Array Items
+### 4.1 `schedules` Array Items
 | Key         | Type   | Description                                           | Example                               |
 |-------------|--------|-------------------------------------------------------|---------------------------------------|
 | `id`        | string | Unique ID (e.g., `A101`, `H202`).                     | `"A101"`                              |
@@ -59,7 +69,7 @@ Your entire output must be a single JSON object with these keys. If a type of da
 ```
 
 ---
-### 3.2 `exams` Array Items
+### 4.2 `exams` Array Items
 | Key        | Type   | Description                                | Example                                |
 |------------|--------|--------------------------------------------|----------------------------------------|
 | `id`       | string | Unique ID (e.g., `E301`).                  | `"E301"`                               |
@@ -84,7 +94,7 @@ Your entire output must be a single JSON object with these keys. If a type of da
 ```
 
 ---
-### 3.3 `metrics` Array Items
+### 4.3 `metrics` Array Items
 | Key          | Type   | Description                                       | Example                                  |
 |--------------|--------|---------------------------------------------------|------------------------------------------|
 | `type`       | string | `"RESULT"` or `"WEAKNESS"`.                       | `"RESULT"`                               |

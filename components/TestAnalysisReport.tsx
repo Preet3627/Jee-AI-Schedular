@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ResultData } from '../types';
 import Icon from './Icon';
@@ -13,10 +14,10 @@ const TestAnalysisReport: React.FC<TestAnalysisReportProps> = ({ result, onAnaly
     }
 
     const { subjectTimings, chapterScores, aiSuggestions, incorrectQuestionNumbers } = result.analysis;
-    // FIX: Cast the result of Object.values to number[] to ensure type safety for reduce.
-    const totalTime = (Object.values(subjectTimings) as number[]).reduce((a, b) => a + b, 0);
-    // FIX: Cast the result of Object.values to number[] to ensure type safety for Math.max.
-    const maxTime = Math.max(...(Object.values(subjectTimings) as number[]));
+    // Safely calculate total and max time by casting the values to number[]
+    const timeValues = Object.values(subjectTimings) as number[];
+    const totalTime = timeValues.reduce((a, b) => a + b, 0);
+    const maxTime = Math.max(...timeValues);
 
     return (
         <div className="space-y-6 text-left">
@@ -34,14 +35,12 @@ const TestAnalysisReport: React.FC<TestAnalysisReportProps> = ({ result, onAnaly
                         <div key={subject}>
                             <div className="flex justify-between text-sm mb-1">
                                 <span className="font-semibold text-gray-300">{subject}</span>
-                                {/* FIX: Cast 'time' to number for arithmetic operations. */}
-                                <span className="text-gray-400">{Math.round((time as number) / 60)} min</span>
+                                <span className="text-gray-400">{Math.round(time / 60)} min</span>
                             </div>
                             <div className="w-full bg-gray-700 rounded-full h-2.5">
                                 <div 
                                     className="bg-cyan-500 h-2.5 rounded-full" 
-                                    // FIX: Cast 'time' to number for arithmetic operations.
-                                    style={{ width: `${((time as number) / maxTime) * 100}%` }}
+                                    style={{ width: `${(time / maxTime) * 100}%` }}
                                 ></div>
                             </div>
                         </div>
@@ -64,18 +63,14 @@ const TestAnalysisReport: React.FC<TestAnalysisReportProps> = ({ result, onAnaly
                         </thead>
                         <tbody className="divide-y divide-gray-700/50">
                             {Object.entries(chapterScores).map(([chapter, scores]) => {
-                                // FIX: Cast 'scores' to its expected type to access properties safely.
+                                // Assert the type of scores to safely access its properties.
                                 const scoreData = scores as { correct: number; incorrect: number; accuracy: number };
                                 return (
                                 <tr key={chapter}>
                                     <td className="py-2 font-medium text-gray-300">{chapter}</td>
-                                    {/* FIX: Access property on the correctly typed scoreData object. */}
                                     <td className="text-center text-green-400">{scoreData.correct}</td>
-                                    {/* FIX: Access property on the correctly typed scoreData object. */}
                                     <td className="text-center text-red-400">{scoreData.incorrect}</td>
-                                    {/* FIX: Access property on the correctly typed scoreData object. */}
                                     <td className={`text-right font-semibold ${scoreData.accuracy > 70 ? 'text-green-400' : scoreData.accuracy > 40 ? 'text-yellow-400' : 'text-red-400'}`}>
-                                        {/* FIX: Access property on the correctly typed scoreData object. */}
                                         {scoreData.accuracy.toFixed(0)}%
                                     </td>
                                 </tr>

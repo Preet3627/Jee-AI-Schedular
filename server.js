@@ -793,7 +793,7 @@ apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
                 }
 
                 const prop = item['d:propstat']['d:prop'];
-                const isCollection = !!prop['d:resourcetype']['d:collection'];
+                const isCollection = prop['d:resourcetype'] && typeof prop['d:resourcetype'] === 'object' && 'd:collection' in prop['d:resourcetype'];
                 const name = decodeURIComponent(item['d:href']).split('/').filter(Boolean).pop();
 
                 return {
@@ -846,7 +846,7 @@ apiRouter.post('/study-material/details', authMiddleware, async (req, res) => {
             if (!item) return null;
 
             const prop = item['d:propstat']['d:prop'];
-            const isCollection = !!prop['d:resourcetype']['d:collection'];
+            const isCollection = prop['d:resourcetype'] && typeof prop['d:resourcetype'] === 'object' && 'd:collection' in prop['d:resourcetype'];
             const name = decodeURIComponent(item['d:href']).split('/').filter(Boolean).pop();
 
             return {

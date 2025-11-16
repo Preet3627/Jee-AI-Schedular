@@ -145,6 +145,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         }
     }, []);
 
+    // This computed value determines if the mobile-optimized toolbar layout should be used.
     const useToolbarLayout = student.CONFIG.settings.mobileLayout === 'toolbar' && isMobile;
 
     const taskItems = student.SCHEDULE_ITEMS.filter(item => item.type !== 'ACTIVITY');
@@ -452,12 +453,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 </button>
             )}
             
+            {/* The main layout switcher: renders a simplified header for mobile toolbar view, or the full tab bar for desktop. */}
             {useToolbarLayout ? (
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold capitalize text-white">{activeTab}</h2>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => setIsPracticeModalOpen(true)} className="p-2 rounded-lg bg-purple-600"><Icon name="stopwatch" /></button>
-                        <button onClick={() => setIsSettingsModalOpen(true)} className="p-2 rounded-lg bg-gray-700"><Icon name="settings" /></button>
+                        <button onClick={() => setIsPracticeModalOpen(true)} className="p-2.5 rounded-lg bg-purple-600/50 hover:bg-purple-600" title="Custom Practice"><Icon name="stopwatch" /></button>
+                        <button onClick={() => setIsSettingsModalOpen(true)} className="p-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700" title="Settings"><Icon name="settings" /></button>
                     </div>
                 </div>
             ) : <TopTabBar />}
@@ -485,7 +487,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             
             {/* Study Material Modal */}
             {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
-
+            
+            {/* Renders the bottom toolbar only if the mobile layout is active. */}
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}
         </main>
     );

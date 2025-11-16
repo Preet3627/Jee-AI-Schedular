@@ -31,6 +31,13 @@ const App: React.FC = () => {
     const [googleClientId, setGoogleClientId] = useState<string | null>(null);
     const [googleAuthStatus, setGoogleAuthStatus] = useState<'unconfigured' | 'loading' | 'signed_in' | 'signed_out'>('loading');
     const [resetToken, setResetToken] = useState<string | null>(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -354,9 +361,11 @@ const App: React.FC = () => {
         // If user is loaded (from cache or fetch), show their dashboard.
         if (currentUser) {
             const dashboardUser = currentUser;
+            const useToolbarLayout = isMobile && dashboardUser.CONFIG.settings.mobileLayout === 'toolbar';
+
             return (
-                 <div style={{'--accent-color': dashboardUser.CONFIG.settings.accentColor} as React.CSSProperties} className={`${dashboardUser.CONFIG.settings.blurEnabled === false ? 'no-blur' : ''} safe-padding-left safe-padding-right`}>
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                 <div style={{'--accent-color': dashboardUser.CONFIG.settings.accentColor} as React.CSSProperties} className={`${dashboardUser.CONFIG.settings.blurEnabled === false ? 'no-blur' : ''} safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom`}>
+                    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${useToolbarLayout ? 'pb-24' : ''}`}>
                         <Header user={{ name: dashboardUser.fullName, id: dashboardUser.sid, profilePhoto: dashboardUser.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         {userRole === 'admin' ? (
                             <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBroadcastTask={api.broadcastTask} />
@@ -371,7 +380,7 @@ const App: React.FC = () => {
         // Show demo admin dashboard if in demo mode
         if (isDemoMode && userRole === 'admin') {
              return (
-                 <div style={{'--accent-color': '#0891b2'} as React.CSSProperties} className="safe-padding-left safe-padding-right">
+                 <div style={{'--accent-color': '#0891b2'} as React.CSSProperties} className="safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                         <Header user={{ name: 'Admin', id: 'ADMIN_DEMO', profilePhoto: currentUser?.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBroadcastTask={() => alert("Broadcast disabled in demo mode")} />

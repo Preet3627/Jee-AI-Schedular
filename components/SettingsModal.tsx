@@ -21,7 +21,7 @@ interface SettingsModalProps {
 }
 
 const aiGuideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.0.0 (JSON Only)
+# Version: 5.1.0 (JSON Only)
 # Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
 ## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
@@ -29,7 +29,16 @@ Your entire response **MUST** be a single, raw JSON object.
 - **DO NOT** include any explanations, conversational text, or markdown formatting like \`\`\`json.
 - Your output will be parsed directly by a machine.
 
-## 2. Top-Level JSON Structure
+## 2. INTERACTION & DATA GATHERING
+- **DO NOT INVENT DATA:** If the user's request is vague, you **MUST** ask for clarification. Do not generate a schedule with placeholder or mock data.
+- **ASK FOR DETAILS:** Specifically ask for the following if they are missing:
+  - School/Coaching timetable and exam schedule.
+  - Syllabus for upcoming tests.
+  - Specific homework assignments (e.g., question numbers, chapters).
+  - The student's self-identified weak subjects or topics.
+- **Example Clarification:** "To create the best schedule for you, could you please provide your school/coaching timetable, any upcoming exam dates and their syllabus, and a few topics you find most difficult right now?"
+
+## 3. Top-Level JSON Structure
 Your entire output must be a single JSON object with these keys. Provide empty arrays \`[]\` for types not present.
 \`\`\`json
 {
@@ -40,7 +49,7 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 \`\`\`
 
 ---
-### 2.1 \`schedules\` Array Items
+### 3.1 \`schedules\` Array Items
 - **Required keys:** \`id\`, \`type\` ("ACTION" or "HOMEWORK"), \`day\`, \`title\`, \`detail\`, \`subject\`.
 - **Conditional keys:** \`time\` (for "ACTION"), \`q_ranges\` (for "HOMEWORK"), \`sub_type\` (for "ACTION").
 
@@ -54,7 +63,7 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 \`\`\`
 
 ---
-### 2.2 \`exams\` Array Items
+### 3.2 \`exams\` Array Items
 - **Required keys:** \`id\`, \`type\` ("EXAM"), \`subject\`, \`title\`, \`date\`, \`time\`, \`syllabus\`.
 
 **Example:**
@@ -66,7 +75,7 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 \`\`\`
 
 ---
-### 2.3 \`metrics\` Array Items
+### 3.3 \`metrics\` Array Items
 - **Required keys:** \`type\` ("RESULT" or "WEAKNESS").
 - **Conditional keys:** \`score\` & \`mistakes\` (for "RESULT"), \`weaknesses\` (for "WEAKNESS"). Mistakes/weaknesses are semicolon-separated.
 

@@ -4,7 +4,6 @@ import Icon from './Icon';
 import { playNextSound, playStopSound, playMarkSound, vibrate } from '../utils/sounds';
 import { api } from '../api/apiService';
 import AnswerKeyUploadModal from './AnswerKeyUploadModal';
-// FIX: Added StudentData to types import.
 import { ResultData, StudentData } from '../types';
 import TestAnalysisReport from './TestAnalysisReport';
 import SpecificMistakeAnalysisModal from './SpecificMistakeAnalysisModal';
@@ -22,7 +21,6 @@ interface McqTimerProps {
   subject: string;
   category: string;
   syllabus: string;
-  // FIX: Added missing student prop.
   student: StudentData;
 }
 
@@ -176,22 +174,38 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     if (isFinished) {
         return (
             <div className="text-center space-y-4 max-h-[75vh] overflow-y-auto">
-                <h3 className="text-2xl font-bold text-white">Test Finished!</h3>
-                {testResult && testResult.analysis ? (
-                    <TestAnalysisReport 
-                      result={testResult} 
-                      onAnalyzeMistake={(qNum) => setAnalyzingMistake(qNum)}
-                    />
+                <h3 className="text-2xl font-bold text-white">Session Finished!</h3>
+
+                {practiceMode === 'jeeMains' ? (
+                    // Logic for JEE Mains mode: Show AI grading or the result report
+                    testResult && testResult.analysis ? (
+                        <TestAnalysisReport 
+                          result={testResult} 
+                          onAnalyzeMistake={(qNum) => setAnalyzingMistake(qNum)}
+                        />
+                    ) : (
+                        <>
+                            <p className="text-sm text-gray-400">Upload the answer key to get your score and detailed analysis instantly.</p>
+                            <button onClick={() => setIsUploadingKey(true)} disabled={isGrading} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-base font-semibold text-white rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50">
+                               {isGrading ? 'Analyzing...' : <><Icon name="upload" /> Grade with AI</>}
+                            </button>
+                            {gradingError && <p className="text-sm text-red-400">{gradingError}</p>}
+                        </>
+                    )
                 ) : (
-                    <>
-                        <p className="text-sm text-gray-400">Upload the answer key to get your score and detailed analysis instantly.</p>
-                        <button onClick={() => setIsUploadingKey(true)} disabled={isGrading} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-base font-semibold text-white rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50">
-                           {isGrading ? 'Analyzing...' : <><Icon name="upload" /> Grade with AI</>}
-                        </button>
-                        {gradingError && <p className="text-sm text-red-400">{gradingError}</p>}
-                    </>
+                    // Logic for custom mode: Show a simple summary
+                    <div className="bg-gray-900/50 p-4 rounded-lg">
+                        <Icon name="check" className="w-10 h-10 text-green-400 mx-auto mb-2" />
+                        <p className="text-lg text-gray-300">Great work!</p>
+                        <p className="text-sm text-gray-400">
+                            Your practice session has been logged.
+                        </p>
+                    </div>
                 )}
+
                 <button onClick={onClose} className="w-full px-4 py-2 mt-4 text-base font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600">Close</button>
+                
+                {/* Modals are still needed for the jeeMains flow */}
                 {isUploadingKey && <AnswerKeyUploadModal onClose={() => setIsUploadingKey(false)} onGrade={handleGradeWithAI} />}
                 {analyzingMistake !== null && onUpdateWeaknesses && (
                     <SpecificMistakeAnalysisModal 
