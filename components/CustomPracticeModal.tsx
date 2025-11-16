@@ -59,7 +59,8 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
   const [aiTopic, setAiTopic] = useState('');
   const [aiNumQuestions, setAiNumQuestions] = useState(10);
   const [aiDifficulty, setAiDifficulty] = useState('Medium');
-  const [isGenerating, setIsGenerating] = useState(false);
+  // FIX: Renamed state variable and setter for consistency. The setter was setIsLoading, which was a typo.
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Session State
@@ -92,7 +93,8 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
             setError('Please enter a topic for the AI to generate questions.');
             return;
         }
-        setIsGenerating(true);
+        // FIX: The setter for the loading state was incorrectly named 'setIsGenerating'. Corrected to 'setIsLoading'.
+        setIsLoading(true);
         try {
             const result = await api.generatePracticeTest({ topic: aiTopic, numQuestions: aiNumQuestions, difficulty: aiDifficulty });
             if (result.questions && result.answers) {
@@ -105,7 +107,8 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
         } catch (err: any) {
             setError(err.error || 'Failed to generate practice test.');
         } finally {
-            setIsGenerating(false);
+            // FIX: The setter for the loading state was incorrectly named 'setIsGenerating'. Corrected to 'setIsLoading'.
+            setIsLoading(false);
         }
     }
   };
@@ -118,10 +121,13 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
             try {
                 const text = e.target?.result as string;
                 const json = JSON.parse(text);
+                 if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+                    throw new Error("JSON is not a valid key-value object.");
+                }
                 const formattedKey = Object.entries(json).map(([q, a]) => `${q}:${a}`).join('\n');
                 setCorrectAnswersText(formattedKey);
             } catch (err) {
-                alert("Failed to parse JSON file. Please ensure it's a valid JSON object of answers.");
+                alert("Failed to parse JSON file. Please ensure it's a valid JSON object of answers (e.g., {\"1\": \"A\", \"2\": \"C\"}).");
             }
         };
         reader.readAsText(file);
@@ -221,8 +227,8 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
 
               <div className="flex justify-end gap-4 pt-4">
                 <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors">Cancel</button>
-                <button onClick={handleStart} disabled={isGenerating || (activeTab === 'manual' && totalQuestions === 0)} className="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
-                  {isGenerating ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Generating...</> : <><Icon name="play" className="w-4 h-4" /> Start</>}
+                <button onClick={handleStart} disabled={isLoading || (activeTab === 'manual' && totalQuestions === 0)} className="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isLoading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Generating...</> : <><Icon name="play" className="w-4 h-4" /> Start</>}
                 </button>
               </div>
             </div>

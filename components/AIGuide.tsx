@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 
 const guideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
@@ -39,7 +37,7 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 | \`subject\`   | string | \`PHYSICS\`, \`CHEMISTRY\`, \`MATHS\`, etc.                 | \`"PHYSICS"\`                           |
 | \`q_ranges\`  | string | **For \`HOMEWORK\` only.** Semicolon-separated.         | \`"L1:1-10@p45;PYQ:5-15"\`              |
 | \`sub_type\`  | string | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`ANALYSIS\`, etc.  | \`"DEEP_DIVE"\`                         |
-| \`answers\`   | object | **For \`HOMEWORK\` only.** Optional. If asked, you MUST generate this. Maps question numbers to answers, e.g., \`{"1": "A", "2": "C", "3": "12.5"}\`. | \`{"1": "A", "2": "D"}\` |
+| \`answers\`   | object | **For \`HOMEWORK\` only.** Optional. If asked, you MUST generate this. Maps question numbers to answers, e.g., \`{"1": "A", "2": "C", "76": "12.50"}\`. | \`{"1": "A", "2": "D"}\` |
 
 ---
 ### 4.2 \`exams\` Array Items

@@ -59,7 +59,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     const [testResult, setTestResult] = useState<ResultData | null>(null);
     const [gradingError, setGradingError] = useState('');
     const [isGrading, setIsGrading] = useState(false);
-    const [feedback, setFeedback] = useState<{ status: 'correct' | 'incorrect', correctAnswer?: string } | null>(null);
+    const [feedback, setFeedback] = useState<{ status: 'correct' | 'incorrect' | 'answered', correctAnswer?: string } | null>(null);
     const [isNavigating, setIsNavigating] = useState(false);
     
     const [analyzingMistake, setAnalyzingMistake] = useState<number | null>(null);
@@ -105,39 +105,20 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     };
 
     const handleAnswerSelect = (answer: string) => {
-        setAnswers(prev => ({ ...prev, [currentQuestionNumber]: answer }));
-    };
+        if (feedback) return; // Already answered, must use new buttons
 
-    const navigate = (newIndex: number) => {
-        if (isNavigating) return;
-        setIsNavigating(true);
-
-        if (newIndex >= 0 && newIndex < totalQuestions) {
-            // Log time for the question we are leaving
-            if (questionStartTimeRef.current) {
-                const timeSpent = Math.round((Date.now() - questionStartTimeRef.current) / 1000);
-                setTimings(prev => ({...prev, [currentQuestionNumber]: (prev[currentQuestionNumber] || 0) + timeSpent}));
-            }
-            questionStartTimeRef.current = Date.now(); // Reset timer for new question
-            setCurrentQuestionIndex(newIndex);
-            setIsPaletteOpen(false);
-        }
-        
-        setTimeout(() => setIsNavigating(false), 100); // Debounce navigation
-    };
-
-    const handleSaveAndNext = () => {
         playNextSound();
-        
-        const userAnswer = answers[currentQuestionNumber];
-        const correctAnswer = correctAnswers ? correctAnswers[currentQuestionNumber.toString()] : undefined;
+        setAnswers(prev => ({ ...prev, [currentQuestionNumber]: answer }));
 
-        if (correctAnswer && userAnswer) {
-            const isCorrect = normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer);
-            setFeedback({ status: isCorrect ? 'correct' : 'incorrect', correctAnswer: correctAnswer });
+        if (correctAnswers) {
+            const correctAnswer = correctAnswers[currentQuestionNumber.toString()];
+            const isCorrect = normalizeAnswer(answer) === normalizeAnswer(correctAnswer);
+            setFeedback({
+                status: isCorrect ? 'correct' : 'incorrect',
+                correctAnswer: correctAnswer,
+            });
 
             if (!isCorrect && onSaveTask && initialTask) {
-                // Auto re-attempt logic
                 const isReattempt = initialTask.CARD_TITLE.EN.startsWith('[RE-ATTEMPT]');
                 if (!isReattempt) {
                     const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
@@ -147,23 +128,53 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                         ID: `A${Date.now()}${currentQuestionNumber}`, type: 'ACTION', isUserCreated: true,
                         DAY: { EN: nextDay, GU: '' }, TIME: '21:00',
                         CARD_TITLE: { EN: `[RE-ATTEMPT] Q.${currentQuestionNumber} of: ${initialTask.CARD_TITLE.EN}`, GU: '' },
-                        FOCUS_DETAIL: { EN: `You got this question wrong. Try solving it again. The correct answer was: ${correctAnswer}.`, GU: '' },
+                        FOCUS_DETAIL: { EN: `You got this question wrong. Try solving it again. Correct answer was: ${correctAnswer}.`, GU: '' },
                         SUBJECT_TAG: initialTask.SUBJECT_TAG, SUB_TYPE: 'ANALYSIS'
                     };
                     onSaveTask(reattemptTask);
                 }
             }
-            
-            setTimeout(() => {
-                setFeedback(null);
-                navigate(currentQuestionIndex + 1);
-            }, 1500); // Show feedback for 1.5s
         } else {
-            // No answer key, just navigate
-            navigate(currentQuestionIndex + 1);
+            // No answer key, but still lock the answer
+            setFeedback({ status: 'answered' });
         }
     };
     
+    const handleChangeAnswer = () => {
+        setFeedback(null);
+        setAnswers(prev => {
+            const newAnswers = { ...prev };
+            delete newAnswers[currentQuestionNumber];
+            return newAnswers;
+        });
+    };
+    
+    const handleNextQuestion = () => {
+        if (currentQuestionIndex < totalQuestions - 1) {
+            navigate(currentQuestionIndex + 1);
+        } else {
+            finishSession();
+        }
+    };
+
+    const navigate = (newIndex: number) => {
+        if (isNavigating) return;
+        setIsNavigating(true);
+
+        if (newIndex >= 0 && newIndex < totalQuestions) {
+            if (questionStartTimeRef.current) {
+                const timeSpent = Math.round((Date.now() - questionStartTimeRef.current) / 1000);
+                setTimings(prev => ({...prev, [currentQuestionNumber]: (prev[currentQuestionNumber] || 0) + timeSpent}));
+            }
+            questionStartTimeRef.current = Date.now();
+            setFeedback(null); // Reset feedback for new question
+            setCurrentQuestionIndex(newIndex);
+            setIsPaletteOpen(false);
+        }
+        
+        setTimeout(() => setIsNavigating(false), 100);
+    };
+
     const handleMarkForReview = () => {
         playMarkSound();
         setMarkedForReview(prev => 
@@ -171,7 +182,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                 ? prev.filter(q => q !== currentQuestionNumber) 
                 : [...prev, currentQuestionNumber]
         );
-        navigate(currentQuestionIndex + 1);
+        handleNextQuestion();
     };
 
     const handleGradeWithAI = async (imageBase64: string) => {
@@ -218,16 +229,13 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     };
 
     const currentQuestionType = useMemo(() => {
-        // If answer key exists, it's the source of truth
         if (correctAnswers && correctAnswers[currentQuestionNumber.toString()]) {
             const answer = normalizeAnswer(correctAnswers[currentQuestionNumber.toString()]);
             return ['A', 'B', 'C', 'D'].includes(answer) ? 'MCQ' : 'NUM';
         }
-        // Fallback for JEE mode without answer key
         if (practiceMode === 'jeeMains') {
             return getQuestionInfo(currentQuestionIndex).type;
         }
-        // Default for custom mode without answer key
         return 'MCQ';
     }, [correctAnswers, currentQuestionIndex, practiceMode, currentQuestionNumber]);
 
@@ -253,7 +261,6 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                 <h3 className="text-2xl font-bold text-white">Session Finished!</h3>
 
                 {practiceMode === 'jeeMains' || (questions && onLogResult) ? (
-                    // Logic for AI grading modes
                     testResult && testResult.analysis ? (
                         <TestAnalysisReport 
                           result={testResult} 
@@ -269,7 +276,6 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                         </>
                     )
                 ) : (
-                    // Logic for custom mode without grading: Show a simple summary
                     <div className="bg-gray-900/50 p-4 rounded-lg">
                         <Icon name="check" className="w-10 h-10 text-green-400 mx-auto mb-2" />
                         <p className="text-lg text-gray-300">Great work!</p>
@@ -292,6 +298,21 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             </div>
         );
     }
+    
+    const getOptionClasses = (option: string) => {
+        if (!feedback) {
+            return `bg-gray-800 border-gray-700 hover:border-cyan-500 ${answers[currentQuestionNumber] === option ? 'bg-cyan-800/50 border-cyan-500 text-white' : ''}`;
+        }
+        
+        const userAnswer = normalizeAnswer(answers[currentQuestionNumber]);
+        const correctAnswer = normalizeAnswer(feedback.correctAnswer);
+        const currentOption = normalizeAnswer(option);
+
+        if (currentOption === correctAnswer) return 'bg-green-800/50 border-green-500';
+        if (currentOption === userAnswer && userAnswer !== correctAnswer) return 'bg-red-800/50 border-red-500';
+
+        return 'bg-gray-800 border-gray-700 opacity-60';
+    };
   
     return (
         <div className="flex flex-col h-[70vh] max-h-[600px] relative">
@@ -318,7 +339,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                             {currentQuestion.options.map((option, idx) => {
                                 const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D
                                 return (
-                                    <button key={idx} onClick={() => handleAnswerSelect(optionLetter)} className={`w-full text-left p-3 rounded-lg border-2 transition-colors flex items-start gap-3 ${answers[currentQuestionNumber] === optionLetter ? 'bg-cyan-800/50 border-cyan-500 text-white' : 'bg-gray-800 border-gray-700 hover:border-cyan-500'}`}>
+                                    <button key={idx} onClick={() => handleAnswerSelect(optionLetter)} disabled={!!feedback} className={`w-full text-left p-3 rounded-lg border-2 transition-colors flex items-start gap-3 disabled:cursor-default ${getOptionClasses(optionLetter)}`}>
                                         <span className="font-bold">{optionLetter}.</span> 
                                         <span>{option.replace(/^\([A-D]\)\s*/, '')}</span>
                                     </button>
@@ -332,13 +353,13 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                          {currentQuestionType === 'MCQ' ? (
                              <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
                                  {(['A', 'B', 'C', 'D'] as const).map(option => (
-                                     <button key={option} onClick={() => handleAnswerSelect(option)} className={`py-3 px-6 rounded-lg font-semibold border-2 transition-colors ${answers[currentQuestionNumber] === option ? 'bg-cyan-500 border-cyan-400 text-white' : 'bg-gray-800 border-gray-700 hover:border-cyan-500'}`}>
+                                     <button key={option} onClick={() => handleAnswerSelect(option)} disabled={!!feedback} className={`py-3 px-6 rounded-lg font-semibold border-2 transition-colors disabled:cursor-default ${getOptionClasses(option)}`}>
                                          {option}
                                      </button>
                                  ))}
                              </div>
                          ) : (
-                             <input type="text" value={answers[currentQuestionNumber] || ''} onChange={(e) => handleAnswerSelect(e.target.value)} className="w-full max-w-xs text-center text-2xl font-mono bg-gray-900 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Numerical Answer" />
+                             <input type="text" value={answers[currentQuestionNumber] || ''} onChange={(e) => handleAnswerSelect(e.target.value)} disabled={!!feedback} className="w-full max-w-xs text-center text-2xl font-mono bg-gray-900 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60" placeholder="Numerical Answer" />
                          )}
                     </>
                 )}
@@ -346,25 +367,33 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             
             {/* Navigation */}
             <div className="flex-shrink-0 space-y-2">
-                 <div className="flex gap-2">
-                    <button onClick={() => navigate(currentQuestionIndex - 1)} disabled={currentQuestionIndex === 0} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600 disabled:opacity-50">Back</button>
-                    <button onClick={() => setAnswers(prev => ({...prev, [currentQuestionNumber]: ''}))} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Clear</button>
-                    <button onClick={() => navigate(currentQuestionIndex + 1)} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Skip</button>
-                    <button onClick={handleMarkForReview} className="flex-1 py-2 text-sm font-semibold rounded-md bg-yellow-600/80 hover:bg-yellow-500/80 flex items-center justify-center gap-1">
-                        <Icon name="marker" className="w-4 h-4"/> Review
-                    </button>
-                    <button onClick={handleSaveAndNext} disabled={currentQuestionIndex === totalQuestions - 1 || !answers[currentQuestionNumber]} className="flex-1 py-2 text-sm font-semibold rounded-md bg-green-600/80 hover:bg-green-500/80 disabled:opacity-50">Save & Next</button>
-                 </div>
+                 {feedback ? (
+                    <div className="flex gap-2">
+                        <button onClick={handleChangeAnswer} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Change Answer</button>
+                        <button onClick={handleNextQuestion} className="flex-1 py-2 text-sm font-semibold rounded-md bg-cyan-600 hover:bg-cyan-500">
+                           {currentQuestionIndex === totalQuestions - 1 ? 'Finish' : 'Next Question'}
+                        </button>
+                    </div>
+                 ) : (
+                    <div className="flex gap-2">
+                        <button onClick={() => navigate(currentQuestionIndex - 1)} disabled={currentQuestionIndex === 0} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600 disabled:opacity-50">Back</button>
+                        <button onClick={() => setAnswers(prev => ({...prev, [currentQuestionNumber]: ''}))} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Clear</button>
+                        <button onClick={() => navigate(currentQuestionIndex + 1)} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Skip</button>
+                        <button onClick={handleMarkForReview} className="flex-1 py-2 text-sm font-semibold rounded-md bg-yellow-600/80 hover:bg-yellow-500/80 flex items-center justify-center gap-1">
+                            <Icon name="marker" className="w-4 h-4"/> Review
+                        </button>
+                    </div>
+                 )}
                  <button onClick={finishSession} className="w-full py-2 text-sm font-semibold rounded-md bg-red-800/80 hover:bg-red-700/80">
-                    Finish Test
+                    Submit Test
                  </button>
             </div>
             
             {/* Feedback Pop-up */}
-            {feedback && (
-                <div className={`absolute bottom-24 left-1/2 -translate-x-1/2 p-3 rounded-lg text-white font-semibold text-sm shadow-lg
+            {feedback && feedback.status !== 'answered' && (
+                <div className={`absolute bottom-[100px] left-1/2 -translate-x-1/2 p-3 rounded-lg text-white font-semibold text-sm shadow-lg
                     ${feedback.status === 'correct' ? 'bg-green-600' : 'bg-red-600'}`}>
-                    {feedback.status === 'correct' ? 'Correct!' : `Incorrect. The answer is ${feedback.correctAnswer}.`}
+                    {feedback.status === 'correct' ? 'Correct!' : `Incorrect. The correct answer is ${feedback.correctAnswer}.`}
                 </div>
             )}
             

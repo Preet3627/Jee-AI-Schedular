@@ -1134,34 +1134,6 @@ RULES:
     }
 });
 
-apiRouter.post('/ai/parse-image-to-csv', authMiddleware, async (req, res) => {
-    const { imageBase64 } = req.body;
-    if (!imageBase64) return res.status(400).json({ error: "Image data is required." });
-    const apiKey = await getApiKeyForUser(req.userId);
-    if (!apiKey) return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
-
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are a data conversion expert specializing in academic timetables. Your task is to analyze an image of a weekly schedule and convert it into a valid CSV format according to the provided schema. You must ONLY output the raw CSV data, with no explanations, backticks, or "csv" language specifier. Infer details logically. For example, if a class is "Physics", the SUBJECT_TAG is "PHYSICS" and the CARD_TITLE could be "Physics Class". Create a unique ID for each entry. The required CSV format is: ID,TYPE,DAY,TIME,CARD_TITLE,FOCUS_DETAIL,SUBJECT_TAG. All tasks are of TYPE 'ACTION'.`;
-        
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: {
-                parts: [
-                    { text: "Analyze this timetable image and convert it to the specified CSV format." },
-                    { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
-                ]
-            },
-            config: { systemInstruction },
-        });
-
-        res.json({ csv: response.text.trim() });
-    } catch (error) {
-        console.error("Gemini API error (image parse):", error);
-        res.status(500).json({ error: `Failed to parse image: ${error.message}` });
-    }
-});
-
 apiRouter.post('/ai/analyze-test-results', authMiddleware, async (req, res) => {
     const { imageBase64, userAnswers, timings, syllabus } = req.body;
     if (!imageBase64 || !userAnswers || !timings || !syllabus) return res.status(400).json({ error: "Answer key image, user answers, timings, and syllabus are required." });
