@@ -6,6 +6,7 @@ import AnswerKeyUploadModal from './AnswerKeyUploadModal';
 import { ResultData, StudentData, HomeworkData, ScheduleItem, ScheduleCardData, PracticeQuestion } from '../types';
 import TestAnalysisReport from './TestAnalysisReport';
 import SpecificMistakeAnalysisModal from './SpecificMistakeAnalysisModal';
+import MusicVisualizerWidget from './widgets/MusicVisualizerWidget';
 
 type PracticeMode = 'custom' | 'jeeMains';
 
@@ -61,10 +62,12 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     const [isGrading, setIsGrading] = useState(false);
     const [feedback, setFeedback] = useState<{ status: 'correct' | 'incorrect' | 'answered', correctAnswer?: string } | null>(null);
     const [isNavigating, setIsNavigating] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     
     const [analyzingMistake, setAnalyzingMistake] = useState<number | null>(null);
 
     const questionStartTimeRef = useRef<number | null>(null);
+    const timerRef = useRef<HTMLDivElement>(null);
     const totalQuestions = questions ? questions.length : questionNumbers.length;
     const currentQuestion = questions ? questions[currentQuestionIndex] : null;
     const currentQuestionNumber = questions ? questions[currentQuestionIndex].number : questionNumbers[currentQuestionIndex];
@@ -75,6 +78,22 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
         const s = Math.floor(seconds % 60).toString().padStart(2, '0');
         return `${h}:${m}:${s}`;
     };
+
+    const toggleFullscreen = () => {
+        const elem = timerRef.current?.closest('.modal-content-enter');
+        if (!elem) return;
+        if (!document.fullscreenElement) {
+            elem.requestFullscreen().catch(err => console.error(err));
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
+    useEffect(() => {
+        const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+    }, []);
 
     useEffect(() => {
         let interval: ReturnType<typeof setTimeout> | null = null;
@@ -105,7 +124,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     };
 
     const handleAnswerSelect = (answer: string) => {
-        if (feedback) return; // Already answered, must use new buttons
+        if (isNavigating || feedback) return;
 
         playNextSound();
         setAnswers(prev => ({ ...prev, [currentQuestionNumber]: answer }));
@@ -117,6 +136,9 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                 status: isCorrect ? 'correct' : 'incorrect',
                 correctAnswer: correctAnswer,
             });
+            
+            setIsNavigating(true);
+            setTimeout(() => handleNextQuestion(), 1500);
 
             if (!isCorrect && onSaveTask && initialTask) {
                 const isReattempt = initialTask.CARD_TITLE.EN.startsWith('[RE-ATTEMPT]');
@@ -135,18 +157,10 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                 }
             }
         } else {
-            // No answer key, but still lock the answer
             setFeedback({ status: 'answered' });
+            setIsNavigating(true);
+            setTimeout(() => handleNextQuestion(), 1000);
         }
-    };
-    
-    const handleChangeAnswer = () => {
-        setFeedback(null);
-        setAnswers(prev => {
-            const newAnswers = { ...prev };
-            delete newAnswers[currentQuestionNumber];
-            return newAnswers;
-        });
     };
     
     const handleNextQuestion = () => {
@@ -158,7 +172,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     };
 
     const navigate = (newIndex: number) => {
-        if (isNavigating) return;
+        if (isNavigating && newIndex !== currentQuestionIndex + 1) return; // Allow auto-next but not manual clicks during transition
         setIsNavigating(true);
 
         if (newIndex >= 0 && newIndex < totalQuestions) {
@@ -166,13 +180,17 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                 const timeSpent = Math.round((Date.now() - questionStartTimeRef.current) / 1000);
                 setTimings(prev => ({...prev, [currentQuestionNumber]: (prev[currentQuestionNumber] || 0) + timeSpent}));
             }
-            questionStartTimeRef.current = Date.now();
-            setFeedback(null); // Reset feedback for new question
-            setCurrentQuestionIndex(newIndex);
-            setIsPaletteOpen(false);
+            
+            setTimeout(() => {
+                questionStartTimeRef.current = Date.now();
+                setFeedback(null);
+                setCurrentQuestionIndex(newIndex);
+                setIsPaletteOpen(false);
+                setTimeout(() => setIsNavigating(false), 50);
+            }, 300); // Wait for fade-out animation
+        } else {
+            setIsNavigating(false);
         }
-        
-        setTimeout(() => setIsNavigating(false), 100);
     };
 
     const handleMarkForReview = () => {
@@ -315,12 +333,17 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     };
   
     return (
-        <div className="flex flex-col h-[70vh] max-h-[600px] relative">
+        <div ref={timerRef} className="flex flex-col h-[70vh] max-h-[600px] relative fullscreen:h-screen fullscreen:max-h-screen bg-gray-900/50 p-4 rounded-lg">
             {/* Header */}
-            <div className="flex-shrink-0 flex justify-between items-center pb-3 border-b border-gray-700">
-                <div>
-                    <h4 className="text-lg font-bold text-white">{category}</h4>
-                    <p className="text-sm text-cyan-400">{currentSubject}</p>
+            <div className="flex-shrink-0 flex justify-between items-start pb-3 border-b border-gray-700">
+                <div className="flex items-center gap-4">
+                     <button onClick={toggleFullscreen} className="p-2 text-gray-400 hover:text-white">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isFullscreen ? "M4 8V4m0 0h4M4 4l5 5m11 7h-4m0 0v4m0-4l5 5M4 16v4m0 0h4m-4 0l5-5m11-7h-4m0 0v-4m0 4l5-5" : "M4 8V4m0 0h4M4 4l5 5m11-1v4m0 0h-4m4 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 1v-4m0 0h-4m4 0l-5 5"} /></svg>
+                    </button>
+                    <div>
+                        <h4 className="text-lg font-bold text-white">{category}</h4>
+                        <p className="text-sm text-cyan-400">{currentSubject}</p>
+                    </div>
                 </div>
                 <div className="text-right">
                     <p className="font-mono text-xl font-bold tracking-wider">{formatTime(totalSeconds)}</p>
@@ -329,9 +352,11 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                     </button>
                 </div>
             </div>
+            
+            <div className="py-2"><MusicVisualizerWidget /></div>
 
             {/* Question Area */}
-            <div className="flex-grow flex flex-col items-center justify-center p-4 overflow-y-auto">
+            <div className={`flex-grow flex flex-col items-center justify-center p-4 overflow-y-auto ${isNavigating ? 'question-exit' : 'question-enter'}`}>
                 {currentQuestion ? (
                     <div className="text-left w-full space-y-4">
                         <p className="text-base text-gray-300 whitespace-pre-wrap">{currentQuestion.text}</p>
@@ -339,7 +364,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                             {currentQuestion.options.map((option, idx) => {
                                 const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D
                                 return (
-                                    <button key={idx} onClick={() => handleAnswerSelect(optionLetter)} disabled={!!feedback} className={`w-full text-left p-3 rounded-lg border-2 transition-colors flex items-start gap-3 disabled:cursor-default ${getOptionClasses(optionLetter)}`}>
+                                    <button key={idx} onClick={() => handleAnswerSelect(optionLetter)} disabled={isNavigating || !!feedback} className={`w-full text-left p-3 rounded-lg border-2 transition-colors flex items-start gap-3 disabled:cursor-default ${getOptionClasses(optionLetter)}`}>
                                         <span className="font-bold">{optionLetter}.</span> 
                                         <span>{option.replace(/^\([A-D]\)\s*/, '')}</span>
                                     </button>
@@ -353,13 +378,13 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                          {currentQuestionType === 'MCQ' ? (
                              <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
                                  {(['A', 'B', 'C', 'D'] as const).map(option => (
-                                     <button key={option} onClick={() => handleAnswerSelect(option)} disabled={!!feedback} className={`py-3 px-6 rounded-lg font-semibold border-2 transition-colors disabled:cursor-default ${getOptionClasses(option)}`}>
+                                     <button key={option} onClick={() => handleAnswerSelect(option)} disabled={isNavigating || !!feedback} className={`py-3 px-6 rounded-lg font-semibold border-2 transition-colors disabled:cursor-default ${getOptionClasses(option)}`}>
                                          {option}
                                      </button>
                                  ))}
                              </div>
                          ) : (
-                             <input type="text" value={answers[currentQuestionNumber] || ''} onChange={(e) => handleAnswerSelect(e.target.value)} disabled={!!feedback} className="w-full max-w-xs text-center text-2xl font-mono bg-gray-900 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60" placeholder="Numerical Answer" />
+                             <input type="text" value={answers[currentQuestionNumber] || ''} onChange={(e) => handleAnswerSelect(e.target.value)} disabled={isNavigating || !!feedback} className="w-full max-w-xs text-center text-2xl font-mono bg-gray-900 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60" placeholder="Numerical Answer" />
                          )}
                     </>
                 )}
@@ -367,23 +392,14 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             
             {/* Navigation */}
             <div className="flex-shrink-0 space-y-2">
-                 {feedback ? (
-                    <div className="flex gap-2">
-                        <button onClick={handleChangeAnswer} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Change Answer</button>
-                        <button onClick={handleNextQuestion} className="flex-1 py-2 text-sm font-semibold rounded-md bg-cyan-600 hover:bg-cyan-500">
-                           {currentQuestionIndex === totalQuestions - 1 ? 'Finish' : 'Next Question'}
-                        </button>
-                    </div>
-                 ) : (
-                    <div className="flex gap-2">
-                        <button onClick={() => navigate(currentQuestionIndex - 1)} disabled={currentQuestionIndex === 0} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600 disabled:opacity-50">Back</button>
-                        <button onClick={() => setAnswers(prev => ({...prev, [currentQuestionNumber]: ''}))} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Clear</button>
-                        <button onClick={() => navigate(currentQuestionIndex + 1)} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Skip</button>
-                        <button onClick={handleMarkForReview} className="flex-1 py-2 text-sm font-semibold rounded-md bg-yellow-600/80 hover:bg-yellow-500/80 flex items-center justify-center gap-1">
-                            <Icon name="marker" className="w-4 h-4"/> Review
-                        </button>
-                    </div>
-                 )}
+                 <div className="flex gap-2">
+                    <button onClick={() => navigate(currentQuestionIndex - 1)} disabled={isNavigating || currentQuestionIndex === 0} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600 disabled:opacity-50">Back</button>
+                    <button onClick={() => setAnswers(prev => ({...prev, [currentQuestionNumber]: ''}))} disabled={isNavigating || !!feedback} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600 disabled:opacity-50">Clear</button>
+                    <button onClick={() => navigate(currentQuestionIndex + 1)} disabled={isNavigating} className="flex-1 py-2 text-sm font-semibold rounded-md bg-gray-700 hover:bg-gray-600 disabled:opacity-50">Skip</button>
+                    <button onClick={handleMarkForReview} disabled={isNavigating} className="flex-1 py-2 text-sm font-semibold rounded-md bg-yellow-600/80 hover:bg-yellow-500/80 flex items-center justify-center gap-1 disabled:opacity-50">
+                        <Icon name="marker" className="w-4 h-4"/> Review
+                    </button>
+                </div>
                  <button onClick={finishSession} className="w-full py-2 text-sm font-semibold rounded-md bg-red-800/80 hover:bg-red-700/80">
                     Submit Test
                  </button>
@@ -391,7 +407,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             
             {/* Feedback Pop-up */}
             {feedback && feedback.status !== 'answered' && (
-                <div className={`absolute bottom-[100px] left-1/2 -translate-x-1/2 p-3 rounded-lg text-white font-semibold text-sm shadow-lg
+                <div className={`absolute bottom-[100px] left-1/2 -translate-x-1/2 p-3 rounded-lg text-white font-semibold text-sm shadow-lg animate-fadeIn
                     ${feedback.status === 'correct' ? 'bg-green-600' : 'bg-red-600'}`}>
                     {feedback.status === 'correct' ? 'Correct!' : `Incorrect. The correct answer is ${feedback.correctAnswer}.`}
                 </div>

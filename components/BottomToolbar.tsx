@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import Icon, { IconName } from './Icon';
 
@@ -26,10 +24,10 @@ const BottomToolbar: React.FC<BottomToolbarProps> = ({ activeTab, setActiveTab, 
     return (
         <>
             <div 
-              className="fixed bottom-0 left-0 right-0 h-16 bg-gray-900/70 border-t border-[var(--glass-border)] backdrop-blur-lg z-40 md:hidden"
-              style={{ paddingBottom: 'var(--safe-area-inset-bottom)' }}
+              className="fixed bottom-0 left-0 right-0 bg-gray-900/70 border-t border-[var(--glass-border)] backdrop-blur-lg z-40 md:hidden"
+              style={{ height: 'calc(4rem + var(--safe-area-inset-bottom))' }}
             >
-                <div className="flex items-center h-full max-w-7xl mx-auto px-2 overflow-x-auto flex-nowrap" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+                <div className="flex items-center h-16 max-w-7xl mx-auto px-2 overflow-x-auto flex-nowrap" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
                     {navItems.map((item) => (
                         <button
                             key={item.id}
@@ -45,7 +43,7 @@ const BottomToolbar: React.FC<BottomToolbarProps> = ({ activeTab, setActiveTab, 
              {/* Floating Action Button */}
             <div 
                 className="fixed left-1/2 -translate-x-1/2 z-50 md:hidden"
-                style={{ bottom: `calc(env(safe-area-inset-bottom, 0) + 1rem)` }}
+                style={{ bottom: `calc(var(--safe-area-inset-bottom, 0) + 1rem)` }}
             >
                  <button 
                     onClick={onFabClick}

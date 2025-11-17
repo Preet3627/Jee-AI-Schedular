@@ -348,6 +348,49 @@ const App: React.FC = () => {
         }
     }, [googleClientId, backendStatus]);
 
+    // Google Assistant Deep Link Handler
+    useEffect(() => {
+        if (currentUser) { // Only run if a user is logged in
+            const initialDataStr = sessionStorage.getItem('initialData');
+            if (initialDataStr) {
+                try {
+                    console.log("Processing deep link data...");
+                    const initialData = JSON.parse(initialDataStr);
+                    
+                    const importPayload = {
+                        schedules: initialData.schedules || [],
+                        exams: initialData.exams || [],
+                        results: [] as ResultData[],
+                        weaknesses: [] as string[],
+                    };
+
+                    if (initialData.metrics && Array.isArray(initialData.metrics)) {
+                        initialData.metrics.forEach((metric: any) => {
+                            if (metric.type === 'RESULT' && metric.score && metric.mistakes) {
+                                importPayload.results.push({
+                                    ID: `R_AI_${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
+                                    DATE: new Date().toISOString().split('T')[0],
+                                    SCORE: metric.score,
+                                    MISTAKES: metric.mistakes.split(';').map((s: string) => s.trim()).filter(Boolean)
+                                });
+                            } else if (metric.type === 'WEAKNESS' && metric.weaknesses) {
+                                importPayload.weaknesses.push(...metric.weaknesses.split(';').map((s: string) => s.trim()).filter(Boolean));
+                            }
+                        });
+                    }
+                    
+                    handleBatchImport(importPayload);
+                    alert("Data from Google Assistant has been imported successfully!");
+                } catch (e) {
+                    console.error("Error processing initial data from session storage:", e);
+                    alert("There was an error processing the data from Google Assistant.");
+                } finally {
+                    sessionStorage.removeItem('initialData');
+                }
+            }
+        }
+    }, [currentUser]);
+
     const renderContent = () => {
         if (isLoading) {
             return <div className="flex items-center justify-center min-h-screen"><div className="text-xl animate-pulse">Initializing Interface...</div></div>;

@@ -65,6 +65,19 @@
         from { transform: scale(1); opacity: 1; }
         to { transform: scale(0.95); opacity: 0; }
       }
+      
+      /* MCQ Timer Transitions */
+      @keyframes questionFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes questionFadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-10px); }
+      }
+      .question-enter { animation: questionFadeIn 0.3s ease-out forwards; }
+      .question-exit { animation: questionFadeOut 0.3s ease-out forwards; }
+
 
       .modal-enter {
         animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -92,6 +105,19 @@
       .no-blur .backdrop-blur-sm { backdrop-filter: none; }
       .no-blur .backdrop-blur-md { backdrop-filter: none; }
       .no-blur .backdrop-blur-lg { backdrop-filter: none; }
+      
+      /* Music Visualizer Animation */
+      @keyframes soundbar {
+        0% { transform: scaleY(0.1); }
+        25% { transform: scaleY(0.8); }
+        50% { transform: scaleY(0.3); }
+        75% { transform: scaleY(1.0); }
+        100% { transform: scaleY(0.1); }
+      }
+
+      .soundbar-bar {
+        animation: soundbar 1.5s ease-in-out infinite;
+      }
 
     </style>
 <script type="importmap">
@@ -126,5 +152,26 @@
     <div id="root"></div>
     <div id="fab-container" class="fixed bottom-6 right-6 z-40"></div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+      // Handle Google Assistant deep links
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const action = params.get('action');
+        const text = params.get('text');
+
+        if (action === 'new_schedule' && text) {
+          const decodedText = decodeURIComponent(text);
+          // Validate it's JSON before storing
+          JSON.parse(decodedText); 
+          sessionStorage.setItem('initialData', decodedText);
+          // Clean up the URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } catch (e) {
+        console.error("Failed to process deep link data:", e);
+        // Clear bad data if it exists
+        sessionStorage.removeItem('initialData');
+      }
+    </script>
   </body>
 </html>

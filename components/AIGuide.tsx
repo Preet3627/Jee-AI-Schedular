@@ -1,7 +1,7 @@
 import React from 'react';
 
 const guideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.7.0 (JSON Only)
+# Version: 5.8.0 (JSON Only)
 # Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
 ## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
@@ -78,7 +78,23 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 #### 4.4.2 \`answers\` Object
 - A JSON object mapping the question number (as a string) to the correct answer.
 - **Example:** \`{"1": "C", "2": "14.5"}\`
-`;
+
+---
+## 5. FULFILLMENT: Generating a PWA Deep Link
+For Google Assistant actions, you can generate a deep link that opens the PWA and automatically imports data.
+
+**URL Structure:**
+\`https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text={ENCODED_JSON}\`
+
+**Instructions:**
+1.  Generate the complete JSON object as specified in sections 3 and 4.
+2.  **URL-encode** the entire JSON string. This is a critical step (\`encodeURIComponent\` in JavaScript).
+3.  Append the encoded string to the URL as the value for the \`text\` parameter.
+
+**Example:**
+- **Raw JSON:** \`{"schedules":[{"id":"A101","type":"ACTION", ...}]}\`
+- **Encoded JSON:** \`%7B%22schedules%22%3A%5B%7B%22id%22%3A%22A101%22%2C%22type%22%3A%22ACTION%22%2C...%7D%5D%7D\`
+- **Final URL:** \`https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text=%7B%22schedules%22...%7D\``;
 
 const AIGuide: React.FC = () => {
     return (

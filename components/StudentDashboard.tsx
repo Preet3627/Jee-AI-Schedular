@@ -49,6 +49,7 @@ import StudyMaterialView from './StudyMaterialView';
 import FileViewerModal from './FileViewerModal';
 import AIGenerateFlashcardsModal from './flashcards/AIGenerateFlashcardsModal';
 import EditResultModal from './EditResultModal';
+import MusicVisualizerWidget from './widgets/MusicVisualizerWidget';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -381,6 +382,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
+                            <MusicVisualizerWidget />
                             <DailyInsightWidget weaknesses={student.CONFIG.WEAK} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />

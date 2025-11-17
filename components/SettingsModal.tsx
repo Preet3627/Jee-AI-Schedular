@@ -19,7 +19,7 @@ interface SettingsModalProps {
 }
 
 const aiGuideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.7.0 (JSON Only)
+# Version: 5.8.0 (JSON Only)
 # Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
 ## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
@@ -95,7 +95,24 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 
 #### 4.4.2 \`answers\` Object
 - A JSON object mapping the question number (as a string) to the correct answer.
-- **Example:** \`{"1": "C", "2": "14.5"}\``;
+- **Example:** \`{"1": "C", "2": "14.5"}\`
+
+---
+## 5. FULFILLMENT: Generating a PWA Deep Link
+For Google Assistant actions, you can generate a deep link that opens the PWA and automatically imports data.
+
+**URL Structure:**
+\`https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text={ENCODED_JSON}\`
+
+**Instructions:**
+1.  Generate the complete JSON object as specified in sections 3 and 4.
+2.  **URL-encode** the entire JSON string. This is a critical step (\`encodeURIComponent\` in JavaScript).
+3.  Append the encoded string to the URL as the value for the \`text\` parameter.
+
+**Example:**
+- **Raw JSON:** \`{"schedules":[{"id":"A101","type":"ACTION", ...}]}\`
+- **Encoded JSON:** \`%7B%22schedules%22%3A%5B%7B%22id%22%3A%22A101%22%2C%22type%22%3A%22ACTION%22%2C...%7D%5D%7D\`
+- **Final URL:** \`https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text=%7B%22schedules%22...%7D\``;
 
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
@@ -113,6 +130,8 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
   const [showAiGuide, setShowAiGuide] = useState(false);
   const [guideCopied, setGuideCopied] = useState(false);
+
+  const pwaUrl = `${window.location.origin}${window.location.pathname}`;
 
   const handleClose = () => {
     setIsExiting(true);
@@ -210,6 +229,35 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                 <p className="text-xs text-gray-400 mb-2">Provide your own key to use AI features. Your key is stored securely and is never visible to others.</p>
                  <input type="password" value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} className={inputClass} placeholder="Enter new API key to update" />
                  {settings.hasGeminiKey && !geminiApiKey && <p className="text-xs text-green-400 mt-1">An API key is already saved for your account.</p>}
+              </div>
+               <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700 space-y-3">
+                <p className="text-sm font-semibold text-cyan-400">Google Assistant Voice Integration</p>
+                <div className='text-xs text-gray-400 space-y-2'>
+                    <p>You can add tasks by voice using a custom Google Assistant Action. This is an advanced setup that you configure outside of this app.</p>
+                    <p><span className='font-bold text-gray-300'>How it works:</span>
+                        <ol className='list-decimal list-inside pl-2 mt-1 space-y-1'>
+                            <li>Create a custom 'Action' in the Google Assistant platform.</li>
+                            <li>Provide the <button type="button" onClick={() => setShowAiGuide(true)} className="text-cyan-400 hover:underline">AI Prompt Guide</button> as the 'system instructions' for the Action's AI.</li>
+                            <li>Set the Action's 'deep link' fulfillment to the URL below.</li>
+                            <li>When you speak your command, the AI will generate the correct JSON data and open this app to import it.</li>
+                        </ol>
+                    </p>
+                </div>
+
+                <div>
+                    <p className="text-xs font-semibold text-gray-300 mt-2">Fulfillment URL:</p>
+                    <pre className="text-xs text-mono bg-gray-800 p-2 rounded-md mt-1 break-all font-semibold">
+                      {`${pwaUrl}?action=new_schedule&text={ENCODED_JSON}`}
+                    </pre>
+                </div>
+                 <div>
+                    <p className="text-xs font-semibold text-gray-300 mt-2">Example Voice Commands:</p>
+                    <ul className='text-xs text-gray-400 space-y-1 mt-1 list-disc list-inside pl-2'>
+                        <li>"Hey Google, ask JEE Scheduler Pro to schedule a Physics deep dive for tomorrow at 7 PM on Rotational Dynamics."</li>
+                        <li>"Hey Google, tell JEE Scheduler Pro to log my test score of 210/300 with mistakes in Stereoisomerism."</li>
+                         <li>"Hey Google, ask JEE Scheduler Pro to create a homework for Chemistry P-Block elements for Friday, questions from NCERT 1 to 15."</li>
+                    </ul>
+                </div>
               </div>
               <div className="mt-4">
                 <div className="flex justify-between items-center bg-gray-900/50 p-3 rounded-lg border border-gray-700">
