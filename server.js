@@ -24,8 +24,8 @@ app.use(express.json({ limit: '10mb' }));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configure dotenv to load .env from the project root (where this file now lives)
-dotenv.config();
+// Configure dotenv to load .env from the project root
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 
 // --- ENV & SETUP CHECK ---
@@ -596,31 +596,33 @@ apiRouter.post('/assistant-action', async (req, res) => {
     try {
         const ai = new GoogleGenAI({ apiKey });
         
-        const responseSchema = {
-          type: Type.OBJECT,
-          properties: {
-            action: {
-              type: Type.STRING,
-              description: "The primary action: 'new_schedule', 'log_score', or 'create_homework'.",
-              enum: ["new_schedule", "log_score", "create_homework"]
-            },
-            data: {
-              type: Type.OBJECT,
-              description: "The structured details for the action.",
-              properties: {
+        const assistantDataSchema = {
+            type: Type.OBJECT,
+            description: "The structured details for the action.",
+            properties: {
                 subject: { type: Type.STRING, description: "The academic subject (e.g., Physics, Chemistry, Math)." },
                 topic: { type: Type.STRING, description: "The specific chapter or concept (e.g., Rotational Dynamics)." },
                 date: { type: Type.STRING, description: "The target date (YYYY-MM-DD)." },
-                time: { type: Type.STRING, description: "The start time (HH:MM, 24-hour). Optional, for new_schedule." },
-                task_type: { type: Type.STRING, description: "The task type (e.g., deep_dive, test_review). Optional, for new_schedule." },
-                score: { type: Type.INTEGER, description: "The numeric score achieved. Optional, for log_score." },
-                max_score: { type: Type.INTEGER, description: "The total possible score. Optional, for log_score." },
+                time: { type: Type.STRING, description: "The start time (HH:MM, 24-hour). Optional for new_schedule." },
+                task_type: { type: Type.STRING, description: "The task type (e.g., deep_dive, test_review). Optional for new_schedule." },
+                score: { type: Type.INTEGER, description: "The numeric score achieved. Optional for log_score." },
+                max_score: { type: Type.INTEGER, description: "The total possible score. Optional for log_score." },
                 details: { type: Type.STRING, description: "Specific notes (e.g., 'NCERT 1-15'). Optional." }
-              },
-              required: ["subject", "topic", "date"]
-            }
-          },
-          required: ["action", "data"]
+            },
+            required: ["subject", "topic", "date"]
+        };
+
+        const responseSchema = {
+            type: Type.OBJECT,
+            properties: {
+                action: {
+                    type: Type.STRING,
+                    description: "The primary action: 'new_schedule', 'log_score', or 'create_homework'.",
+                    enum: ["new_schedule", "log_score", "create_homework"]
+                },
+                data: assistantDataSchema
+            },
+            required: ["action", "data"]
         };
         
         const systemInstruction = `You are the JEE Scheduler Pro Fulfillment Bot. Your ONLY response must be a single, non-conversational JSON object that strictly adheres to the provided schema. DO NOT include any introductory text, Markdown formatting (e.g., \`\`\`json), explanations, or closing remarks.
@@ -892,7 +894,7 @@ apiRouter.post('/import', apiTokenAuthMiddleware, async (req, res) => {
         // 1. Add new schedule items
         const newSchedules = data.schedules || [];
         if (newSchedules.length > 0) {
-            const scheduleValues = newSchedules.map((item: any) => [userId, item.ID, JSON.stringify(item)]);
+            const scheduleValues = newSchedules.map((item) => [userId, item.ID, JSON.stringify(item)]);
             await pool.query(
                 `INSERT INTO schedule_items (user_id, item_id_str, item_data) VALUES ? ON DUPLICATE KEY UPDATE item_data = VALUES(item_data)`,
                 [scheduleValues]
@@ -909,20 +911,20 @@ apiRouter.post('/import', apiTokenAuthMiddleware, async (req, res) => {
         const configObject = JSON.parse(decryptedConfig);
         
         const newExams = data.exams || [];
-        let newResults: any[] = [];
-        let newWeaknesses: any[] = [];
+        let newResults = [];
+        let newWeaknesses = [];
 
         if (data.metrics && Array.isArray(data.metrics)) {
-            data.metrics.forEach((metric: any) => {
+            data.metrics.forEach((metric) => {
                 if (metric.type === 'RESULT' && metric.score && metric.mistakes) {
                     newResults.push({
                         ID: `R_API_${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
                         DATE: new Date().toISOString().split('T')[0],
                         SCORE: metric.score,
-                        MISTAKES: metric.mistakes.split(';').map((s: string) => s.trim()).filter(Boolean)
+                        MISTAKES: metric.mistakes.split(';').map((s) => s.trim()).filter(Boolean)
                     });
                 } else if (metric.type === 'WEAKNESS' && metric.weaknesses) {
-                    newWeaknesses.push(...metric.weaknesses.split(';').map((s: string) => s.trim()).filter(Boolean));
+                    newWeaknesses.push(...metric.weaknesses.split(';').map((s) => s.trim()).filter(Boolean));
                 }
             });
         }
@@ -932,7 +934,7 @@ apiRouter.post('/import', apiTokenAuthMiddleware, async (req, res) => {
         
         const combinedWeaknesses = new Set([...(configObject.WEAK || []), ...newWeaknesses]);
         newResults.forEach(r => {
-            r.MISTAKES.forEach((m: string) => combinedWeaknesses.add(m));
+            r.MISTAKES.forEach((m) => combinedWeaknesses.add(m));
         });
         configObject.WEAK = Array.from(combinedWeaknesses);
 
@@ -1342,81 +1344,100 @@ apiRouter.post('/ai/parse-text', authMiddleware, async (req, res) => {
 }
 If the user's request is vague, ask for clarification by returning an error. You MUST ask for details like timetables, exam dates, syllabus, and weak topics for schedules.`;
 
+        // Modular and robust schema definition
+        const flashcardSchema = {
+            type: Type.OBJECT,
+            properties: {
+                front: { type: Type.STRING },
+                back: { type: Type.STRING }
+            },
+            required: ['front', 'back']
+        };
+
+        const scheduleItemSchema = {
+            type: Type.OBJECT,
+            properties: {
+                id: { type: Type.STRING },
+                type: { type: Type.STRING, enum: ['ACTION', 'HOMEWORK'] },
+                day: { type: Type.STRING },
+                date: { type: Type.STRING },
+                time: { type: Type.STRING },
+                title: { type: Type.STRING },
+                detail: { type: Type.STRING },
+                subject: { type: Type.STRING },
+                q_ranges: { type: Type.STRING },
+                sub_type: { type: Type.STRING },
+                answers: { type: Type.STRING, description: "A stringified JSON object mapping question numbers to answers." },
+                flashcards: { type: Type.ARRAY, items: flashcardSchema }
+            },
+            required: ['id', 'type', 'day', 'title', 'detail', 'subject']
+        };
+
+        const examSchema = {
+            type: Type.OBJECT,
+            properties: {
+                id: { type: Type.STRING },
+                type: { type: Type.STRING, enum: ['EXAM'] },
+                subject: { type: Type.STRING, enum: ['PHYSICS', 'CHEMISTRY', 'MATHS', 'FULL'] },
+                title: { type: Type.STRING },
+                date: { type: Type.STRING },
+                time: { type: Type.STRING },
+                syllabus: { type: Type.STRING }
+            },
+            required: ['id', 'type', 'subject', 'title', 'date', 'time', 'syllabus']
+        };
+
+        const metricSchema = {
+            type: Type.OBJECT,
+            properties: {
+                type: { type: Type.STRING, enum: ['RESULT', 'WEAKNESS'] },
+                score: { type: Type.STRING },
+                mistakes: { type: Type.STRING },
+                weaknesses: { type: Type.STRING }
+            },
+            required: ['type']
+        };
+
+        const practiceQuestionSchema = {
+            type: Type.OBJECT,
+            properties: {
+                number: { type: Type.INTEGER },
+                text: { type: Type.STRING },
+                options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                type: { type: Type.STRING, enum: ['MCQ', 'NUM'] }
+            },
+            required: ['number', 'text', 'type']
+        };
+
+        const practiceTestSchema = {
+            type: Type.OBJECT,
+            properties: {
+                questions: {
+                    type: Type.ARRAY,
+                    items: practiceQuestionSchema
+                },
+                answers: { type: Type.STRING, description: "A stringified JSON object mapping question numbers to answers." }
+            },
+            required: ['questions', 'answers']
+        };
+
         const aiImportSchema = {
             type: Type.OBJECT,
             properties: {
-                schedules: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            id: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['ACTION', 'HOMEWORK'] },
-                            day: { type: Type.STRING },
-                            date: { type: Type.STRING },
-                            time: { type: Type.STRING },
-                            title: { type: Type.STRING },
-                            detail: { type: Type.STRING },
-                            subject: { type: Type.STRING },
-                            q_ranges: { type: Type.STRING },
-                            sub_type: { type: Type.STRING },
-                            answers: { type: Type.STRING },
-                            flashcards: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { front: { type: Type.STRING }, back: { type: Type.STRING } } } }
-                        },
-                        required: ['id', 'type', 'day', 'title', 'detail', 'subject']
-                    }
-                },
-                exams: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            id: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['EXAM'] },
-                            subject: { type: Type.STRING, enum: ['PHYSICS', 'CHEMISTRY', 'MATHS', 'FULL'] },
-                            title: { type: Type.STRING },
-                            date: { type: Type.STRING },
-                            time: { type: Type.STRING },
-                            syllabus: { type: Type.STRING }
-                        },
-                        required: ['id', 'type', 'subject', 'title', 'date', 'time', 'syllabus']
-                    }
-                },
-                metrics: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            type: { type: Type.STRING, enum: ['RESULT', 'WEAKNESS'] },
-                            score: { type: Type.STRING },
-                            mistakes: { type: Type.STRING },
-                            weaknesses: { type: Type.STRING }
-                        },
-                        required: ['type']
-                    }
-                },
-                practice_test: {
-                    type: Type.OBJECT,
-                    properties: {
-                        questions: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    number: { type: Type.INTEGER },
-                                    text: { type: Type.STRING },
-                                    options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                    type: { type: Type.STRING, enum: ['MCQ', 'NUM'] }
-                                },
-                                required: ['number', 'text', 'options', 'type']
-                            }
-                        },
-                        answers: { type: Type.STRING }
-                    },
-                    required: ['questions', 'answers']
-                }
+                schedules: { type: Type.ARRAY, items: scheduleItemSchema },
+                exams: { type: Type.ARRAY, items: examSchema },
+                metrics: { type: Type.ARRAY, items: metricSchema },
+                practice_test: practiceTestSchema
+            },
+            nullable: true,
+            properties: {
+                schedules: { type: Type.ARRAY, items: scheduleItemSchema, nullable: true },
+                exams: { type: Type.ARRAY, items: examSchema, nullable: true },
+                metrics: { type: Type.ARRAY, items: metricSchema, nullable: true },
+                practice_test: { ...practiceTestSchema, nullable: true }
             }
         };
+
 
         const model = config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
 

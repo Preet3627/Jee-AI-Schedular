@@ -89,11 +89,76 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
         }
     };
 
+    const getQuestionInfo = useCallback((index: number) => {
+        if (practiceMode !== 'jeeMains') {
+            return { subject, type: 'MCQ' as 'MCQ' | 'NUM' };
+        }
+        if (index < 20) return { subject: 'Physics', type: 'MCQ' as const };
+        if (index < 25) return { subject: 'Physics', type: 'NUM' as const };
+        if (index < 45) return { subject: 'Chemistry', type: 'MCQ' as const };
+        if (index < 50) return { subject: 'Chemistry', type: 'NUM' as const };
+        if (index < 70) return { subject: 'Maths', type: 'MCQ' as const };
+        return { subject: 'Maths', type: 'NUM' as const };
+    }, [practiceMode, subject]);
+
+
+    const gradeTest = useCallback(() => {
+        if (!correctAnswers || Object.keys(correctAnswers).length === 0) return;
+    
+        let score = 0;
+        const incorrectQuestionNumbers: number[] = [];
+        
+        const totalMarks = practiceMode === 'jeeMains' ? 300 : questionNumbers.length * 4;
+    
+        questionNumbers.forEach((qNum, index) => {
+            const userAnswer = answers[qNum];
+            const correctAnswer = correctAnswers[qNum.toString()];
+    
+            if (userAnswer && normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer)) {
+                score += 4;
+            } else if (userAnswer) { // Answered but incorrect
+                incorrectQuestionNumbers.push(qNum);
+                if (practiceMode === 'jeeMains') {
+                    const info = getQuestionInfo(index);
+                    if (info.type === 'MCQ') {
+                        score -= 1;
+                    }
+                } else {
+                    score -= 1;
+                }
+            }
+        });
+    
+        const newResult: ResultData = {
+            ID: `R${Date.now()}`,
+            DATE: new Date().toISOString().split('T')[0],
+            SCORE: `${score}/${totalMarks}`,
+            MISTAKES: incorrectQuestionNumbers.map(String),
+            syllabus: syllabus,
+            timings: timings,
+        };
+        
+        setTestResult(newResult);
+        if (onLogResult) onLogResult(newResult);
+    }, [answers, correctAnswers, questionNumbers, practiceMode, syllabus, timings, onLogResult, getQuestionInfo]);
+    
+
     useEffect(() => {
         const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
         document.addEventListener('fullscreenchange', onFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
     }, []);
+
+    const finishSession = useCallback(() => {
+        if (isFinished) return;
+        playStopSound(); vibrate('finish');
+        setIsActive(false);
+        setIsFinished(true);
+        const duration = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
+        const solved = Object.keys(answers).filter(k => answers[parseInt(k)] !== '');
+        const skipped = questionNumbers.filter(q => !solved.includes(q.toString()));
+        onSessionComplete(duration, solved.length, skipped);
+    }, [isFinished, sessionStartTime, answers, questionNumbers, onSessionComplete]);
 
     useEffect(() => {
         let interval: ReturnType<typeof setTimeout> | null = null;
@@ -103,24 +168,20 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             finishSession();
         }
         return () => { if (interval) clearInterval(interval); };
-    }, [isActive, isFinished, totalSeconds]);
+    }, [isActive, isFinished, totalSeconds, finishSession]);
+    
+    useEffect(() => {
+        if (isFinished) {
+            gradeTest();
+        }
+    }, [isFinished, gradeTest]);
+
 
     const handleStart = () => {
         vibrate('click');
         setSessionStartTime(Date.now());
         questionStartTimeRef.current = Date.now();
         setIsActive(true);
-    };
-
-    const finishSession = () => {
-        if (isFinished) return;
-        playStopSound(); vibrate('finish');
-        setIsActive(false);
-        setIsFinished(true);
-        const duration = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
-        const solved = Object.keys(answers).filter(k => answers[parseInt(k)] !== '');
-        const skipped = questionNumbers.filter(q => !solved.includes(q.toString()));
-        onSessionComplete(duration, solved.length, skipped);
     };
 
     const handleAnswerSelect = (answer: string) => {
@@ -234,18 +295,6 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
         }
     };
 
-    const getQuestionInfo = (index: number) => {
-        if (practiceMode !== 'jeeMains') {
-            return { subject, type: 'MCQ' as 'MCQ' | 'NUM' };
-        }
-        if (index < 20) return { subject: 'Physics', type: 'MCQ' as const };
-        if (index < 25) return { subject: 'Physics', type: 'NUM' as const };
-        if (index < 45) return { subject: 'Chemistry', type: 'MCQ' as const };
-        if (index < 50) return { subject: 'Chemistry', type: 'NUM' as const };
-        if (index < 70) return { subject: 'Maths', type: 'MCQ' as const };
-        return { subject: 'Maths', type: 'NUM' as const };
-    };
-
     const currentQuestionType = useMemo(() => {
         if (correctAnswers && correctAnswers[currentQuestionNumber.toString()]) {
             const answer = normalizeAnswer(correctAnswers[currentQuestionNumber.toString()]);
@@ -255,7 +304,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             return getQuestionInfo(currentQuestionIndex).type;
         }
         return 'MCQ';
-    }, [correctAnswers, currentQuestionIndex, practiceMode, currentQuestionNumber]);
+    }, [correctAnswers, currentQuestionIndex, practiceMode, currentQuestionNumber, getQuestionInfo]);
 
 
     const { subject: currentSubject } = getQuestionInfo(currentQuestionIndex);
@@ -278,7 +327,15 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             <div className="text-center space-y-4 max-h-[75vh] overflow-y-auto">
                 <h3 className="text-2xl font-bold text-white">Session Finished!</h3>
 
-                {practiceMode === 'jeeMains' || (questions && onLogResult) ? (
+                {testResult && !testResult.analysis && (
+                    <div className="bg-gray-900/50 p-4 rounded-lg">
+                        <p className="text-lg font-semibold">Your Score:</p>
+                        <p className="text-4xl font-bold text-cyan-400">{testResult.SCORE}</p>
+                        <p className="text-sm text-gray-400">Mistakes: {testResult.MISTAKES.length}</p>
+                    </div>
+                )}
+
+                {(practiceMode === 'jeeMains' || (questions && onLogResult)) ? (
                     testResult && testResult.analysis ? (
                         <TestAnalysisReport 
                           result={testResult} 
@@ -286,7 +343,9 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                         />
                     ) : (
                         <>
-                            <p className="text-sm text-gray-400">Upload the answer key to get your score and detailed analysis instantly.</p>
+                            <p className="text-sm text-gray-400">
+                                {testResult ? "For a detailed chapter-wise analysis, use the AI grader." : "Upload the answer key to get your score and detailed analysis instantly."}
+                            </p>
                             <button onClick={() => setIsUploadingKey(true)} disabled={isGrading} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-base font-semibold text-white rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50">
                                {isGrading ? 'Analyzing...' : <><Icon name="upload" /> Grade with AI</>}
                             </button>
@@ -294,13 +353,15 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                         </>
                     )
                 ) : (
-                    <div className="bg-gray-900/50 p-4 rounded-lg">
-                        <Icon name="check" className="w-10 h-10 text-green-400 mx-auto mb-2" />
-                        <p className="text-lg text-gray-300">Great work!</p>
-                        <p className="text-sm text-gray-400">
-                            Your practice session has been logged.
-                        </p>
-                    </div>
+                    !testResult && (
+                        <div className="bg-gray-900/50 p-4 rounded-lg">
+                            <Icon name="check" className="w-10 h-10 text-green-400 mx-auto mb-2" />
+                            <p className="text-lg text-gray-300">Great work!</p>
+                            <p className="text-sm text-gray-400">
+                                Your practice session has been logged.
+                            </p>
+                        </div>
+                    )
                 )}
 
                 <button onClick={onClose} className="w-full px-4 py-2 mt-4 text-base font-semibold text-white rounded-lg bg-gray-700 hover:bg-gray-600">Close</button>

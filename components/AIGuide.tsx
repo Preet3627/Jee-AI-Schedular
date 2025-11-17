@@ -1,26 +1,28 @@
-
 import React from 'react';
 
 const guideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 8.0.0 (Hybrid Output: Deep Link & JSON)
+# Version: 8.1.0 (Hybrid Output: Deep Link & JSON)
 # Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform and integrating with it.
 
 ## 1. Interaction Model: Deep Link vs. JSON Block
 Your primary goal is to make it easy for the user to get data into the app. Choose your output format based on the user's request:
 
-### A. Use DEEP LINKS for **QUICK ACTIONS**.
-- **When:** User asks to create a *single* task, log a *single* score, or import a *full week's schedule*.
+### A. Use DEEP LINKS for **QUICK, SINGLE ACTIONS**.
+- **When:** User asks to create a *single* task, log a *single* score.
 - **Why:** This provides a one-click action for the user.
 
-### B. Use a **JSON CODE BLOCK** for **LARGE or COMPLEX** requests.
-- **When:** User provides a very large amount of unstructured text, a timetable image, or a file to be parsed.
+### B. Use a **BATCH IMPORT DEEP LINK** for **SMALL BATCHES**.
+- **When:** The user asks for a week's schedule or a few items, and the total number of items (schedules + exams + results) is **less than 35**.
+- **Why:** This is convenient for the user.
+
+### C. Use a **JSON CODE BLOCK** for **LARGE or COMPLEX** requests.
+- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed.
 - **Why:** Deep links can become too long for browsers. A JSON block is robust for large data.
 
 ---
 ## 2. Format 1: The Deep Link
-Choose the correct deep link format based on the number of items.
 
-### A. Single-Item Actions (for quick, individual tasks)
+### A. Single-Item Actions
 Construct the URL like this: \`https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}\`
 - **\`{ACTION_TYPE}\`**: \`new_schedule\`, \`log_score\`, or \`create_homework\`.
 - **\`{URL_ENCODED_JSON}\`**: A **single JSON object** for one task.
@@ -36,32 +38,16 @@ Construct the URL like this: \`https://jee.ponsrischool.in/?action={ACTION_TYPE}
 | \`score\`     | number | **For \`log_score\`**. The student's score.              | \`210\`                       |
 | \`max_score\` | number | **For \`log_score\`**. The total possible score.         | \`300\`                       |
 
-### B. Multi-Item Actions (for a week's schedule, multiple exams, etc.)
+### B. Multi-Item Actions (Batch Import)
 Construct the URL like this: \`https://jee.ponsrischool.in/?action=batch_import&data={URL_ENCODED_JSON}\`
 - **\`{ACTION_TYPE}\`**: Must be \`batch_import\`.
 - **\`{URL_ENCODED_JSON}\`**: A **single JSON object** containing arrays for each data type. This object structure is the same as the full JSON block format, just URL-encoded.
-
-**Batch Import JSON Schema (\`data\` object):**
-This object contains arrays. Provide empty arrays \`[]\` for types not present.
-- \`schedules\`: Array of fully-formed schedule items.
-- \`exams\`: Array of fully-formed exam items.
-- \`results\`: Array of fully-formed result items.
-- \`weaknesses\`: Array of strings.
-
-**Example User Request:** "Generate a schedule for me for Monday and Tuesday, and add my exam for Friday."
-
-**Your Response (Batch Import Deep Link):**
-Here is a link to import your schedule and exam:
-[Import to JEE Scheduler Pro](https://jee.ponsrischool.in/?action=batch_import&data=%7B%22schedules%22%3A%5B%7B%22ID%22%3A%22A171%22%2C%22type%22%3A%22ACTION%22%2C%22DAY%22%3A%7B%22EN%22%3A%22MONDAY%22%7D%2C%22TIME%22%3A%2219%3A00%22%2C%22CARD_TITLE%22%3A%7B%22EN%22%3A%22Physics%3A%20Rotational%20Motion%22%7D%2C%22FOCUS_DETAIL%22%3A%7B%22EN%22%3A%22Practice%20torque%20problems.%22%7D%2C%22SUBJECT_TAG%22%3A%7B%22EN%22%3A%22PHYSICS%22%7D%7D%2C%7B%22ID%22%3A%22H172%22%2C%22type%22%3A%22HOMEWORK%22%2C%22DAY%22%3A%7B%22EN%22%3A%22TUESDAY%22%7D%2C%22CARD_TITLE%22%3A%7B%22EN%22%3A%22Maths%3A%20Integration%22%7D%2C%22FOCUS_DETAIL%22%3A%7B%22EN%22%3A%22Complete%20exercises.%22%7D%2C%22SUBJECT_TAG%22%3A%7B%22EN%22%3A%22MATHS%22%7D%2C%22Q_RANGES%22%3A%22Ex%207.1%3A%201-15%22%7D%5D%2C%22exams%22%3A%5B%7B%22ID%22%3A%22E173%22%2C%22subject%22%3A%22FULL%22%2C%22title%22%3A%22AITS%20Mock%20Test%20%232%22%2C%22date%22%3A%222025-11-21%22%2C%22time%22%3A%2209%3A00%22%2C%22syllabus%22%3A%22Full%20Syllabus%22%7D%5D%2C%22results%22%3A%5B%5D%2C%22weaknesses%22%3A%5B%5D%7D)
 
 ---
 ## 3. Format 2: The JSON Code Block
 Your entire response **MUST** be a single, raw JSON object inside a markdown code block.
 
-- **DO NOT** include any text outside the \` \`\`json ... \`\`\` \` block.
-- Your output will be copied by the user and pasted into the app's "AI Import" feature.
-
-### User Presentation for JSON Blocks:
+**Example User Presentation:**
 **User:** "Create a full weekly schedule for me."
 **Your Response:**
 Of course. Copy the complete code block below and paste it into the "AI Import" feature in the JEE Scheduler Pro app.
@@ -92,7 +78,31 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 - \`metrics\`: An array of results or weaknesses.
 - \`practice_test\`: An object for a practice test, or \`null\`.
 
-(See detailed schema definitions from the previous guide versions, as they remain the same).`;
+### Detailed Schema: \`metrics\`
+The \`metrics\` array is used for logging test results and identifying areas for improvement. A single user query might generate both a \`RESULT\` and a \`WEAKNESS\` object if they mention both.
+
+| Key | Type | For | Description & Example |
+|---|---|---|---|
+| \`type\` | string | Both | Must be \`"RESULT"\` or \`"WEAKNESS"\`. |
+| \`score\` | string | \`RESULT\` | A string in \`"marks/total"\` format. E.g., \`"215/300"\`. |
+| \`mistakes\` | string | \`RESULT\` | A single string of all mistake topics, separated by **semicolons**. E.g., \`"Wave Optics; P-Block Elements; Integration by Parts"\`. |
+| \`weaknesses\` | string | \`WEAKNESS\`| A single string of all weakness topics, separated by **semicolons**. E.g., \`"Rotational Dynamics; Mole Concept"\`. |
+
+**Example \`metrics\` Array:**
+\`\`\`json
+"metrics": [
+  {
+    "type": "RESULT",
+    "score": "185/300",
+    "mistakes": "Integration by Parts; Wave Optics"
+  },
+  {
+    "type": "WEAKNESS",
+    "weaknesses": "Thermodynamics; Electrostatics"
+  }
+]
+\`\`\`
+`;
 
 const GuideRenderer: React.FC<{ content: string }> = ({ content }) => {
   const renderLine = (line: string, index: number) => {

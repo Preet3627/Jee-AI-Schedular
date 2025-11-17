@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import McqTimer from './McqTimer';
 import Icon from './Icon';
@@ -57,6 +56,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
   const [perQuestionTime, setPerQuestionTime] = useState(defaultPerQuestionTime);
   const [syllabus, setSyllabus] = useState('');
   const [correctAnswersText, setCorrectAnswersText] = useState('');
+  const [jeeMainsCorrectAnswersText, setJeeMainsCorrectAnswersText] = useState('');
   
   // AI State
   const [aiTopic, setAiTopic] = useState(aiInitialTopic || '');
@@ -75,6 +75,8 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
   const [isAiKeyModalOpen, setIsAiKeyModalOpen] = useState(false);
   const [isAiParserOpen, setIsAiParserOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jeeMainsFileInputRef = useRef<HTMLInputElement>(null);
+
 
   const questionNumbers = useMemo(() => getQuestionNumbersFromRanges(qRanges), [qRanges]);
   const totalQuestions = questionNumbers.length;
@@ -156,6 +158,27 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
     }
   };
 
+  const handleJeeMainsFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const text = e.target?.result as string;
+                const json = JSON.parse(text);
+                 if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+                    throw new Error("JSON is not a valid key-value object.");
+                }
+                const formattedKey = Object.entries(json).map(([q, a]) => `${q}:${a}`).join('\n');
+                setJeeMainsCorrectAnswersText(formattedKey);
+            } catch (err) {
+                alert("Failed to parse JSON file. Please ensure it's a valid JSON object of answers (e.g., {\"1\": \"A\", \"2\": \"C\"}).");
+            }
+        };
+        reader.readAsText(file);
+    }
+  };
+
   const handleDataFromParser = (data: any) => {
     if (data.practice_test && data.practice_test.questions && data.practice_test.answers) {
         let parsedAnswers = data.practice_test.answers;
@@ -185,9 +208,10 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
   
   const correctAnswers = useMemo(() => {
+    if (activeTab === 'jeeMains') return parseAnswers(jeeMainsCorrectAnswersText);
     if (initialTask && initialTask.answers) return initialTask.answers;
     return parseAnswers(correctAnswersText);
-  }, [correctAnswersText, initialTask]);
+  }, [correctAnswersText, jeeMainsCorrectAnswersText, initialTask, activeTab]);
 
   return (
     <>
@@ -279,6 +303,18 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
                         <label className="text-sm font-bold text-gray-400">Syllabus</label>
                          <textarea value={syllabus} onChange={(e) => setSyllabus(e.target.value)} className="w-full h-24 bg-gray-900/70 border border-[var(--glass-border)] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 mt-1" placeholder="Enter the comma-separated list of chapters for this test, e.g., Kinematics, NLM, Rotational Motion..." />
                     </div>
+                    <div className="mt-4">
+                        <div className="flex justify-between items-center">
+                            <label className="text-sm font-bold text-gray-400">Correct Answers (Optional)</label>
+                            <div className="flex gap-2">
+                                <input type="file" accept=".json" ref={jeeMainsFileInputRef} onChange={handleJeeMainsFileUpload} className="hidden" />
+                                <button type="button" onClick={() => jeeMainsFileInputRef.current?.click()} className="text-xs font-semibold text-cyan-400 hover:underline">Upload JSON</button>
+                                <button type="button" onClick={() => setIsAiKeyModalOpen(true)} className="text-xs font-semibold text-cyan-400 hover:underline flex items-center gap-1"><Icon name="gemini" className="w-3 h-3" /> AI Gen</button>
+                            </div>
+                        </div>
+                        <textarea value={jeeMainsCorrectAnswersText} onChange={(e) => setJeeMainsCorrectAnswersText(e.target.value)} className="w-full h-20 bg-gray-900/70 border border-[var(--glass-border)] rounded-lg p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 mt-1" placeholder="Provide answers for instant feedback..." />
+                        <p className="text-xs text-gray-500 mt-1">If provided, you'll get instant feedback. You can still use AI Grade later for detailed analysis.</p>
+                    </div>
                   </div>
               )}
 
@@ -298,7 +334,11 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
           <AIGenerateAnswerKeyModal
               onClose={() => setIsAiKeyModalOpen(false)}
               onKeyGenerated={(keyText) => {
-                  setCorrectAnswersText(keyText);
+                  if (activeTab === 'jeeMains') {
+                    setJeeMainsCorrectAnswersText(keyText);
+                  } else {
+                    setCorrectAnswersText(keyText);
+                  }
               }}
           />
       )}

@@ -1,6 +1,8 @@
 
+
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem } from '../types';
+import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData } from '../types';
 import ScheduleList from './ScheduleList';
 import Icon, { IconName } from './Icon';
 // FIX: Corrected import path for component.
@@ -285,6 +287,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         }
     };
     
+    const handleCompleteTask = (task: ScheduleCardData) => {
+        onDeleteTask(task.ID);
+    };
+
     const handleStarTask = (taskId: string) => {
         const task = student.SCHEDULE_ITEMS.find(t => t.ID === taskId);
         if (task) onSaveTask({ ...task, isStarred: !task.isStarred });
@@ -479,6 +485,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                                 onStartPractice={handleStartPractice} 
                                 isSubscribed={student.CONFIG.UNACADEMY_SUB} 
                                 onStartReviewSession={handleStartReviewSession}
+                                onCompleteTask={handleCompleteTask}
                                 view={scheduleView}
                                 onViewChange={setScheduleView}
                             />

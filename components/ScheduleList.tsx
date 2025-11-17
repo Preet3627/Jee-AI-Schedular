@@ -1,9 +1,11 @@
 
 
+
 import React from 'react';
 import { useLocalization } from '../context/LocalizationContext';
 import ScheduleCard from './ScheduleCard';
-import { ScheduleItem, HomeworkData } from '../types';
+// FIX: Added ScheduleCardData to imports to be used in props.
+import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 
 interface ScheduleListProps {
     items: ScheduleItem[];
@@ -14,12 +16,13 @@ interface ScheduleListProps {
     onStartPractice: (homework: HomeworkData) => void;
     onStartReviewSession: (deckId: string) => void;
     onMarkDoubt?: (topic: string, q_id: string) => void; // Optional for now
+    onCompleteTask: (task: ScheduleCardData) => void;
     isSubscribed: boolean;
     view: 'upcoming' | 'past';
     onViewChange: (view: 'upcoming' | 'past') => void;
 }
 
-const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onMarkDoubt, isSubscribed, view, onViewChange }) => {
+const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onMarkDoubt, onCompleteTask, isSubscribed, view, onViewChange }) => {
     const { t } = useLocalization();
 
     const daysOfWeek = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
@@ -83,6 +86,7 @@ const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, on
                                 onStartPractice={onStartPractice}
                                 onStartReviewSession={onStartReviewSession}
                                 onMarkDoubt={onMarkDoubt}
+                                onCompleteTask={onCompleteTask}
                                 isSubscribed={isSubscribed}
                                 isPast={false} // isPast is for dimming, which we don't want in either dedicated view.
                              />
