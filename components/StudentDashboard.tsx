@@ -52,6 +52,7 @@ import AIGenerateFlashcardsModal from './flashcards/AIGenerateFlashcardsModal';
 import EditResultModal from './EditResultModal';
 import MusicVisualizerWidget from './widgets/MusicVisualizerWidget';
 import GoogleAssistantGuideModal from './GoogleAssistantGuideModal';
+import DeepLinkConfirmationModal from './DeepLinkConfirmationModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -103,6 +104,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [isAiMistakeModalOpen, setIsAiMistakeModalOpen] = useState(false);
     const [viewingReport, setViewingReport] = useState<ResultData | null>(null);
     const [isAssistantGuideOpen, setIsAssistantGuideOpen] = useState(false);
+    const [deepLinkData, setDeepLinkData] = useState<any | null>(null);
     
     // AI Chat State
     const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -129,6 +131,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         if (!deepLinkAction) return;
 
         const { action, data } = deepLinkAction;
+
+        if (action === 'batch_import') {
+            setDeepLinkData(data);
+            return;
+        }
         
         const getDayFromDate = (dateStr: string) => {
             if (!dateStr) return new Date().toLocaleString('en-us', {weekday: 'long'}).toUpperCase();
@@ -546,7 +553,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isAiDoubtSolverOpen && <AIDoubtSolverModal onClose={() => setIsAiDoubtSolverOpen(false)} />}
             {isAiChatOpen && <AIChatPopup history={aiChatHistory} onSendMessage={handleAiChatMessage} onClose={() => setIsAiChatOpen(false)} isLoading={isAiChatLoading} />}
             {viewingReport && <TestReportModal result={viewingReport} onClose={() => setViewingReport(null)} onUpdateWeaknesses={onUpdateWeaknesses} student={student} onSaveDeck={handleSaveDeck} />}
-            
+            {deepLinkData && (
+                <DeepLinkConfirmationModal
+                    data={deepLinkData}
+                    onClose={() => setDeepLinkData(null)}
+                    onConfirm={() => {
+                        const importData = {
+                            schedules: deepLinkData.schedules || [],
+                            exams: deepLinkData.exams || [],
+                            results: deepLinkData.results || [],
+                            weaknesses: deepLinkData.weaknesses || [],
+                        };
+                        onBatchImport(importData);
+                    }}
+                />
+            )}
+
             {/* Flashcard Modals */}
             {isCreateDeckModalOpen && <CreateEditDeckModal deck={editingDeck} onClose={() => { setIsCreateDeckModalOpen(false); setEditingDeck(null); }} onSave={handleSaveDeck} />}
             {isAiFlashcardModalOpen && <AIGenerateFlashcardsModal student={student} onClose={() => setIsAiFlashcardModalOpen(false)} onSaveDeck={handleSaveDeck} />}

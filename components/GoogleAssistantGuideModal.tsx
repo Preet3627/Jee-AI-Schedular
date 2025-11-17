@@ -41,8 +41,8 @@ const GoogleAssistantGuideModal: React.FC<GoogleAssistantGuideModalProps> = ({ o
         </header>
 
         <main className="flex-grow overflow-y-auto pr-2">
-          <Section title="1. How to Activate">
-            <p>You can control JEE Scheduler Pro hands-free. Simply activate Google Assistant on your phone or smart speaker and say:</p>
+          <Section title="1. Setup & Activation">
+            <p>There's no complex installation needed. To get started, just activate your assistant (by saying "Hey Google" or opening the app) and say the magic words:</p>
             <Command>Hey Google, talk to JEE Scheduler Pro</Command>
           </Section>
 
