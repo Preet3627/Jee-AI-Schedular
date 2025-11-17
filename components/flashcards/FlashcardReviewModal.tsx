@@ -105,7 +105,7 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
                         <p className="text-2xl text-white text-center">{currentCard?.front}</p>
                     </div>
                     {/* Back */}
-                    <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-gray-800/80 border border-[var(--glass-border)] rounded-xl transform rotate-y-180 cursor-pointer">
+                    <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-gray-800/80 border border-[var(--glass-border)] rounded-xl cursor-pointer" style={{ transform: 'rotateY(180deg)' }}>
                         <p className="text-xl text-gray-300 text-center">{currentCard?.back}</p>
                     </div>
                 </div>

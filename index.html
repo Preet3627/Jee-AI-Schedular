@@ -152,26 +152,5 @@
   <body class="bg-gray-900">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    <script>
-      // Handle Google Assistant deep links
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const action = params.get('action');
-        const text = params.get('text');
-
-        if (action === 'new_schedule' && text) {
-          const decodedText = decodeURIComponent(text);
-          // Validate it's JSON before storing
-          JSON.parse(decodedText); 
-          sessionStorage.setItem('initialData', decodedText);
-          // Clean up the URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      } catch (e) {
-        console.error("Failed to process deep link data:", e);
-        // Clear bad data if it exists
-        sessionStorage.removeItem('initialData');
-      }
-    </script>
   </body>
 </html>

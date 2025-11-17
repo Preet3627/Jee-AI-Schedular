@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { StudyMaterialItem, StudentData, Config } from '../types';
 import { api } from '../api/apiService';
@@ -90,9 +91,9 @@ const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ student, onUpdate
     const isPinned = pinnedPaths.includes(item.path);
     return (
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 hover:border-cyan-500 text-left flex items-center gap-4 group relative">
-            <button onClick={() => handleItemClick(item)} className="flex-grow flex items-center gap-4 p-4">
+            <button onClick={() => handleItemClick(item)} className="flex-grow flex items-center gap-4 p-4 overflow-hidden min-w-0">
                 <Icon name={item.type === 'folder' ? 'folder' : 'file-text'} className="w-8 h-8 text-cyan-400 flex-shrink-0" />
-                <div>
+                <div className="min-w-0">
                     <p className="font-semibold text-white truncate">{item.name}</p>
                     <p className="text-xs text-gray-400">{new Date(item.modified).toLocaleDateString()}</p>
                 </div>
@@ -128,12 +129,12 @@ const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ student, onUpdate
         </div>
       )}
       
-      <div className="flex items-center gap-2 text-sm text-gray-400 mb-4 bg-gray-900/50 p-2 rounded-md">
-        <button onClick={() => setPath('/')} className="hover:text-white">Home</button>
+      <div className="flex items-center gap-2 text-sm text-gray-400 mb-4 bg-gray-900/50 p-2 rounded-md overflow-x-auto">
+        <button onClick={() => setPath('/')} className="hover:text-white flex-shrink-0">Home</button>
         {breadcrumbs.map((segment, index) => (
           <React.Fragment key={index}>
-            <span>/</span>
-            <button onClick={() => navigateToPath(index)} className="hover:text-white">{segment}</button>
+            <span className="flex-shrink-0">/</span>
+            <button onClick={() => navigateToPath(index)} className="hover:text-white flex-shrink-0 truncate">{segment}</button>
           </React.Fragment>
         ))}
       </div>

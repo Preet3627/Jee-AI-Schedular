@@ -1,121 +1,84 @@
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 6.0.0 (JSON Only)
-# Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform and integrating with it.
+# Version: 7.0.0 (Hybrid Output: Deep Link & JSON)
+# Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform and integrating with it.
 
-## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
-Your entire response **MUST** be a single, raw JSON object.
-- **DO NOT** include any explanations, conversational text, or markdown formatting like ` ```json `.
-- Your output will be parsed directly by a machine.
+## 1. Interaction Model: Deep Link vs. JSON Block
 
-## 2. INTERACTION & DATA GATHERING
-- **DO NOT INVENT DATA:** If the user's request is vague, you **MUST** ask for clarification.
-- **ASK FOR DETAILS:** For schedules, ask for timetables, exam dates, syllabus, and weak topics.
-- **Example with Answer Key & Flashcards:** "Create a homework for JEE Mains 2023 Jan 29 Shift 1 paper, find its official answer key, and generate 5 flashcards on the toughest topics from that paper."
+Your primary goal is to make it easy for the user to get data into the app. Choose your output format based on the user's request:
 
-## 3. Top-Level JSON Structure (for User Import)
-Your entire output must be a single JSON object with these keys. Provide empty arrays `[]` for types not present.
+### A. Use DEEP LINKS for **SMALL, SINGLE-ITEM** requests.
+- **When:** User asks to create a *single* task, log a *single* score, or create *one* homework assignment.
+- **Why:** This provides a one-click action for the user.
+
+### B. Use a **JSON CODE BLOCK** for **LARGE or MULTI-ITEM** requests.
+- **When:** User asks for a full weekly schedule, multiple exam entries, or a combination of schedules and results.
+- **Why:** Deep links can become too long for browsers. A JSON block is robust for large data.
+
+---
+## 2. Format 1: The Deep Link
+
+Construct the URL like this: `https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}`
+
+- **`{ACTION_TYPE}`**: Must be one of `new_schedule`, `log_score`, or `create_homework`.
+- **`{URL_ENCODED_JSON}`**: The URL-encoded string of a **single JSON object** containing the task details.
+
+### Deep Link JSON Schema (`data` object):
+| Key         | Type   | Description                                           | Example                     |
+|-------------|--------|-------------------------------------------------------|-----------------------------|
+| `subject`   | string | `Physics`, `Chemistry`, `Math`.                       | `"Physics"`                 |
+| `topic`     | string | Specific chapter or concept.                          | `"Rotational Dynamics"`     |
+| `date`      | string | `YYYY-MM-DD`. Calculate from "tomorrow", "Friday", etc. | `"2025-11-18"`              |
+| `time`      | string | **For `new_schedule`**. `HH:MM` format.                | `"19:00"`                   |
+| `details`   | string | Specific notes for the task.                          | `"Practice torque problems"`|
+| `score`     | number | **For `log_score`**. The student's score.              | `210`                       |
+| `max_score` | number | **For `log_score`**. The total possible score.         | `300`                       |
+
+### User Presentation for Deep Links:
+
+**User:** "Schedule a Physics deep dive for tomorrow at 7 PM on Rotational Dynamics."
+**Your Response:**
+Here you go! Click the link below to add the task to your schedule:
+[Add to JEE Scheduler Pro](https://jee.ponsrischool.in/?action=new_schedule&data=%7B%22subject%22%3A%22Physics%22%2C%22topic%22%3A%22Rotational%20Dynamics%22%2C%22date%22%3A%222025-11-18%22%2C%22time%22%3A%2219%3A00%22%2C%22details%22%3A%22Deep%20dive%20into%20Rotational%20Dynamics%22%7D)
+
+---
+## 3. Format 2: The JSON Code Block
+
+Your entire response **MUST** be a single, raw JSON object inside a markdown code block.
+
+- **DO NOT** include any text outside the ` ```json ... ``` ` block.
+- Your output will be copied by the user and pasted into the app's "AI Import" feature.
+
+### User Presentation for JSON Blocks:
+
+**User:** "Create a full weekly schedule for me."
+**Your Response:**
+Of course. Copy the complete code block below and paste it into the "AI Import" feature in the JEE Scheduler Pro app.
+
 ```json
 {
-  "schedules": [ /* ... */ ],
-  "exams": [ /* ... */ ],
-  "metrics": [ /* ... */ ],
-  "practice_test": { /* ... */ }
+  "schedules": [
+    {
+      "id": "A101",
+      "type": "ACTION",
+      "day": "MONDAY",
+      "time": "19:00",
+      "title": "Physics: Rotational Motion",
+      "detail": "Practice problems on torque and angular momentum.",
+      "subject": "PHYSICS",
+      "sub_type": "DEEP_DIVE"
+    }
+  ],
+  "exams": [],
+  "metrics": [],
+  "practice_test": null
 }
 ```
 
----
-### 4.1 `schedules` Array Items
-| Key         | Type   | Description                                           | Example                               |
-|-------------|--------|-------------------------------------------------------|---------------------------------------|
-| `id`        | string | Unique ID (e.g., `A101`, `H202`).                     | `"A101"`                              |
-| `type`      | string | `"ACTION"` or `"HOMEWORK"`.                           | `"ACTION"`                            |
-| `day`       | string | Full day name, uppercase. Use for **repeating weekly tasks** like revision. | `"FRIDAY"`                            |
-| `date`      | string | **Optional.** `YYYY-MM-DD` format. Use for **specific, one-off events** (e.g., a special class). Overrides `day`. | `"2024-09-15"`                         |
-| `time`      | string | `HH:MM` format. Required for `ACTION`.                | `"20:30"`                             |
-| `title`     | string | Concise title of the task.                            | `"Rotational Dynamics Deep Dive"`     |
-| `detail`    | string | A descriptive explanation.                            | `"Fix FBD, Tension errors."`          |
-| `subject`   | string | `PHYSICS`, `CHEMISTRY`, `MATHS`, etc.                 | `"PHYSICS"`                           |
-| `q_ranges`  | string | **For `HOMEWORK` only.** Semicolon-separated. Categories: `NCERT`, `LEVEL-1`, `LEVEL-2`, `PYQ`, `CD` (Classroom Discussion) | `"NCERT:1-10;LEVEL-1:5-15;PYQ:20-30"` |
-| `sub_type`  | string | **For `ACTION` only.** `DEEP_DIVE`, `ANALYSIS`, etc.  | `"DEEP_DIVE"`                         |
-| `answers`   | object | **For `HOMEWORK` only.** Optional. If asked, you MUST generate this. Maps question numbers to answers, e.g., `{"1": "A", "2": "C", "76": "12.50"}`. | `{"1": "A", "2": "D"}` |
-| `flashcards`| array  | **For `HOMEWORK` only.** Optional. An array of objects: `[{ "front": string, "back": string }]`. | `[{"front": "Formula for Torque?", "back": "τ = r × F"}]` |
+### Full JSON Schema (for Code Blocks):
+Your entire output must be a single JSON object with these keys. Provide empty arrays `[]` for types not present.
+- `schedules`: An array of schedule items.
+- `exams`: An array of exam items.
+- `metrics`: An array of results or weaknesses.
+- `practice_test`: An object for a practice test, or `null`.
 
-
----
-### 4.2 `exams` Array Items
-| Key        | Type   | Description                                | Example                                |
-|------------|--------|--------------------------------------------|----------------------------------------|
-| `id`       | string | Unique ID (e.g., `E301`).                  | `"E301"`                               |
-| `type`     | string | Must be `"EXAM"`.                          | `"EXAM"`                               |
-| `subject`  | string | `PHYSICS`, `CHEMISTRY`, `MATHS`, or `FULL`.| `"FULL"`                               |
-| `title`    | string | The name of the exam.                      | `"AITS Mock Test #3"`                  |
-| `date`     | string | `YYYY-MM-DD` format.                       | `"2024-08-15"`                           |
-| `time`     | string | `HH:MM` format.                            | `"09:00"`                                |
-| `syllabus` | string | Comma-separated list of topics.            | `"Rotational Motion,Thermodynamics"`   |
-
----
-### 4.3 `metrics` Array Items
-| Key          | Type   | Description                                       | Example                                  |
-|--------------|--------|---------------------------------------------------|------------------------------------------|
-| `type`       | string | `"RESULT"` or `"WEAKNESS"`.                       | `"RESULT"`                               |
-| `score`      | string | **For `RESULT` only.** "marks/total" format.      | `"185/300"`                              |
-| `mistakes`   | string | **For `RESULT` only.** Semicolon-separated.       | `"Integration;Young's Double Slit"`      |
-| `weaknesses` | string | **For `WEAKNESS` only.** Semicolon-separated.     | `"Definite Integration;Wave Optics"`     |
-
----
-### 4.4 `practice_test` Object (Optional)
-- **Purpose:** To generate a complete practice test on a given topic, or to import one.
-- **Top-level keys:** `questions`, `answers`.
-
-#### 4.4.1 `questions` Array Items
-| Key       | Type          | Description                             | Example                                      |
-|-----------|---------------|-----------------------------------------|----------------------------------------------|
-| `number`  | number        | The question number, starting from 1.   | `1`                                          |
-| `text`    | string        | The full question text.                 | `"What is the capital of France?"`            |
-| `options` | array[string] | An array of 4 string options for MCQs. Empty for Numerical. | `["(A) Berlin", "(B) Madrid", "(C) Paris"]`   |
-| `type`    | string        | `"MCQ"` or `"NUM"`.                       | `"MCQ"`                                      |
-
-#### 4.4.2 `answers` Object
-- A JSON object mapping the question number (as a string) to the correct answer.
-- **Example:** `{"1": "C", "2": "14.5"}`
-
----
-## 5. FULFILLMENT: Methods for Data Integration
-
-### 5.1 Method A: Direct PWA Integration (for Google Assistant)
-This method uses a deep link to open the PWA and automatically import data. It is the standard for voice-based actions.
-
-**URL Structure:**
-`https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text={ENCODED_JSON}`
-
-**Instructions:**
-1.  Generate the complete JSON object as specified in sections 3 and 4.
-2.  **URL-encode** the entire JSON string. This is a critical step (`encodeURIComponent` in JavaScript).
-3.  Append the encoded string to the URL as the value for the `text` parameter.
-
-**Example:**
-- **Raw JSON:** `{"schedules":[{"id":"A101","type":"ACTION", ...}]}`
-- **Encoded JSON:** `%7B%22schedules%22%3A%5B%7B%22id%22%3A%22A101%22%2C%22type%22%3A%22ACTION%22%2C...%7D%5D%7D\`
-- **Final URL:** `https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text=%7B%22schedules%22...%7D`
-
-### 5.2 Method B: Secure API Endpoint (for Automated Systems)
-This method allows automated scripts or other services to push data directly to a user's account without manual copy-pasting.
-
-**Endpoint URL:**
-`https://[YOUR_PWA_DOMAIN]/api/import`
-
-**HTTP Method:**
-`POST`
-
-**Headers:**
-- `Content-Type`: `application/json`
-- `Authorization`: `Bearer {USER_API_TOKEN}`
-
-**Body:**
-- The raw JSON object as specified in sections 3 and 4.
-
-**Instructions:**
-1.  The user must first generate a personal API token from within the JEE Scheduler Pro app's profile settings.
-2.  You must obtain this token from the user and include it in the `Authorization` header.
-3.  Generate the complete JSON object.
-4.  Send a `POST` request to the endpoint with the JSON as the request body.
+(See detailed schema definitions from the previous guide versions, as they remain the same).

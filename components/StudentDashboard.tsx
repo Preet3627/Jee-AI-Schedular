@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem } from '../types';
 import ScheduleList from './ScheduleList';
@@ -50,6 +51,7 @@ import FileViewerModal from './FileViewerModal';
 import AIGenerateFlashcardsModal from './flashcards/AIGenerateFlashcardsModal';
 import EditResultModal from './EditResultModal';
 import MusicVisualizerWidget from './widgets/MusicVisualizerWidget';
+import GoogleAssistantGuideModal from './GoogleAssistantGuideModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -76,10 +78,11 @@ interface StudentDashboardProps {
     allDoubts: DoubtData[];
     onPostDoubt: (question: string, image?: string) => void;
     onPostSolution: (doubtId: string, solution: string, image?: string) => void;
+    deepLinkAction: { action: string; data: any } | null;
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
-    const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateConfig, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, onBatchImport, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts, onPostDoubt, onPostSolution } = props;
+    const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateConfig, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, onBatchImport, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts, onPostDoubt, onPostSolution, deepLinkAction } = props;
     const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
     const [scheduleView, setScheduleView] = useState<'upcoming' | 'past'>('upcoming');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -91,12 +94,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [practiceTask, setPracticeTask] = useState<HomeworkData | null>(null);
     const [isEditWeaknessesModalOpen, setIsEditWeaknessesModalOpen] = useState(false);
     const [isLogResultModalOpen, setIsLogResultModalOpen] = useState(false);
+    const [initialScoreForModal, setInitialScoreForModal] = useState<string | undefined>();
+    const [initialMistakesForModal, setInitialMistakesForModal] = useState<string | undefined>();
     const [isEditResultModalOpen, setIsEditResultModalOpen] = useState(false);
     const [editingResult, setEditingResult] = useState<ResultData | null>(null);
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<ExamData | null>(null);
     const [isAiMistakeModalOpen, setIsAiMistakeModalOpen] = useState(false);
     const [viewingReport, setViewingReport] = useState<ResultData | null>(null);
+    const [isAssistantGuideOpen, setIsAssistantGuideOpen] = useState(false);
     
     // AI Chat State
     const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -118,6 +124,48 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
     // Study Material State
     const [viewingFile, setViewingFile] = useState<StudyMaterialItem | null>(null);
+
+    useEffect(() => {
+        if (!deepLinkAction) return;
+
+        const { action, data } = deepLinkAction;
+        
+        const getDayFromDate = (dateStr: string) => {
+            if (!dateStr) return new Date().toLocaleString('en-us', {weekday: 'long'}).toUpperCase();
+            const d = new Date(`${dateStr}T12:00:00.000Z`); // Use UTC to avoid timezone issues with just date
+            return d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' }).toUpperCase();
+        };
+        const createLocalizedString = (text: string) => ({ EN: text || '', GU: '' });
+
+        if (action === 'new_schedule' || action === 'create_homework') {
+            const taskToEdit = {
+                ID: '', // will be generated on save
+                type: action === 'new_schedule' ? 'ACTION' : 'HOMEWORK',
+                CARD_TITLE: createLocalizedString(data.topic),
+                FOCUS_DETAIL: createLocalizedString(data.details || (action === 'new_schedule' ? `Deep dive into ${data.topic}` : `Homework for ${data.topic}`)),
+                SUBJECT_TAG: createLocalizedString(data.subject?.toUpperCase()),
+                DAY: createLocalizedString(getDayFromDate(data.date)),
+                date: data.date,
+                isUserCreated: true,
+            };
+            
+            if (action === 'new_schedule') {
+                (taskToEdit as any).SUB_TYPE = 'DEEP_DIVE';
+                (taskToEdit as any).TIME = data.time || '09:00';
+            } else { // homework
+                (taskToEdit as any).Q_RANGES = data.details || '';
+            }
+            
+            setEditingTask(taskToEdit as ScheduleItem);
+            setIsCreateModalOpen(true);
+
+        } else if (action === 'log_score') {
+            setInitialScoreForModal(`${data.score}/${data.max_score}`);
+            setInitialMistakesForModal(data.details);
+            setIsLogResultModalOpen(true);
+        }
+
+    }, [deepLinkAction]);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -489,9 +537,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} />}
             {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
-            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
+            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={() => setIsAssistantGuideOpen(true)} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
-            {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}
+            {isLogResultModalOpen && <LogResultModal onClose={() => {setIsLogResultModalOpen(false); setInitialScoreForModal(undefined); setInitialMistakesForModal(undefined);}} onSave={onLogResult} initialScore={initialScoreForModal} initialMistakes={initialMistakesForModal} />}
             {isEditResultModalOpen && editingResult && <EditResultModal result={editingResult} onClose={() => { setIsEditResultModalOpen(false); setEditingResult(null); }} onSave={onUpdateResult} />}
             {isExamModalOpen && <CreateEditExamModal exam={editingExam} onClose={() => { setIsExamModalOpen(false); setEditingExam(null); }} onSave={(exam) => editingExam ? onUpdateExam(exam) : onAddExam(exam)} />}
             {isAiMistakeModalOpen && <AIMistakeAnalysisModal onClose={() => setIsAiMistakeModalOpen(false)} onSaveWeakness={handleSaveWeakness} />}
@@ -508,6 +556,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             
             {/* Study Material Modal */}
             {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
+
+            {/* Assistant Guide Modal */}
+            {isAssistantGuideOpen && <GoogleAssistantGuideModal onClose={() => setIsAssistantGuideOpen(false)} />}
             
             {/* Renders the bottom toolbar only if the mobile layout is active. */}
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}

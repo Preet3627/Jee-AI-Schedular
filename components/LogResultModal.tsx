@@ -1,14 +1,17 @@
+
 import React, { useState } from 'react';
 import { ResultData } from '../types';
 
 interface LogResultModalProps {
   onClose: () => void;
   onSave: (result: ResultData) => void;
+  initialScore?: string;
+  initialMistakes?: string;
 }
 
-const LogResultModal: React.FC<LogResultModalProps> = ({ onClose, onSave }) => {
-  const [score, setScore] = useState('');
-  const [mistakesText, setMistakesText] = useState('');
+const LogResultModal: React.FC<LogResultModalProps> = ({ onClose, onSave, initialScore, initialMistakes }) => {
+  const [score, setScore] = useState(initialScore || '');
+  const [mistakesText, setMistakesText] = useState(initialMistakes?.replace(/;/g, '\n') || '');
   const [isExiting, setIsExiting] = useState(false);
 
   const handleClose = () => {

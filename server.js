@@ -1,5 +1,4 @@
 
-
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -13,8 +12,8 @@ import { fileURLToPath } from 'url';
 // FIX: Correct import path for generateAvatar.
 import { generateAvatar } from './utils/generateAvatar.js';
 import crypto from 'crypto';
-// FIX: Correct import for GoogleGenAI
-import { GoogleGenAI } from '@google/genai';
+// FIX: Correct import for GoogleGenAI and add Type for function calling
+import { GoogleGenAI, Type } from '@google/genai';
 import { parseStringPromise } from 'xml2js';
 
 // --- SERVER SETUP ---
@@ -581,6 +580,115 @@ apiRouter.post('/reset-password', async (req, res) => {
     }
 });
 
+// --- GOOGLE ASSISTANT FULFILLMENT ---
+apiRouter.post('/assistant-action', async (req, res) => {
+    const text = req.body.queryResult?.queryText || req.body.query;
+    if (!text) {
+        return res.status(400).json({ error: "Query text is required." });
+    }
+
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+        console.error("Google Assistant Error: Global API_KEY is not set.");
+        return res.status(500).json({ error: "AI service is not configured on the server." });
+    }
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        
+        const responseSchema = {
+          type: Type.OBJECT,
+          properties: {
+            action: {
+              type: Type.STRING,
+              description: "The primary action: 'new_schedule', 'log_score', or 'create_homework'.",
+              enum: ["new_schedule", "log_score", "create_homework"]
+            },
+            data: {
+              type: Type.OBJECT,
+              description: "The structured details for the action.",
+              properties: {
+                subject: { type: Type.STRING, description: "The academic subject (e.g., Physics, Chemistry, Math)." },
+                topic: { type: Type.STRING, description: "The specific chapter or concept (e.g., Rotational Dynamics)." },
+                date: { type: Type.STRING, description: "The target date (YYYY-MM-DD)." },
+                time: { type: Type.STRING, description: "The start time (HH:MM, 24-hour). Optional, for new_schedule." },
+                task_type: { type: Type.STRING, description: "The task type (e.g., deep_dive, test_review). Optional, for new_schedule." },
+                score: { type: Type.INTEGER, description: "The numeric score achieved. Optional, for log_score." },
+                max_score: { type: Type.INTEGER, description: "The total possible score. Optional, for log_score." },
+                details: { type: Type.STRING, description: "Specific notes (e.g., 'NCERT 1-15'). Optional." }
+              },
+              required: ["subject", "topic", "date"]
+            }
+          },
+          required: ["action", "data"]
+        };
+        
+        const systemInstruction = `You are the JEE Scheduler Pro Fulfillment Bot. Your ONLY response must be a single, non-conversational JSON object that strictly adheres to the provided schema. DO NOT include any introductory text, Markdown formatting (e.g., \`\`\`json), explanations, or closing remarks.
+
+### MANDATORY CONSTRAINTS:
+1.  **Output:** Output MUST be a single, clean JSON object.
+2.  **Schema Adherence:** Output MUST strictly follow the JSON Schema provided in the configuration.
+3.  **Action Mapping:** The 'action' key must map the user's intent to one of the following: "new_schedule", "log_score", or "create_homework".
+4.  **Date/Time Calculation:**
+    * **Current Date Context:** Today is Monday, 2025-11-17.
+    * **Relative Dates:** Accurately calculate and convert relative times ("tomorrow," "Friday," "next week") to the required **YYYY-MM-DD** format.
+    * **Time:** Convert any time reference (e.g., "7 PM") to the **HH:MM** (24-hour) format (e.g., "19:00").
+
+### MAPPING RULES:
+* **Scheduling:** Use \`action: "new_schedule"\` for requests to set a time/date. Infer \`task_type\` (e.g., "deep_dive", "practice").
+* **Logging:** Use \`action: "log_score"\` for requests mentioning "score," "marks," or "test result."
+* **Homework/Tasks:** Use \`action: "create_homework"\` for requests mentioning "assignment" or "questions."
+
+### MISSING DATA POLICY:
+If the user's request is valid but lacks an optional field (like \`time\` or \`details\`), omit that key from the final JSON object. If a required field (\`subject\`, \`topic\`, \`date\`) is missing, include it with an empty string (\`""\`).`;
+
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: text,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: responseSchema,
+            },
+        });
+        
+        const parsedJson = JSON.parse(response.text);
+
+        if (parsedJson && parsedJson.action && parsedJson.data) {
+            const { action, data } = parsedJson;
+            // The frontend expects the `data` object to be stringified and encoded
+            const encodedData = encodeURIComponent(JSON.stringify(data));
+            const frontendUrl = 'https://jee.ponsrischool.in/';
+            // The frontend reads 'action' and 'data' query params
+            const deepLink = `${frontendUrl}?action=${action}&data=${encodedData}`;
+
+            // Respond to Google Assistant with an instruction to open the URL.
+            return res.json({
+                payload: {
+                    google: {
+                        expectUserResponse: false,
+                        richResponse: {
+                            items: [{
+                                simpleResponse: { textToSpeech: `Opening JEE Scheduler Pro to complete your request.` }
+                            }, {
+                                openUrlAction: { url: deepLink }
+                            }]
+                        }
+                    }
+                }
+            });
+        } else {
+            console.error("AI returned malformed JSON for Assistant:", response.text);
+            throw new Error("AI returned malformed JSON.");
+        }
+    } catch (error) {
+        console.error("Google Assistant fulfillment error:", error);
+        return res.status(500).json({ error: `Server error during AI processing: ${error.message}` });
+    }
+});
+
+
 // --- USER DATA ENDPOINTS ---
 apiRouter.get('/me', authMiddleware, async (req, res) => {
     try {
@@ -772,6 +880,78 @@ apiRouter.post('/user-data/full-sync', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error("Full sync error:", error);
         res.status(500).json({ error: 'Full data sync failed.' });
+    }
+});
+
+// New endpoint for API-based import
+apiRouter.post('/import', apiTokenAuthMiddleware, async (req, res) => {
+    try {
+        const data = req.body;
+        const userId = req.userId;
+        
+        // 1. Add new schedule items
+        const newSchedules = data.schedules || [];
+        if (newSchedules.length > 0) {
+            const scheduleValues = newSchedules.map((item: any) => [userId, item.ID, JSON.stringify(item)]);
+            await pool.query(
+                `INSERT INTO schedule_items (user_id, item_id_str, item_data) VALUES ? ON DUPLICATE KEY UPDATE item_data = VALUES(item_data)`,
+                [scheduleValues]
+            );
+        }
+
+        // 2. Fetch, update, and re-encrypt the config blob
+        const [[userConfigRow]] = await pool.query('SELECT config FROM user_configs WHERE user_id = ?', [userId]);
+        if (!userConfigRow) {
+            return res.status(404).json({ error: "User configuration not found." });
+        }
+
+        const decryptedConfig = decrypt(userConfigRow.config);
+        const configObject = JSON.parse(decryptedConfig);
+        
+        const newExams = data.exams || [];
+        let newResults: any[] = [];
+        let newWeaknesses: any[] = [];
+
+        if (data.metrics && Array.isArray(data.metrics)) {
+            data.metrics.forEach((metric: any) => {
+                if (metric.type === 'RESULT' && metric.score && metric.mistakes) {
+                    newResults.push({
+                        ID: `R_API_${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
+                        DATE: new Date().toISOString().split('T')[0],
+                        SCORE: metric.score,
+                        MISTAKES: metric.mistakes.split(';').map((s: string) => s.trim()).filter(Boolean)
+                    });
+                } else if (metric.type === 'WEAKNESS' && metric.weaknesses) {
+                    newWeaknesses.push(...metric.weaknesses.split(';').map((s: string) => s.trim()).filter(Boolean));
+                }
+            });
+        }
+        
+        configObject.EXAMS = [...(configObject.EXAMS || []), ...newExams];
+        configObject.RESULTS = [...(configObject.RESULTS || []), ...newResults];
+        
+        const combinedWeaknesses = new Set([...(configObject.WEAK || []), ...newWeaknesses]);
+        newResults.forEach(r => {
+            r.MISTAKES.forEach((m: string) => combinedWeaknesses.add(m));
+        });
+        configObject.WEAK = Array.from(combinedWeaknesses);
+
+        if (newResults.length > 0) {
+            const allResults = [...configObject.RESULTS].sort((a, b) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime());
+            configObject.SCORE = allResults[0].SCORE;
+        }
+
+        const encryptedConfig = encrypt(JSON.stringify(configObject));
+        await pool.query(
+            `UPDATE user_configs SET config = ? WHERE user_id = ?`,
+            [encryptedConfig, userId]
+        );
+
+        res.status(200).json({ success: true, message: 'Data imported successfully.' });
+
+    } catch (error) {
+        console.error("API Import Error:", error);
+        res.status(500).json({ error: 'Failed to import data.' });
     }
 });
 
@@ -1018,6 +1198,34 @@ const getApiKeyAndConfigForUser = async (userId) => {
     return { apiKey, config };
 };
 
+apiRouter.post('/ai/correct-json', authMiddleware, async (req, res) => {
+    const { brokenJson } = req.body;
+    if (!brokenJson) return res.status(400).json({ error: "String to correct is required." });
+
+    const { apiKey } = await getApiKeyAndConfigForUser(req.userId);
+    if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const systemInstruction = `You are a JSON syntax correction bot. Your ONLY task is to fix the provided malformed JSON string and return a single, valid, raw JSON object. Do not add any explanations, conversational text, or markdown formatting like \`\`\`json. If the input is not fixable as JSON, return an empty object {}.`;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Fix this JSON: ${brokenJson}`,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+            },
+        });
+
+        res.json({ correctedJson: response.text });
+    } catch (error) {
+        console.error("Gemini API error (correct json):", error);
+        res.status(500).json({ error: `Failed to correct JSON with AI: ${error.message}` });
+    }
+});
+
+
 apiRouter.post('/ai/daily-insight', authMiddleware, async (req, res) => {
     const { weaknesses } = req.body;
     const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
@@ -1124,65 +1332,113 @@ apiRouter.post('/ai/parse-text', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are an expert data transformation AI. Your sole purpose is to convert unstructured text into a single, clean, structured JSON object.
-RULES:
-1.  **JSON ONLY:** Your entire output MUST be a single raw JSON object. Do not include explanations, conversational text, or markdown formatting like \`\`\`json.
-2.  **CLEANUP:** The input may contain surrounding text. Ignore it and extract only the data.
-3.  **DATA CORRECTION:** Automatically fix common formatting issues. Convert dates to \`YYYY-MM-DD\` format. Convert times to \`HH:MM\` format.
-4.  **MULTI-SCHEMA:** The input may contain multiple data types. Populate all relevant arrays in the output JSON.
-5.  **ID GENERATION:** Generate a unique alphanumeric ID for every single schedule or exam item.
-6.  **ANSWER KEY GENERATION:** If the user asks for an answer key (e.g., "create a homework for ... and also find its answer key"), you MUST find the key and populate the 'answers' field.
-7.  **STRICT SCHEMA OUTPUT:** Your output JSON MUST strictly adhere to the following structure:
-    {
-      "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "time": string?, "title": string, "detail": string, "subject": string, "q_ranges": string?, "sub_type": string?, "answers": object?, "flashcards": [{ "front": string, "back": string }]? } ],
-      "exams": [ { "id": string, "type": "EXAM", "subject": string, "title": string, "date": string, "time": string, "syllabus": string } ],
-      "metrics": [ { "type": "RESULT" | "WEAKNESS", "score": string?, "mistakes": string?, "weaknesses": string? } ]
-    }
-    For metrics, 'mistakes' and 'weaknesses' should be semicolon-separated strings.
-    For HOMEWORK schedules, 'answers' is an optional JSON object mapping question numbers (as strings) to answers (strings), e.g., {"1": "A", "2": "12.5"}.`;
 
-        const prompt = `Convert the following text into a structured JSON object based on the system instruction schema.\n\nUSER TEXT TO CONVERT:\n${text}`;
-        
+        const systemInstruction = `Your entire response MUST be a single, raw JSON object based on the user's text. DO NOT include any explanations, conversational text, or markdown formatting. The JSON object must adhere to the following structure, providing empty arrays [] for types not present:
+{
+  "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "date": "YYYY-MM-DD" | null, "time": "HH:MM" | null, "title": string, "detail": string, "subject": string, "q_ranges": string | null, "sub_type": "DEEP_DIVE" | "ANALYSIS" | null, "answers": object | null, "flashcards": [{ "front": string, "back": string }] | null } ],
+  "exams": [ { "id": string, "type": "EXAM", "subject": "PHYSICS" | "CHEMISTRY" | "MATHS" | "FULL", "title": string, "date": "YYYY-MM-DD", "time": "HH:MM", "syllabus": string } ],
+  "metrics": [ { "type": "RESULT" | "WEAKNESS", "score": "marks/total" | null, "mistakes": string | null, "weaknesses": string | null } ],
+  "practice_test": { "questions": [ { "number": int, "text": string, "options": string[], "type": "MCQ" | "NUM" } ], "answers": object } | null
+}
+If the user's request is vague, ask for clarification by returning an error. You MUST ask for details like timetables, exam dates, syllabus, and weak topics for schedules.`;
+
+        const aiImportSchema = {
+            type: Type.OBJECT,
+            properties: {
+                schedules: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            id: { type: Type.STRING },
+                            type: { type: Type.STRING, enum: ['ACTION', 'HOMEWORK'] },
+                            day: { type: Type.STRING },
+                            date: { type: Type.STRING },
+                            time: { type: Type.STRING },
+                            title: { type: Type.STRING },
+                            detail: { type: Type.STRING },
+                            subject: { type: Type.STRING },
+                            q_ranges: { type: Type.STRING },
+                            sub_type: { type: Type.STRING },
+                            answers: { type: Type.OBJECT, properties: {} },
+                            flashcards: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { front: { type: Type.STRING }, back: { type: Type.STRING } } } }
+                        },
+                        required: ['id', 'type', 'day', 'title', 'detail', 'subject']
+                    }
+                },
+                exams: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            id: { type: Type.STRING },
+                            type: { type: Type.STRING, enum: ['EXAM'] },
+                            subject: { type: Type.STRING, enum: ['PHYSICS', 'CHEMISTRY', 'MATHS', 'FULL'] },
+                            title: { type: Type.STRING },
+                            date: { type: Type.STRING },
+                            time: { type: Type.STRING },
+                            syllabus: { type: Type.STRING }
+                        },
+                        required: ['id', 'type', 'subject', 'title', 'date', 'time', 'syllabus']
+                    }
+                },
+                metrics: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            type: { type: Type.STRING, enum: ['RESULT', 'WEAKNESS'] },
+                            score: { type: Type.STRING },
+                            mistakes: { type: Type.STRING },
+                            weaknesses: { type: Type.STRING }
+                        },
+                        required: ['type']
+                    }
+                },
+                practice_test: {
+                    type: Type.OBJECT,
+                    properties: {
+                        questions: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    number: { type: Type.INTEGER },
+                                    text: { type: Type.STRING },
+                                    options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                    type: { type: Type.STRING, enum: ['MCQ', 'NUM'] }
+                                },
+                                required: ['number', 'text', 'options', 'type']
+                            }
+                        },
+                        answers: { type: Type.OBJECT, properties: {} }
+                    },
+                    required: ['questions', 'answers']
+                }
+            }
+        };
+
         const model = config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
 
         const response = await ai.models.generateContent({
             model: model,
-            contents: prompt,
-            config: { 
+            contents: `User request: ${text}`,
+            config: {
                 systemInstruction,
-                responseMimeType: 'application/json'
+                responseMimeType: 'application/json',
+                responseSchema: aiImportSchema
             },
         });
 
-        try {
-            // First attempt to parse
-            const parsedJson = JSON.parse(response.text.trim());
-            res.json(parsedJson);
-        } catch (parseError) {
-            // If parsing fails, ask the AI to fix it (self-correction)
-            console.warn("AI returned malformed JSON, attempting self-correction. Original text:", response.text);
-
-            const correctionPrompt = `The following text is supposed to be a single valid JSON object, but it has errors. Please fix it and return only the corrected JSON. Do not add any markdown, explanations, or any text other than the raw JSON object.\n\nMALFORMED TEXT:\n${response.text}`;
-            
-            const correctionResponse = await ai.models.generateContent({
-                model: 'gemini-2.5-flash', // Use a fast model for correction
-                contents: correctionPrompt,
-                config: {
-                    systemInstruction: "You are a JSON correction expert. Your only task is to fix malformed JSON. You MUST return ONLY a valid, raw JSON object.",
-                    responseMimeType: 'application/json'
-                },
-            });
-
-            // Try parsing the corrected response. This will throw if it's still invalid, which will be caught by the outer catch block.
-            const correctedJson = JSON.parse(correctionResponse.text.trim());
-            res.json(correctedJson);
-        }
+        const mappedData = JSON.parse(response.text);
+        return res.json(mappedData);
 
     } catch (error) {
         console.error("Gemini API error (text parse):", error);
         res.status(500).json({ error: `Failed to parse text: ${error.message}` });
     }
 });
+
 
 apiRouter.post('/ai/analyze-test-results', authMiddleware, async (req, res) => {
     const { imageBase64, userAnswers, timings, syllabus } = req.body;

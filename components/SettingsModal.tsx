@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Config } from '../types';
 import Icon from './Icon';
@@ -16,107 +17,11 @@ interface SettingsModalProps {
   onBackupToDrive: () => void;
   onRestoreFromDrive: () => void;
   onApiKeySet: () => void;
+  onOpenAssistantGuide: () => void;
 }
-
-const aiGuideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.9.0 (JSON Only)
-# Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
-
-## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
-Your entire response **MUST** be a single, raw JSON object.
-- **DO NOT** include any explanations, conversational text, or markdown formatting like \`\`\`json.
-- Your output will be parsed directly by a machine.
-
-## 2. INTERACTION & DATA GATHERING
-- **DO NOT INVENT DATA:** If the user's request is vague, you **MUST** ask for clarification.
-- **ASK FOR DETAILS:** For schedules, ask for timetables, exam dates, syllabus, and weak topics.
-- **Example with Answer Key:** "Create a homework for JEE Mains 2023 Jan 29 Shift 1 paper and find its official answer key."
-
-## 3. Top-Level JSON Structure (for User Import)
-Your entire output must be a single JSON object with these keys. Provide empty arrays \`[]\` for types not present.
-\`\`\`json
-{
-  "schedules": [ /* ... */ ],
-  "exams": [ /* ... */ ],
-  "metrics": [ /* ... */ ],
-  "practice_test": { /* ... */ }
-}
-\`\`\`
-
----
-### 4.1 \`schedules\` Array Items
-| Key         | Type   | Description                                           | Example                               |
-|-------------|--------|-------------------------------------------------------|---------------------------------------|
-| \`id\`        | string | Unique ID (e.g., \`A101\`, \`H202\`).                     | \`"A101"\`                              |
-| \`type\`      | string | \`"ACTION"\` or \`"HOMEWORK"\`.                           | \`"ACTION"\`                            |
-| \`day\`       | string | Full day name, uppercase. Use for **repeating weekly tasks** like revision. | \`"FRIDAY"\`                            |
-| \`date\`      | string | **Optional.** \`YYYY-MM-DD\` format. Use for **specific, one-off events** (e.g., a special class). Overrides \`day\`. | \`"2024-09-15"\`                         |
-| \`time\`      | string | \`HH:MM\` format. Required for \`ACTION\`.                | \`"20:30"\`                             |
-| \`title\`     | string | Concise title of the task.                            | \`"Rotational Dynamics Deep Dive"\`     |
-| \`detail\`    | string | A descriptive explanation.                            | \`"Fix FBD, Tension errors."\`          |
-| \`subject\`   | string | \`PHYSICS\`, \`CHEMISTRY\`, \`MATHS\`, etc.                 | \`"PHYSICS"\`                           |
-| \`q_ranges\`  | string | **For \`HOMEWORK\` only.** Semicolon-separated. Categories: \`NCERT\`, \`LEVEL-1\`, \`LEVEL-2\`, \`PYQ\`, \`CD\` (Classroom Discussion) | \`"NCERT:1-10;LEVEL-1:5-15;PYQ:20-30"\` |
-| \`sub_type\`  | string | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`ANALYSIS\`, etc.  | \`"DEEP_DIVE"\`                         |
-| \`answers\`   | object | **For \`HOMEWORK\` only.** Optional. If asked, you MUST generate this. Maps question numbers to answers, e.g., \`{"1": "A", "2": "C", "76": "12.50"}\`. | \`{"1": "A", "2": "D"}\` |
-
----
-### 4.2 \`exams\` Array Items
-| Key        | Type   | Description                                | Example                                |
-|------------|--------|--------------------------------------------|----------------------------------------|
-| \`id\`       | string | Unique ID (e.g., \`E301\`).                  | \`"E301"\`                               |
-| \`type\`     | string | Must be \`"EXAM"\`.                          | \`"EXAM"\`                               |
-| \`subject\`  | string | \`PHYSICS\`, \`CHEMISTRY\`, \`MATHS\`, or \`FULL\`.| \`"FULL"\`                               |
-| \`title\`    | string | The name of the exam.                      | \`"AITS Mock Test #3"\`                  |
-| \`date\`     | string | \`YYYY-MM-DD\` format.                       | \`"2024-08-15"\`                           |
-| \`time\`     | string | \`HH:MM\` format.                            | \`"09:00"\`                                |
-| \`syllabus\` | string | Comma-separated list of topics.            | \`"Rotational Motion,Thermodynamics"\`   |
-
----
-### 4.3 \`metrics\` Array Items
-| Key          | Type   | Description                                       | Example                                  |
-|--------------|--------|---------------------------------------------------|------------------------------------------|
-| \`type\`       | string | \`"RESULT"\` or \`"WEAKNESS"\`.                       | \`"RESULT"\`                               |
-| \`score\`      | string | **For \`RESULT\` only.** "marks/total" format.      | \`"185/300"\`                              |
-| \`mistakes\`   | string | **For \`RESULT\` only.** Semicolon-separated.       | \`"Integration;Young's Double Slit"\`      |
-| \`weaknesses\` | string | **For \`WEAKNESS\` only.** Semicolon-separated.     | \`"Definite Integration;Wave Optics"\`     |
-
----
-### 4.4 \`practice_test\` Object (Optional)
-- **Purpose:** To generate a complete practice test on a given topic, or to import one.
-- **Top-level keys:** \`questions\`, \`answers\`.
-
-#### 4.4.1 \`questions\` Array Items
-| Key       | Type          | Description                             | Example                                      |
-|-----------|---------------|-----------------------------------------|----------------------------------------------|
-| \`number\`  | number        | The question number, starting from 1.   | \`1\`                                          |
-| \`text\`    | string        | The full question text.                 | \`"What is the capital of France?"\`            |
-| \`options\` | array[string] | An array of 4 string options for MCQs. Empty for Numerical. | \`["(A) Berlin", "(B) Madrid", "(C) Paris"]\`   |
-| \`type\`    | string        | \`"MCQ"\` or \`"NUM"\`.                       | \`"MCQ"\`                                      |
-
-#### 4.4.2 \`answers\` Object
-- A JSON object mapping the question number (as a string) to the correct answer.
-- **Example:** \`{"1": "C", "2": "14.5"}\`
-
----
-## 5. FULFILLMENT: Generating a PWA Deep Link
-For Google Assistant actions, you can generate a deep link that opens the PWA and automatically imports data.
-
-**URL Structure:**
-\`https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text={ENCODED_JSON}\`
-
-**Instructions:**
-1.  Generate the complete JSON object as specified in sections 3 and 4.
-2.  **URL-encode** the entire JSON string. This is a critical step (\`encodeURIComponent\` in JavaScript).
-3.  Append the encoded string to the URL as the value for the \`text\` parameter.
-
-**Example:**
-- **Raw JSON:** \`{"schedules":[{"id":"A101","type":"ACTION", ...}]}\`
-- **Encoded JSON:** \`%7B%22schedules%22%3A%5B%7B%22id%22%3A%22A101%22%2C%22type%22%3A%22ACTION%22%2C...%7D%5D%7D\`
-- **Final URL:** \`https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text=%7B%22schedules%22...%7D\``;
-
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
-  const { settings, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet } = props;
+  const { settings, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet, onOpenAssistantGuide } = props;
   const [accentColor, setAccentColor] = useState(settings.accentColor || '#0891b2');
   const [blurEnabled, setBlurEnabled] = useState(settings.blurEnabled !== false);
   const [mobileLayout, setMobileLayout] = useState(settings.mobileLayout || 'standard');
@@ -128,10 +33,6 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
-  const [showAiGuide, setShowAiGuide] = useState(false);
-  const [guideCopied, setGuideCopied] = useState(false);
-
-  const pwaUrl = `${window.location.origin}${window.location.pathname}`;
 
   const handleClose = () => {
     setIsExiting(true);
@@ -148,12 +49,6 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
             body: "You'll now receive reminders for your schedule.",
         });
     }
-  };
-  
-  const handleCopyGuide = () => {
-    navigator.clipboard.writeText(aiGuideText);
-    setGuideCopied(true);
-    setTimeout(() => setGuideCopied(false), 2000);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -230,61 +125,15 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                  <input type="password" value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} className={inputClass} placeholder="Enter new API key to update" />
                  {settings.hasGeminiKey && !geminiApiKey && <p className="text-xs text-green-400 mt-1">An API key is already saved for your account.</p>}
               </div>
-               <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700 space-y-3">
-                <p className="text-sm font-semibold text-cyan-400">Google Assistant Voice Integration</p>
-                <div className='text-xs text-gray-400 space-y-2'>
-                    <p>You can add tasks by voice using a custom Google Assistant Action. This is an advanced setup that you configure outside of this app.</p>
-                    <p><span className='font-bold text-gray-300'>How it works:</span>
-                        <ol className='list-decimal list-inside pl-2 mt-1 space-y-1'>
-                            <li>Create a custom 'Action' in the Google Assistant platform.</li>
-                            <li>Provide the <button type="button" onClick={() => setShowAiGuide(true)} className="text-cyan-400 hover:underline">AI Prompt Guide</button> as the 'system instructions' for the Action's AI.</li>
-                            <li>Set the Action's 'deep link' fulfillment to the URL below.</li>
-                            <li>When you speak your command, the AI will generate the correct JSON data and open this app to import it.</li>
-                        </ol>
-                    </p>
-                </div>
-
-                <div>
-                    <p className="text-xs font-semibold text-gray-300 mt-2">Fulfillment URL:</p>
-                    <pre className="text-xs text-mono bg-gray-800 p-2 rounded-md mt-1 break-all font-semibold">
-                      {`${pwaUrl}?action=new_schedule&text={ENCODED_JSON}`}
-                    </pre>
-                </div>
-                 <div>
-                    <p className="text-xs font-semibold text-gray-300 mt-2">Example Voice Commands:</p>
-                    <ul className='text-xs text-gray-400 space-y-1 mt-1 list-disc list-inside pl-2'>
-                        <li>"Hey Google, ask JEE Scheduler Pro to schedule a Physics deep dive for tomorrow at 7 PM on Rotational Dynamics."</li>
-                        <li>"Hey Google, tell JEE Scheduler Pro to log my test score of 210/300 with mistakes in Stereoisomerism."</li>
-                         <li>"Hey Google, ask JEE Scheduler Pro to create a homework for Chemistry P-Block elements for Friday, questions from NCERT 1 to 15."</li>
-                    </ul>
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="flex justify-between items-center bg-gray-900/50 p-3 rounded-lg border border-gray-700">
-                    <div>
-                        <p className="text-sm font-semibold text-cyan-400">AI Prompt Guide</p>
-                        <p className="text-xs text-gray-400">How to generate data with an AI.</p>
-                    </div>
-                    <button type="button" onClick={() => setShowAiGuide(!showAiGuide)} className="text-xs font-semibold px-3 py-1 bg-gray-700 rounded-md hover:bg-gray-600">
-                        {showAiGuide ? 'Hide' : 'Show'}
-                    </button>
-                </div>
-                {showAiGuide && (
-                    <div className="mt-2 bg-gray-900/80 p-3 rounded-lg border border-gray-700 relative">
-                        <div className="max-h-40 overflow-y-auto pr-2">
-                            <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">{aiGuideText}</pre>
-                        </div>
-                        <button 
-                            type="button" 
-                            onClick={handleCopyGuide} 
-                            className="absolute top-2 right-2 flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-md bg-gray-700 hover:bg-gray-600"
-                        >
-                            <Icon name={guideCopied ? 'check' : 'copy'} className="w-3 h-3" />
-                            {guideCopied ? 'Copied!' : 'Copy'}
-                        </button>
-                    </div>
-                )}
-              </div>
+              <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700 space-y-2">
+                <p className="text-sm font-semibold text-cyan-400">API Integration</p>
+                <p className="text-xs text-gray-400">
+                    For advanced integrations (e.g., custom scripts, third-party services), you can use a personal API token to import data directly to your account.
+                </p>
+                <p className="text-xs text-gray-400">
+                    You can generate and manage your API token from the <span className="font-bold text-gray-200">My Profile</span> page (click your name in the header). For instructions on how to format your data, see the AI Guide in the Admin Dashboard.
+                </p>
+               </div>
               
                <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
                 {(() => {
@@ -329,6 +178,14 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                             return null;
                     }
                 })()}
+                </div>
+
+                <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                    <p className="text-sm font-semibold text-cyan-400">Google Assistant</p>
+                    <p className="text-xs text-gray-400 mb-2">Control your schedule hands-free using voice commands.</p>
+                    <button type="button" onClick={onOpenAssistantGuide} className="w-full text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50">
+                        View Setup Guide & Commands
+                    </button>
                 </div>
               
                <div className="mt-4"><button type="button" onClick={onExportToIcs} className="w-full px-4 py-2 text-sm font-semibold text-gray-300 bg-gray-700/50 rounded-lg">Export Week to Calendar (.ics)</button></div>

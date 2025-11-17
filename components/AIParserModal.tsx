@@ -23,31 +23,46 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) =
       setError('Please paste some text to parse.');
       return;
     }
-
     setIsLoading(true);
     setError('');
 
-    try {
-      let result;
-      // Attempt 1: Parse as JSON directly
-      try {
-        const jsonData = JSON.parse(inputText);
-        // A simple check to see if it looks like our data structure
-        if (jsonData && (jsonData.schedules || jsonData.exams || jsonData.metrics || jsonData.practice_test)) {
-          onDataReady(jsonData);
-          return; // Success, no need to call AI
-        }
-      } catch (e) {
-        // It's not valid JSON, so we'll proceed to call the AI
-      }
-      
-      // Attempt 2: Call AI to convert unstructured text to JSON
-      result = await api.parseText(inputText);
-      onDataReady(result);
+    const text = inputText.trim();
 
-    } catch (err: any) {
-      console.error("AI Parser error:", err);
-      setError(err.error || 'Failed to parse data. The AI service may be unavailable or the format is unrecognized.');
+    // Attempt 1: Parse as valid JSON
+    try {
+      const jsonData = JSON.parse(text);
+      if (jsonData && (jsonData.schedules || jsonData.exams || jsonData.metrics || jsonData.practice_test)) {
+        onDataReady(jsonData);
+        setIsLoading(false);
+        return;
+      }
+    } catch (e) {
+      // Not valid JSON, proceed.
+    }
+
+    // Attempt 2: If it looks like broken JSON, try to correct it
+    if (text.startsWith('{') || text.startsWith('[')) {
+      try {
+        const correctionResult = await api.correctJson(text);
+        const correctedData = JSON.parse(correctionResult.correctedJson);
+        if (correctedData && Object.keys(correctedData).length > 0) {
+            onDataReady(correctedData);
+            setIsLoading(false);
+            return;
+        }
+      } catch (correctionError) {
+        // Correction failed, fall through to natural language parsing.
+        console.warn("AI JSON correction failed, falling back to text parser:", correctionError);
+      }
+    }
+    
+    // Attempt 3: Fallback to parsing as unstructured text
+    try {
+      const result = await api.parseText(text);
+      onDataReady(result);
+    } catch (parseError: any) {
+      console.error("AI Parser error:", parseError);
+      setError(parseError.error || 'Failed to parse data. The AI service may be unavailable or the format is unrecognized.');
     } finally {
       setIsLoading(false);
     }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -16,7 +15,15 @@ import ConfigurationErrorScreen from './components/ConfigurationErrorScreen';
 import { exportWeekCalendar } from './utils/calendar';
 import * as gcal from './utils/googleCalendar';
 import * as gdrive from './utils/googleDrive';
-import { initClient } from './utils/googleAuth';
+import * as auth from './utils/googleAuth';
+
+// FIX: Add global declarations for Google API objects to resolve TypeScript errors.
+declare global {
+  interface Window {
+    gapi: any;
+    google: any;
+  }
+}
 
 const API_URL = '/api';
 
@@ -31,6 +38,8 @@ const App: React.FC = () => {
     const [googleAuthStatus, setGoogleAuthStatus] = useState<'unconfigured' | 'loading' | 'signed_in' | 'signed_out'>('loading');
     const [resetToken, setResetToken] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [deepLinkAction, setDeepLinkAction] = useState<any>(null);
+
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -45,6 +54,35 @@ const App: React.FC = () => {
             setResetToken(token);
             // Clean the URL
             window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        const action = params.get('action');
+        const dataStr = params.get('data');
+
+        if (action && dataStr) {
+            const handleDeepLink = async (encodedData: string) => {
+                let decodedData = '';
+                try {
+                    decodedData = decodeURIComponent(encodedData);
+                    const data = JSON.parse(decodedData);
+                    setDeepLinkAction({ action, data });
+                } catch (e) {
+                    console.error("Failed to parse deep link data, attempting AI correction:", e);
+                    try {
+                        const correctionResult = await api.correctJson(decodedData);
+                        const correctedData = JSON.parse(correctionResult.correctedJson);
+                        setDeepLinkAction({ action, data: correctedData });
+                        console.log("AI correction successful!");
+                    } catch (correctionError) {
+                        console.error("AI correction failed:", correctionError);
+                        alert("The data from the link is malformed and could not be automatically corrected. Please check the source.");
+                    }
+                } finally {
+                     // Clean the URL so the action doesn't re-trigger on refresh
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            };
+            handleDeepLink(dataStr);
         }
     }, []);
     
@@ -63,6 +101,24 @@ const App: React.FC = () => {
         };
     }, []);
 
+    const handleGoogleSignOut = () => {
+        auth.handleSignOut(() => {
+            setGoogleAuthStatus('signed_out');
+        });
+    };
+
+    const handleGapiError = (error: any, contextMessage?: string) => {
+        console.error("Google API Error:", error);
+        // Check for GAPI's error structure as well as general fetch error status
+        const status = error.status || error.code || (error.result && error.result.error && error.result.error.code);
+        if (status === 401 || status === 403) {
+            alert("Your Google session has expired or permissions have changed. Please sign in again to use Google services.");
+            handleGoogleSignOut();
+        } else {
+            alert(contextMessage || "An error occurred while communicating with Google services. Please check your connection and try again.");
+        }
+    };
+
 
     const handleSaveTask = async (task: ScheduleItem) => {
         let taskToSave = { ...task };
@@ -77,8 +133,7 @@ const App: React.FC = () => {
                 }
                 (taskToSave as any).googleEventId = eventId;
             } catch (syncError) {
-                console.error("Google Calendar sync failed:", syncError);
-                alert("Failed to sync task with Google Calendar. Please check permissions and try again.");
+                handleGapiError(syncError, "Failed to sync task with Google Calendar. Please check permissions and try again.");
                 setIsSyncing(false);
                 return; // Stop the save process if sync fails
             } finally {
@@ -102,8 +157,7 @@ const App: React.FC = () => {
                 setIsSyncing(true);
                 await gcal.deleteEvent(taskToDelete.googleEventId);
             } catch (syncError) {
-                console.error("Google Calendar delete sync failed:", syncError);
-                alert("Failed to remove task from Google Calendar, but it will be deleted from the app. You may need to remove it manually from your calendar.");
+                handleGapiError(syncError, "Failed to remove task from Google Calendar, but it will be deleted from the app. You may need to remove it manually from your calendar.");
             } finally {
                 setIsSyncing(false);
             }
@@ -140,8 +194,7 @@ const App: React.FC = () => {
             alert(`Successfully synced ${tasksToUpdate.length} new tasks to Google Calendar.`);
 
         } catch (error) {
-            console.error("Full Google Calendar sync failed:", error);
-            alert("An error occurred during the full calendar sync.");
+            handleGapiError(error, "An error occurred during the full calendar sync.");
         } finally {
             setIsSyncing(false);
         }
@@ -279,7 +332,7 @@ const App: React.FC = () => {
             refreshUser();
             alert('Backup successful!');
         } catch (error) {
-            alert('Backup failed. Please try again.');
+            handleGapiError(error, 'Backup failed. Please try again.');
         }
     };
     
@@ -294,7 +347,7 @@ const App: React.FC = () => {
             refreshUser();
             alert('Restore successful!');
         } catch (error) {
-            alert('Restore failed. Please try again.');
+            handleGapiError(error, 'Restore failed. Please try again.');
         }
     };
     
@@ -362,63 +415,33 @@ const App: React.FC = () => {
     
     // Google API Init
     useEffect(() => {
-        if(googleClientId) {
-            initClient(
-                googleClientId,
-                (isSignedIn) => setGoogleAuthStatus(isSignedIn ? 'signed_in' : 'signed_out'),
-                (error) => {
-                    // Log the full error object as a JSON string for better debugging.
-                    console.error("Google API Init Error", JSON.stringify(error, null, 2));
-                    setGoogleAuthStatus('unconfigured');
-                }
-            );
-        } else if (backendStatus === 'online') {
-            setGoogleAuthStatus('unconfigured');
-        }
+        const initializeGoogleApis = () => {
+            if (googleClientId) {
+                auth.initClient(
+                    googleClientId,
+                    (isSignedIn) => {
+                        setGoogleAuthStatus(isSignedIn ? 'signed_in' : 'signed_out');
+                    },
+                    (error) => {
+                        console.error("Google API Init Error", JSON.stringify(error, null, 2));
+                        setGoogleAuthStatus('unconfigured');
+                    }
+                );
+            } else if (backendStatus === 'online') {
+                setGoogleAuthStatus('unconfigured');
+            }
+        };
+
+        const checkScripts = setInterval(() => {
+            if (window.gapi && window.google) {
+                clearInterval(checkScripts);
+                initializeGoogleApis();
+            }
+        }, 100);
+
+        return () => clearInterval(checkScripts);
     }, [googleClientId, backendStatus]);
 
-    // Google Assistant Deep Link Handler
-    useEffect(() => {
-        if (currentUser) { // Only run if a user is logged in
-            const initialDataStr = sessionStorage.getItem('initialData');
-            if (initialDataStr) {
-                try {
-                    console.log("Processing deep link data...");
-                    const initialData = JSON.parse(initialDataStr);
-                    
-                    const importPayload = {
-                        schedules: initialData.schedules || [],
-                        exams: initialData.exams || [],
-                        results: [] as ResultData[],
-                        weaknesses: [] as string[],
-                    };
-
-                    if (initialData.metrics && Array.isArray(initialData.metrics)) {
-                        initialData.metrics.forEach((metric: any) => {
-                            if (metric.type === 'RESULT' && metric.score && metric.mistakes) {
-                                importPayload.results.push({
-                                    ID: `R_AI_${Date.now()}${Math.random().toString(36).substring(2, 7)}`,
-                                    DATE: new Date().toISOString().split('T')[0],
-                                    SCORE: metric.score,
-                                    MISTAKES: metric.mistakes.split(';').map((s: string) => s.trim()).filter(Boolean)
-                                });
-                            } else if (metric.type === 'WEAKNESS' && metric.weaknesses) {
-                                importPayload.weaknesses.push(...metric.weaknesses.split(';').map((s: string) => s.trim()).filter(Boolean));
-                            }
-                        });
-                    }
-                    
-                    handleBatchImport(importPayload);
-                    alert("Data from Google Assistant has been imported successfully!");
-                } catch (e) {
-                    console.error("Error processing initial data from session storage:", e);
-                    alert("There was an error processing the data from Google Assistant.");
-                } finally {
-                    sessionStorage.removeItem('initialData');
-                }
-            }
-        }
-    }, [currentUser]);
 
     const renderContent = () => {
         if (isLoading) {
@@ -441,7 +464,7 @@ const App: React.FC = () => {
                         {userRole === 'admin' ? (
                             <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={onDeleteUser} onBroadcastTask={api.broadcastTask} />
                         ) : (
-                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateConfig={handleUpdateConfig} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.fullName)} onBatchImport={handleBatchImport} googleAuthStatus={googleAuthStatus} onGoogleSignIn={gcal.handleSignIn} onGoogleSignOut={gcal.handleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />
+                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateConfig={handleUpdateConfig} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.fullName)} onBatchImport={handleBatchImport} googleAuthStatus={googleAuthStatus} onGoogleSignIn={auth.handleSignIn} onGoogleSignOut={handleGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} deepLinkAction={deepLinkAction} />
                         )}
                     </div>
                 </div>
