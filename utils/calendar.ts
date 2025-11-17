@@ -36,9 +36,15 @@ const getNextDateForDay = (dayString: string): Date => {
 
 
 export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], studentName: string): void => {
-    const scheduleEvents = items
+    const calendarParts: string[] = [
+        'BEGIN:VCALENDAR\r\n',
+        'VERSION:2.0\r\n',
+        'PRODID:-//JEE Scheduler Pro//EN\r\n',
+    ];
+
+    items
         .filter(item => 'TIME' in item && item.TIME)
-        .map(item => {
+        .forEach(item => {
             const timedItem = item as { DAY: { EN: string }, TIME: string, ID: string, CARD_TITLE: { EN: string }, FOCUS_DETAIL: { EN: string }, date?: string };
 
             const [hours, minutes] = timedItem.TIME.split(':').map(Number);
@@ -59,17 +65,29 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
             const description = timedItem.FOCUS_DETAIL.EN.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
 
             const eventParts = [
-                'BEGIN:VEVENT', `UID:${timedItem.ID}@jeeschedulerpro.com`, `DTSTAMP:${toICSDate(new Date())}`,
-                `DTSTART;TZID=UTC:${toICSDate(startDate)}`, `DTEND;TZID=UTC:${toICSDate(endDate)}`,
-                `SUMMARY:${summary}`, `DESCRIPTION:${description}`,
-                'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'END:VALARM',
-                'END:VEVENT'
+                'BEGIN:VEVENT',
+                `UID:${timedItem.ID}@jeeschedulerpro.com`,
+                `DTSTAMP:${toICSDate(new Date())}`,
+                `DTSTART:${toICSDate(startDate)}`,
+                `DTEND:${toICSDate(endDate)}`,
+                `SUMMARY:${summary}`,
+                `DESCRIPTION:${description}`,
             ];
-            if (recurrenceRule) eventParts.splice(7, 0, recurrenceRule);
-            return eventParts.join('\r\n');
+            if (recurrenceRule) {
+                eventParts.push(recurrenceRule);
+            }
+            eventParts.push(
+                'BEGIN:VALARM',
+                'TRIGGER:-PT15M',
+                'ACTION:DISPLAY',
+                'DESCRIPTION:Reminder',
+                'END:VALARM',
+                'END:VEVENT'
+            );
+            calendarParts.push(eventParts.join('\r\n') + '\r\n');
         });
     
-    const examEvents = exams.map(exam => {
+    exams.forEach(exam => {
         const [hours, minutes] = exam.time.split(':').map(Number);
         const startDate = new Date(`${exam.date}T00:00:00`);
         startDate.setHours(hours, minutes, 0, 0);
@@ -80,26 +98,27 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
         const description = `Syllabus: ${exam.syllabus}`.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
 
         const eventParts = [
-            'BEGIN:VEVENT', `UID:${exam.ID}@jeeschedulerpro.com`, `DTSTAMP:${toICSDate(new Date())}`,
-            `DTSTART;TZID=UTC:${toICSDate(startDate)}`, `DTEND;TZID=UTC:${toICSDate(endDate)}`,
-            `SUMMARY:${summary}`, `DESCRIPTION:${description}`,
-            'BEGIN:VALARM', 'TRIGGER:-PT1H', 'ACTION:DISPLAY', 'DESCRIPTION:Exam Reminder', 'END:VALARM',
+            'BEGIN:VEVENT',
+            `UID:${exam.ID}@jeeschedulerpro.com`,
+            `DTSTAMP:${toICSDate(new Date())}`,
+            `DTSTART:${toICSDate(startDate)}`,
+            `DTEND:${toICSDate(endDate)}`,
+            `SUMMARY:${summary}`,
+            `DESCRIPTION:${description}`,
+            'BEGIN:VALARM',
+            'TRIGGER:-PT1H',
+            'ACTION:DISPLAY',
+            'DESCRIPTION:Exam Reminder',
+            'END:VALARM',
             'END:VEVENT'
         ];
-        return eventParts.join('\r\n');
+        calendarParts.push(eventParts.join('\r\n') + '\r\n');
     });
 
-    const calendarContent = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//JEE Scheduler Pro//EN',
-        ...scheduleEvents,
-        ...examEvents,
-        'END:VCALENDAR'
-    ].join('\r\n');
+    calendarParts.push('END:VCALENDAR\r\n');
     
     try {
-        const blob = new Blob([calendarContent], { type: 'text/calendar;charset=utf-8;' });
+        const blob = new Blob(calendarParts, { type: 'text/calendar;charset=utf-8;' });
         const link = document.createElement("a");
         
         const url = URL.createObjectURL(blob);
