@@ -1,4 +1,4 @@
-import { ScheduleItem } from '../types';
+import { ScheduleItem, ExamData } from '../types';
 
 // Helper to format date to ICS format (YYYYMMDDTHHMMSSZ)
 const toICSDate = (date: Date): string => {
@@ -35,72 +35,66 @@ const getNextDateForDay = (dayString: string): Date => {
 };
 
 
-export const exportWeekCalendar = (items: ScheduleItem[], studentName: string): void => {
-    // Filter for items that have a time property and it's not empty.
-    const calendarEvents = items
+export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], studentName: string): void => {
+    const scheduleEvents = items
         .filter(item => 'TIME' in item && item.TIME)
         .map(item => {
-            // This type assertion is safe because of the filter above.
             const timedItem = item as { DAY: { EN: string }, TIME: string, ID: string, CARD_TITLE: { EN: string }, FOCUS_DETAIL: { EN: string }, date?: string };
 
             const [hours, minutes] = timedItem.TIME.split(':').map(Number);
-            
             let startDate: Date;
             let recurrenceRule = 'RRULE:FREQ=WEEKLY';
 
             if (timedItem.date) {
-                // One-off event
                 startDate = new Date(`${timedItem.date}T00:00:00`);
-                recurrenceRule = ''; // No recurrence
+                recurrenceRule = '';
             } else {
-                // Weekly repeating event
                 startDate = getNextDateForDay(timedItem.DAY.EN);
             }
             
             startDate.setHours(hours, minutes, 0, 0);
-
-            // Assume a default duration of 1 hour for each study session
             const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
 
-            const uid = `${timedItem.ID}@jeeschedulerpro.com`;
-            const dtstamp = toICSDate(new Date());
-            const dtstart = toICSDate(startDate);
-            const dtend = toICSDate(endDate);
-
-            // Sanitize text for ICS format
             const summary = timedItem.CARD_TITLE.EN.replace(/,/g, '\\,').replace(/;/g, '\\;');
             const description = timedItem.FOCUS_DETAIL.EN.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
 
             const eventParts = [
-                'BEGIN:VEVENT',
-                `UID:${uid}`,
-                `DTSTAMP:${dtstamp}`,
-                `DTSTART:${dtstart}`,
-                `DTEND:${dtend}`,
-                `SUMMARY:${summary}`,
-                `DESCRIPTION:${description}`,
-                'BEGIN:VALARM',
-                'TRIGGER:-PT15M',
-                'ACTION:DISPLAY',
-                'DESCRIPTION:Reminder',
-                'END:VALARM',
+                'BEGIN:VEVENT', `UID:${timedItem.ID}@jeeschedulerpro.com`, `DTSTAMP:${toICSDate(new Date())}`,
+                `DTSTART;TZID=UTC:${toICSDate(startDate)}`, `DTEND;TZID=UTC:${toICSDate(endDate)}`,
+                `SUMMARY:${summary}`, `DESCRIPTION:${description}`,
+                'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'END:VALARM',
                 'END:VEVENT'
             ];
-
-            if (recurrenceRule) {
-                // Insert RRULE before VALARM
-                eventParts.splice(7, 0, recurrenceRule);
-            }
-
+            if (recurrenceRule) eventParts.splice(7, 0, recurrenceRule);
             return eventParts.join('\r\n');
-        })
-        .join('\r\n');
+        });
+    
+    const examEvents = exams.map(exam => {
+        const [hours, minutes] = exam.time.split(':').map(Number);
+        const startDate = new Date(`${exam.date}T00:00:00`);
+        startDate.setHours(hours, minutes, 0, 0);
+        // Assume exam duration of 3 hours
+        const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000);
+        
+        const summary = exam.title.replace(/,/g, '\\,').replace(/;/g, '\\;');
+        const description = `Syllabus: ${exam.syllabus}`.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
+
+        const eventParts = [
+            'BEGIN:VEVENT', `UID:${exam.ID}@jeeschedulerpro.com`, `DTSTAMP:${toICSDate(new Date())}`,
+            `DTSTART;TZID=UTC:${toICSDate(startDate)}`, `DTEND;TZID=UTC:${toICSDate(endDate)}`,
+            `SUMMARY:${summary}`, `DESCRIPTION:${description}`,
+            'BEGIN:VALARM', 'TRIGGER:-PT1H', 'ACTION:DISPLAY', 'DESCRIPTION:Exam Reminder', 'END:VALARM',
+            'END:VEVENT'
+        ];
+        return eventParts.join('\r\n');
+    });
 
     const calendarContent = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
         'PRODID:-//JEE Scheduler Pro//EN',
-        calendarEvents,
+        ...scheduleEvents,
+        ...examEvents,
         'END:VCALENDAR'
     ].join('\r\n');
     

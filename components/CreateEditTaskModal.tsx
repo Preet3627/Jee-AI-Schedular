@@ -98,6 +98,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             FOCUS_DETAIL: { EN: formData.details, GU: "" },
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
+            // FIX: Cast formData.category to the specific union type required by HomeworkData.
             category: formData.category as HomeworkData['category'],
             answers: parseAnswers(formData.answers),
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,

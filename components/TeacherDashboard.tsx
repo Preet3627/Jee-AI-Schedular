@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
@@ -142,7 +143,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} decks={[]} />
             )}
             {isAIBroadcastModalOpen && (
-                <AIParserModal onClose={() => setIsAIBroadcastModalOpen(false)} onDataReady={handleAIBroadcastSave} />
+                // FIX: Add dummy props for onPracticeTestReady and onOpenGuide, which are required but not used in the teacher broadcast context.
+                <AIParserModal
+                    onClose={() => setIsAIBroadcastModalOpen(false)}
+                    onDataReady={handleAIBroadcastSave}
+                    onPracticeTestReady={() => {}}
+                    onOpenGuide={() => {}}
+                />
             )}
         </main>
     );

@@ -33,7 +33,8 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
   const [prompt, setPrompt] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -44,7 +45,7 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
   }, [history, isLoading]);
 
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -56,13 +57,26 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
     }
   };
 
+  const handleJsonFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result as string;
+            // Send the content of the JSON file as a prompt to the AI
+            onSendMessage(`Import this JSON data: ${text}`);
+        };
+        reader.readAsText(file);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() && !imageBase64) return;
     onSendMessage(prompt, imageBase64 || undefined);
     setPrompt('');
     setImageBase64(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (imageFileInputRef.current) imageFileInputRef.current.value = '';
   };
   
   const fullScreenClasses = 'w-screen h-screen top-0 left-0 bottom-0 right-0 rounded-none';
@@ -107,8 +121,12 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
 
       <footer className="p-3 border-t border-[var(--glass-border)] flex-shrink-0">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 hover:text-cyan-400 rounded-full bg-gray-700/50 flex-shrink-0">
+            <input type="file" accept="image/*" ref={imageFileInputRef} onChange={handleImageFileChange} className="hidden" />
+            <input type="file" accept=".json,text/json" ref={jsonFileInputRef} onChange={handleJsonFileChange} className="hidden" />
+            <button type="button" onClick={() => jsonFileInputRef.current?.click()} title="Import JSON data" className="p-2 text-gray-400 hover:text-cyan-400 rounded-full bg-gray-700/50 flex-shrink-0">
+                <Icon name="upload" className="w-5 h-5" />
+            </button>
+            <button type="button" onClick={() => imageFileInputRef.current?.click()} title="Upload Image" className="p-2 text-gray-400 hover:text-cyan-400 rounded-full bg-gray-700/50 flex-shrink-0">
               <Icon name="image" className="w-5 h-5" />
             </button>
             <div className="relative flex-grow">

@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion } from '../types';
 import ScheduleList from './ScheduleList';
@@ -466,7 +463,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
                             <MusicVisualizerWidget />
-                            <DailyInsightWidget weaknesses={student.CONFIG.WEAK} />
+                            <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />
                                 <ScoreTrendWidget results={student.RESULTS} />

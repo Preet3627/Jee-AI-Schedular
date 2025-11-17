@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -13,7 +12,7 @@ import { fileURLToPath } from 'url';
 import { generateAvatar } from './utils/generateAvatar.js';
 import crypto from 'crypto';
 // FIX: Correct import for GoogleGenAI and add Type for function calling
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import { parseStringPromise } from 'xml2js';
 
 // --- SERVER SETUP ---
@@ -665,21 +664,27 @@ If the user's request is valid but lacks an optional field (like \`time\` or \`d
             // The frontend reads 'action' and 'data' query params
             const deepLink = `${frontendUrl}?action=${action}&data=${encodedData}`;
 
-            // Respond to Google Assistant with an instruction to open the URL.
+            // Respond to Google Assistant with a modern fulfillment response that opens a deep link.
             return res.json({
-                payload: {
-                    google: {
-                        expectUserResponse: false,
-                        richResponse: {
-                            items: [{
-                                simpleResponse: { textToSpeech: `Opening JEE Scheduler Pro to complete your request.` }
-                            }, {
-                                openUrlAction: { url: deepLink }
-                            }]
+                fulfillmentResponse: {
+                    messages: [{
+                        payload: {
+                            richResponse: {
+                                items: [{
+                                    simpleResponse: {
+                                        textToSpeech: "Opening JEE Scheduler Pro to complete your request."
+                                    }
+                                }, {
+                                    openUrlAction: {
+                                        url: deepLink
+                                    }
+                                }]
+                            }
                         }
-                    }
+                    }]
                 }
             });
+
         } else {
             console.error("AI returned malformed JSON for Assistant:", response.text);
             throw new Error("AI returned malformed JSON.");
@@ -1229,18 +1234,24 @@ apiRouter.post('/ai/correct-json', authMiddleware, async (req, res) => {
 
 
 apiRouter.post('/ai/daily-insight', authMiddleware, async (req, res) => {
-    const { weaknesses } = req.body;
+    const { weaknesses, syllabus } = req.body;
     const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are a helpful AI assistant for JEE aspirants. Your task is to provide a daily motivational quote and a relevant, useful piece of academic information (like a formula, a key concept, or a common mistake to avoid) based on the student's list of weaknesses.
+        const systemInstruction = `You are a helpful AI assistant for JEE aspirants. Your task is to provide a daily motivational quote and a relevant, useful piece of academic information (like a formula, a key concept, or a common mistake to avoid).
         Your response MUST be a single, valid JSON object with two keys: "quote" and "insight".
         - "quote": A short, motivational quote for a student.
-        - "insight": A string containing a relevant formula or important point related to one of the student's weaknesses. Make it concise and easy to understand.`;
+        - "insight": A string containing a relevant formula or important point. Make it concise and easy to understand.`;
         
-        const prompt = `Student's current weaknesses: ${weaknesses.join(', ')}. Generate a quote and an insight.`;
+        let prompt = `Generate a quote and an insight for a student.`;
+        if (syllabus) {
+            prompt += ` The student's upcoming exam has this syllabus: "${syllabus}". The insight should be relevant to this.`;
+        } else if (weaknesses && weaknesses.length > 0) {
+            prompt += ` The student's current weaknesses are: ${weaknesses.join(', ')}. The insight should be related to one of these weaknesses.`;
+        }
+
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -1561,12 +1572,26 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
     const { history, prompt, imageBase64 } = req.body;
     if (!prompt) return res.status(400).json({ error: "A prompt is required." });
 
-    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
+    const { apiKey, config: userStoredConfig } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are a helpful and friendly AI assistant for JEE (Joint Entrance Examination) aspirants. Your goal is to help students with their academic questions related to Physics, Chemistry, and Maths, and provide guidance on health and wellness for students. Politely decline to answer questions outside of these topics. Be encouraging and supportive.`;
+        const fullUserData = await getUserData(req.userId);
+
+        const context = `
+        Here is the user's current data for context:
+        - Weaknesses: ${fullUserData.CONFIG.WEAK.join(', ') || 'None listed.'}
+        - Upcoming Exams: ${fullUserData.EXAMS.map(e => `${e.title} on ${e.date}`).join('; ') || 'None scheduled.'}
+        - Flashcard Decks: ${fullUserData.CONFIG.flashcardDecks?.map(d => d.name).join(', ') || 'None created.'}
+        `;
+
+        const systemInstruction = `You are a helpful and friendly AI assistant for JEE aspirants with the ability to modify user data through function calls. Your goal is to help students with their academic questions, provide guidance, and manage their schedule.
+        - Use the provided user data context to give personalized advice.
+        - When asked to perform an action (delete, import, schedule), use the provided tools.
+        - After a tool is called, you MUST confirm what you did in a friendly message (e.g., "I've deleted 3 duplicate tasks for you.").
+        - Politely decline questions outside of academics and student wellness. Be encouraging and supportive.
+        ${context}`;
         
         const contents = [];
         if (history) {
@@ -1575,20 +1600,89 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
         
         const userParts = [{ text: prompt }];
         if (imageBase64) {
-            // The Gemini API expects image data first for multimodal prompts.
             const imagePart = { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } };
             userParts.unshift(imagePart);
         }
         contents.push({ role: 'user', parts: userParts });
 
-        const model = config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-flash'; // Chat should be fast
+        const model = userStoredConfig.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
+        
+        // --- Function Calling Setup ---
+        const deleteDuplicateTasksFunction = {
+            name: 'deleteDuplicateTasks',
+            description: "Finds and deletes duplicate schedule items or exams for the user. A duplicate is defined as having the same title, day/date, and time.",
+            parameters: { type: Type.OBJECT, properties: {} },
+        };
 
-        const response = await ai.models.generateContent({
+        const importJsonDataFunction = {
+            name: 'importJsonData',
+            description: "Imports schedule items, exams, or results from a JSON string provided by the user.",
+            parameters: {
+                type: Type.OBJECT,
+                properties: {
+                    jsonDataString: { type: Type.STRING, description: "The raw JSON string containing the data to import." }
+                },
+                required: ['jsonDataString']
+            }
+        };
+
+        let response = await ai.models.generateContent({
             model: model,
             contents: contents,
-            config: { systemInstruction },
+            config: { 
+                systemInstruction,
+                tools: [{ functionDeclarations: [deleteDuplicateTasksFunction, importJsonDataFunction] }]
+            },
         });
-
+        
+        if (response.functionCalls && response.functionCalls.length > 0) {
+            const functionResponses = [];
+            for (const fc of response.functionCalls) {
+                let toolResult;
+                if (fc.name === 'deleteDuplicateTasks') {
+                    // Execute the local function
+                    const [allTasks] = await pool.query('SELECT id, item_data FROM schedule_items WHERE user_id = ?', [req.userId]);
+                    const seen = new Set();
+                    const duplicates = [];
+                    for (const task of allTasks) {
+                        const item = typeof task.item_data === 'string' ? JSON.parse(task.item_data) : task.item_data;
+                        const key = `${item.CARD_TITLE.EN}-${item.DAY.EN}-${item.TIME || item.date || ''}`;
+                        if (seen.has(key)) {
+                            duplicates.push(task.id);
+                        } else {
+                            seen.add(key);
+                        }
+                    }
+                    if(duplicates.length > 0) {
+                         await pool.query('DELETE FROM schedule_items WHERE id IN (?)', [duplicates]);
+                    }
+                    toolResult = `Deleted ${duplicates.length} duplicate tasks.`;
+                } else if (fc.name === 'importJsonData') {
+                    const dataToImport = JSON.parse(fc.args.jsonDataString);
+                    // This re-uses the API import logic for consistency
+                    await apiRouter.post({ body: dataToImport, userId: req.userId }, { json: () => {}, status: () => ({ json: () => {} }) });
+                    const count = (dataToImport.schedules?.length || 0) + (dataToImport.exams?.length || 0);
+                    toolResult = `Successfully imported ${count} items.`;
+                }
+                functionResponses.push({
+                    id: fc.id,
+                    name: fc.name,
+                    response: { result: toolResult }
+                });
+            }
+            
+            // Send the function response back to the model
+            response = await ai.models.generateContent({
+                model: model,
+                contents: [
+                    ...contents,
+                    { role: 'model', parts: [{ functionCalls: response.functionCalls }] },
+                    { role: 'tool', parts: [{ functionResponses: functionResponses }] }
+                ],
+                config: { systemInstruction }
+            });
+        }
+        
         res.json({ response: response.text });
     } catch (error) {
         console.error("Gemini API error (chat):", error);
@@ -1685,7 +1779,7 @@ apiRouter.post('/ai/generate-practice-test', authMiddleware, async (req, res) =>
 
         1.  **"questions"**: An array of question objects. Each object must have:
             - "number": The question number (integer, starting from 1).
-            - "text": The full question text (string).
+            - "text": The full text of the question.
             - "options": An array of 4 strings representing the multiple-choice options.
 
         2.  **"answers"**: A JSON object mapping the question number (as a string) to the correct option letter (A, B, C, or D).

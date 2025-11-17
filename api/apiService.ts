@@ -127,7 +127,7 @@ export const api = {
     clearStudentData: (sid: string) => authFetch(`/admin/students/${sid}/clear-data`, { method: 'POST' }),
     
     // AI (secure backend endpoints)
-    getDailyInsight: (weaknesses: string[]) => authFetch('/ai/daily-insight', { method: 'POST', body: JSON.stringify({ weaknesses }) }),
+    getDailyInsight: (data: { weaknesses: string[], syllabus?: string }) => authFetch('/ai/daily-insight', { method: 'POST', body: JSON.stringify(data) }),
     aiChat: (data: { history: any[]; prompt: string; imageBase64?: string; }) => authFetch('/ai/chat', { method: 'POST', body: JSON.stringify(data) }),
     analyzeMistake: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/analyze-mistake', { method: 'POST', body: JSON.stringify(data) }),
     solveDoubt: (data: { prompt: string; imageBase64?: string; }) => authFetch('/ai/solve-doubt', { method: 'POST', body: JSON.stringify(data) }),
