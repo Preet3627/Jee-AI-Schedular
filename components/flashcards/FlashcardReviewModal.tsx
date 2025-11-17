@@ -88,7 +88,7 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
             </button>
         </header>
 
-        <div className="flex-grow perspective-1000">
+        <div className="flex-grow">
             {isReviewComplete ? (
                  <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl">
                     <Icon name="trophy" className="w-20 h-20 text-yellow-400" />
@@ -96,18 +96,14 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
                 </div>
             ) : (
                 <div 
-                    className="relative w-full h-full min-h-[300px] transition-transform duration-500 transform-style-preserve-3d"
-                    style={{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'}}
+                    className={`w-full h-full min-h-[300px] flex items-center justify-center p-6 border rounded-xl cursor-pointer transition-colors duration-300 ${isFlipped ? 'bg-gray-800/80 border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] border-[var(--glass-border)]'}`}
                     onClick={() => setIsFlipped(!isFlipped)}
                 >
-                    {/* Front */}
-                    <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl cursor-pointer">
-                        <p className="text-2xl text-white text-center">{currentCard?.front}</p>
-                    </div>
-                    {/* Back */}
-                    <div className="absolute w-full h-full backface-hidden flex items-center justify-center p-6 bg-gray-800/80 border border-[var(--glass-border)] rounded-xl cursor-pointer" style={{ transform: 'rotateY(180deg)' }}>
+                    {isFlipped ? (
                         <p className="text-xl text-gray-300 text-center">{currentCard?.back}</p>
-                    </div>
+                    ) : (
+                        <p className="text-2xl text-white text-center">{currentCard?.front}</p>
+                    )}
                 </div>
             )}
         </div>
@@ -127,20 +123,6 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
             )}
         </footer>
       </div>
-      <style>{`
-        .perspective-1000 { 
-          perspective: 1000px; 
-          -webkit-perspective: 1000px;
-        }
-        .transform-style-preserve-3d { 
-          transform-style: preserve-3d;
-          -webkit-transform-style: preserve-3d;
-        }
-        .backface-hidden { 
-          backface-visibility: hidden; 
-          -webkit-backface-visibility: hidden;
-        }
-      `}</style>
     </div>
   );
 };
