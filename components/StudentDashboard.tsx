@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion } from '../types';
 import ScheduleList from './ScheduleList';
@@ -128,6 +129,46 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
     // Study Material State
     const [viewingFile, setViewingFile] = useState<StudyMaterialItem | null>(null);
+
+    // History management for tabs
+    useEffect(() => {
+        const getTabFromHash = () => {
+            const hash = window.location.hash.replace('#/', '');
+            const validTabs: ActiveTab[] = ['dashboard', 'schedule', 'planner', 'exams', 'performance', 'doubts', 'flashcards', 'material'];
+            if (validTabs.includes(hash as ActiveTab)) {
+                return hash as ActiveTab;
+            }
+            return null;
+        };
+
+        // On component mount, sync state with URL hash
+        const initialTab = getTabFromHash();
+        if (initialTab) {
+            setActiveTab(initialTab);
+        } else {
+            // Set default hash without creating a history entry
+            window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
+        }
+
+        const handlePopState = (event: PopStateEvent) => {
+            const newTab = event.state?.tab || getTabFromHash() || 'dashboard';
+            setActiveTab(newTab);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, []); // Empty dependency array means this runs once on mount
+
+    useEffect(() => {
+        // This effect syncs the URL when the user clicks a tab button
+        const currentHash = window.location.hash.replace('#/', '');
+        if (activeTab !== currentHash) {
+            window.history.pushState({ tab: activeTab }, '', `/#/${activeTab}`);
+        }
+    }, [activeTab]);
 
     useEffect(() => {
         if (!deepLinkAction) return;
@@ -565,7 +606,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 </div>
             ) : <TopTabBar />}
 
-            {renderContent()}
+            <div key={activeTab} className="tab-content-enter">
+              {renderContent()}
+            </div>
 
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} onPracticeTestReady={handleAiPracticeTest} onOpenGuide={() => setIsAiGuideModalOpen(true)} />}

@@ -1,3 +1,4 @@
+
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -11,8 +12,8 @@ import { fileURLToPath } from 'url';
 // FIX: Correct import path for generateAvatar.
 import { generateAvatar } from './utils/generateAvatar.js';
 import crypto from 'crypto';
-// FIX: Correct import for GoogleGenAI and add Type for function calling
-import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
+// FIX: Correct import for GoogleGenAI to resolve server crash. FunctionDeclaration is a type and not needed in JS.
+import { GoogleGenAI, Type } from '@google/genai';
 import { parseStringPromise } from 'xml2js';
 
 // --- SERVER SETUP ---

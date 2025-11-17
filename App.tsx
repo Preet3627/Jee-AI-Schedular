@@ -86,20 +86,6 @@ const App: React.FC = () => {
         }
     }, []);
     
-    // Prevent accidental page exit
-    useEffect(() => {
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            e.preventDefault();
-            e.returnValue = ''; // For Chrome
-            return ''; // For other browsers
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, []);
 
     const handleGoogleSignOut = () => {
         auth.handleSignOut(() => {

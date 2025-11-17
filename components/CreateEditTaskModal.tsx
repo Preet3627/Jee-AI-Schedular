@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ScheduleItem, ScheduleCardData, HomeworkData, FlashcardDeck } from '../types';
 import Icon from './Icon';
@@ -99,7 +100,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
             // FIX: Cast formData.category to the specific union type required by HomeworkData.
-            category: formData.category as HomeworkData['category'],
+            category: formData.category as 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ' | 'Custom',
             answers: parseAnswers(formData.answers),
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
         } as HomeworkData;

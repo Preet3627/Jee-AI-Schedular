@@ -102,6 +102,15 @@
       .popup-exit {
         animation: scaleOut 0.15s ease-out forwards;
       }
+
+      /* Tab Content Transition */
+      @keyframes tabContentFadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .tab-content-enter {
+        animation: tabContentFadeIn 0.35s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+      }
       
       .no-blur .backdrop-blur-sm { backdrop-filter: none; }
       .no-blur .backdrop-blur-md { backdrop-filter: none; }
