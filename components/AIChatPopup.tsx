@@ -1,7 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
+import { renderMarkdown } from '../utils/markdownParser';
 
 interface AIChatPopupProps {
   history: { role: string; parts: { text: string }[] }[];
@@ -10,8 +10,26 @@ interface AIChatPopupProps {
   isLoading: boolean;
 }
 
+const ChatMessage: React.FC<{ message: { role: string, parts: { text: string }[] } }> = ({ message }) => {
+    const { currentUser } = useAuth();
+    const isUser = message.role === 'user';
+    
+    // The AI's response might not be available yet.
+    const messageText = message.parts[0]?.text || '';
+
+    return (
+        <div className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+            {!isUser && <Icon name="gemini" className="w-6 h-6 text-cyan-400 self-start flex-shrink-0" />}
+            <div 
+                className={`max-w-[80%] px-3 py-2 rounded-xl prose prose-invert prose-sm break-words ${isUser ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}`}
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(messageText) }}
+            />
+            {isUser && <img src={currentUser?.profilePhoto} className="w-6 h-6 rounded-full self-start flex-shrink-0" alt="user" />}
+        </div>
+    );
+};
+
 const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClose, isLoading }) => {
-  const { currentUser } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -72,15 +90,7 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
       </header>
       
       <main ref={chatBodyRef} className="flex-grow p-3 overflow-y-auto space-y-4">
-        {history.map((msg, index) => (
-          <div key={index} className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'model' && <Icon name="gemini" className="w-6 h-6 text-cyan-400 self-start flex-shrink-0" />}
-            <div className={`max-w-[80%] px-3 py-2 rounded-xl ${msg.role === 'user' ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}`}>
-              <p className="text-sm whitespace-pre-wrap">{msg.parts[0].text}</p>
-            </div>
-            {msg.role === 'user' && <img src={currentUser?.profilePhoto} className="w-6 h-6 rounded-full self-start flex-shrink-0" alt="user" />}
-          </div>
-        ))}
+        {history.map((msg, index) => <ChatMessage key={index} message={msg} />)}
         {isLoading && (
             <div className="flex items-end gap-2 justify-start">
                 <Icon name="gemini" className="w-6 h-6 text-cyan-400 self-start flex-shrink-0" />

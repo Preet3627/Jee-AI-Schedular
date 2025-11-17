@@ -17,7 +17,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
     
     const renderWeeklyView = () => {
         const scheduleByDay: { [key: string]: ScheduleItem[] } = daysOfWeek.reduce((acc, day) => {
-            acc[day] = items.filter(item => item.DAY.EN.toUpperCase() === day);
+            acc[day] = items.filter(item => !item.date && item.DAY.EN.toUpperCase() === day);
             return acc;
         }, {} as { [key: string]: ScheduleItem[] });
 
@@ -53,17 +53,21 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
         const now = new Date();
         const monthlySchedule: { [key: string]: ScheduleItem[] } = {};
 
+        // Populate with repeating weekly tasks and one-off dated tasks
         for (let i = 0; i < 30; i++) {
             const date = new Date(now);
             date.setDate(now.getDate() + i);
+            const dateString = date.toISOString().split('T')[0];
             const dayName = date.toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
             
-            const tasksForDay = items
-                .filter(item => item.DAY.EN.toUpperCase() === dayName)
-                .sort((a, b) => ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59'));
+            const repeatingTasks = items.filter(item => !item.date && item.DAY.EN.toUpperCase() === dayName);
+            const datedTasks = items.filter(item => item.date === dateString);
+
+            const tasksForDay = [...repeatingTasks, ...datedTasks].sort((a, b) => 
+                ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59')
+            );
             
             if (tasksForDay.length > 0) {
-                const dateString = date.toISOString().split('T')[0];
                 monthlySchedule[dateString] = tasksForDay;
             }
         }
@@ -98,7 +102,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
     const renderListView = () => {
         const scheduleByDay = daysOfWeek.reduce((acc, day) => {
             const dayItems = items
-                .filter(item => item.DAY.EN.toUpperCase() === day)
+                .filter(item => !item.date && item.DAY.EN.toUpperCase() === day)
                 .sort((a,b) => ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59'));
             if(dayItems.length > 0) {
                 acc[day] = dayItems;
@@ -132,9 +136,12 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
     };
 
     const renderTodayView = () => {
-        const todayName = new Date().toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
+        const today = new Date();
+        const todayName = today.toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
+        const todayDateString = today.toISOString().split('T')[0];
+
         const todaysItems = items
-            .filter(item => item.DAY.EN.toUpperCase() === todayName)
+            .filter(item => (item.date === todayDateString) || (!item.date && item.DAY.EN.toUpperCase() === todayName))
             .sort((a,b) => ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59'));
 
         return (

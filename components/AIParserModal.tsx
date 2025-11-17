@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
@@ -35,7 +33,7 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) =
       try {
         const jsonData = JSON.parse(inputText);
         // A simple check to see if it looks like our data structure
-        if (jsonData && (jsonData.schedules || jsonData.exams || jsonData.metrics)) {
+        if (jsonData && (jsonData.schedules || jsonData.exams || jsonData.metrics || jsonData.practice_test)) {
           onDataReady(jsonData);
           return; // Success, no need to call AI
         }

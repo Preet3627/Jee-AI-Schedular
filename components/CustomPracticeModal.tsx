@@ -4,6 +4,7 @@ import Icon from './Icon';
 import { getQuestionNumbersFromRanges } from '../utils/qRangesParser';
 import { HomeworkData, ResultData, StudentData, ScheduleItem, PracticeQuestion } from '../types';
 import AIGenerateAnswerKeyModal from './AIGenerateAnswerKeyModal';
+import AIParserModal from './AIParserModal';
 import { api } from '../api/apiService';
 
 interface CustomPracticeModalProps {
@@ -47,7 +48,7 @@ const parseAnswers = (text: string): Record<string, string> => {
 
 const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
   const { onClose, onSessionComplete, initialTask, defaultPerQuestionTime, onLogResult, student, onUpdateWeaknesses, onSaveTask } = props;
-  const [activeTab, setActiveTab] = useState<'manual' | 'ai'>(initialTask ? 'manual' : 'ai');
+  const [activeTab, setActiveTab] = useState<'ai' | 'manual' | 'jeeMains'>(initialTask ? 'manual' : 'ai');
   const [qRanges, setQRanges] = useState(initialTask?.Q_RANGES || '');
   const [subject, setSubject] = useState(initialTask?.SUBJECT_TAG.EN || 'PHYSICS');
   const [category, setCategory] = useState(initialTask ? 'Homework Practice' : 'AI Generated');
@@ -59,17 +60,18 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
   const [aiTopic, setAiTopic] = useState('');
   const [aiNumQuestions, setAiNumQuestions] = useState(10);
   const [aiDifficulty, setAiDifficulty] = useState('Medium');
-  // FIX: Renamed state variable and setter for consistency. The setter was setIsLoading, which was a typo.
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Session State
   const [isTimerStarted, setIsTimerStarted] = useState(false);
+  const [practiceMode, setPracticeMode] = useState<'custom' | 'jeeMains'>('custom');
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[] | null>(null);
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, string> | null>(null);
 
   const [isExiting, setIsExiting] = useState(false);
   const [isAiKeyModalOpen, setIsAiKeyModalOpen] = useState(false);
+  const [isAiParserOpen, setIsAiParserOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const questionNumbers = useMemo(() => getQuestionNumbersFromRanges(qRanges), [qRanges]);
@@ -84,20 +86,28 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
     setError('');
     if (activeTab === 'manual') {
         if (totalQuestions > 0) {
+            setPracticeMode('custom');
             setIsTimerStarted(true);
         } else {
             alert('Please enter valid question ranges (e.g., "1-25; 30-35").');
         }
+    } else if (activeTab === 'jeeMains') {
+        if (!syllabus.trim()) {
+            setError('Please provide a syllabus for the AI to analyze your results correctly.');
+            return;
+        }
+        setPracticeMode('jeeMains');
+        setIsTimerStarted(true);
     } else { // AI mode
         if (!aiTopic.trim()) {
             setError('Please enter a topic for the AI to generate questions.');
             return;
         }
-        // FIX: The setter for the loading state was incorrectly named 'setIsGenerating'. Corrected to 'setIsLoading'.
         setIsLoading(true);
         try {
             const result = await api.generatePracticeTest({ topic: aiTopic, numQuestions: aiNumQuestions, difficulty: aiDifficulty });
             if (result.questions && result.answers) {
+                setPracticeMode('custom');
                 setPracticeQuestions(result.questions);
                 setPracticeAnswers(result.answers);
                 setIsTimerStarted(true);
@@ -107,7 +117,6 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
         } catch (err: any) {
             setError(err.error || 'Failed to generate practice test.');
         } finally {
-            // FIX: The setter for the loading state was incorrectly named 'setIsGenerating'. Corrected to 'setIsLoading'.
             setIsLoading(false);
         }
     }
@@ -133,11 +142,23 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
         reader.readAsText(file);
     }
   };
+
+  const handleDataFromParser = (data: any) => {
+    if (data.practice_test && data.practice_test.questions && data.practice_test.answers) {
+        setPracticeMode('custom');
+        setPracticeQuestions(data.practice_test.questions);
+        setPracticeAnswers(data.practice_test.answers);
+        setCategory('Imported Test');
+        setSubject('MIXED');
+        setIsTimerStarted(true);
+    } else {
+        alert("The imported data did not contain a valid practice test. Please check the format and try again.");
+    }
+    setIsAiParserOpen(false);
+  };
   
   const animationClasses = isExiting ? 'modal-exit' : 'modal-enter';
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
-  
-  const presetCategories = ["Level-1", "Level-2", "PYQ", "Classroom Discussion 1", "Classroom Discussion 2", "Classroom Discussion 3"];
   
   const correctAnswers = useMemo(() => {
     if (initialTask && initialTask.answers) return initialTask.answers;
@@ -151,12 +172,12 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
           
           {isTimerStarted ? (
             <McqTimer 
-              questionNumbers={practiceQuestions ? practiceQuestions.map(q => q.number) : questionNumbers}
+              questionNumbers={practiceQuestions ? practiceQuestions.map(q => q.number) : practiceMode === 'jeeMains' ? Array.from({ length: 75 }, (_, i) => i + 1) : questionNumbers}
               questions={practiceQuestions || undefined}
               perQuestionTime={perQuestionTime}
               onClose={handleClose} 
               onSessionComplete={onSessionComplete}
-              practiceMode={'custom'} // Both modes are handled as custom for grading
+              practiceMode={practiceMode}
               subject={subject}
               category={category}
               syllabus={syllabus}
@@ -169,14 +190,18 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
             />
           ) : (
             <div>
-              <h2 className="text-2xl font-bold text-white mb-4">Practice Session</h2>
-              
-              <div className="flex items-center gap-2 p-1 rounded-full bg-gray-900/50 mb-4">
-                <button onClick={() => setActiveTab('ai')} disabled={!!initialTask} className={`flex-1 text-center text-sm font-semibold py-1.5 rounded-full disabled:opacity-50 ${activeTab === 'ai' ? 'bg-cyan-600 text-white' : 'text-gray-300'}`}>AI Quick Practice</button>
-                <button onClick={() => setActiveTab('manual')} className={`flex-1 text-center text-sm font-semibold py-1.5 rounded-full ${activeTab === 'manual' ? 'bg-cyan-600 text-white' : 'text-gray-300'}`}>From Homework/Ranges</button>
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white mb-4">Practice Session</h2>
+                <button onClick={() => setIsAiParserOpen(true)} className="text-xs font-semibold text-cyan-400 hover:underline flex items-center gap-1"><Icon name="upload" /> Import from Text/JSON</button>
               </div>
               
-              {activeTab === 'manual' ? (
+              <div className="flex items-center gap-2 p-1 rounded-full bg-gray-900/50 mb-4">
+                <button onClick={() => setActiveTab('jeeMains')} className={`flex-1 text-center text-sm font-semibold py-1.5 rounded-full ${activeTab === 'jeeMains' ? 'bg-purple-600 text-white' : 'text-gray-300'}`}>JEE Mains Full Test</button>
+                <button onClick={() => setActiveTab('ai')} disabled={!!initialTask} className={`flex-1 text-center text-sm font-semibold py-1.5 rounded-full disabled:opacity-50 ${activeTab === 'ai' ? 'bg-cyan-600 text-white' : 'text-gray-300'}`}>AI Quick Practice</button>
+                <button onClick={() => setActiveTab('manual')} className={`flex-1 text-center text-sm font-semibold py-1.5 rounded-full ${activeTab === 'manual' ? 'bg-cyan-600 text-white' : 'text-gray-300'}`}>From Homework</button>
+              </div>
+              
+              {activeTab === 'manual' && (
                   <>
                     <div className="mt-4">
                       <label className="text-sm font-bold text-gray-400">Question Ranges (e.g., 1-15; 20-25)</label>
@@ -196,7 +221,8 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
                           </div>
                      )}
                   </>
-              ) : (
+              )}
+              {activeTab === 'ai' && (
                   <div className="space-y-4">
                      <div>
                         <label className="text-sm font-bold text-gray-400">Topic</label>
@@ -218,14 +244,23 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
                     </div>
                   </div>
               )}
+               {activeTab === 'jeeMains' && (
+                  <div className="space-y-4">
+                     <div className="text-center p-4 bg-purple-900/30 border border-purple-500/50 rounded-lg">
+                        <Icon name="trophy" className="w-8 h-8 mx-auto text-purple-400 mb-2"/>
+                        <h3 className="font-bold text-white">JEE Mains Full Test Simulation</h3>
+                        <p className="text-xs text-gray-400">This is a 3-hour, 75-question test. After completion, you'll upload the answer key for AI-powered analysis.</p>
+                     </div>
+                     <div>
+                        <label className="text-sm font-bold text-gray-400">Syllabus</label>
+                         <textarea value={syllabus} onChange={(e) => setSyllabus(e.target.value)} className="w-full h-24 bg-gray-900/70 border border-[var(--glass-border)] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 mt-1" placeholder="Enter the comma-separated list of chapters for this test, e.g., Kinematics, NLM, Rotational Motion..." />
+                    </div>
+                  </div>
+              )}
 
               {error && <p className="text-sm text-red-400 mt-2 text-center">{error}</p>}
               
-              <div className="mt-4 pt-4 border-t border-[var(--glass-border)] text-center">
-                  <p className="text-gray-400">Total Questions: <span className="font-bold text-white">{activeTab === 'manual' ? totalQuestions : aiNumQuestions}</span></p>
-              </div>
-
-              <div className="flex justify-end gap-4 pt-4">
+              <div className="flex justify-end gap-4 pt-4 mt-4 border-t border-[var(--glass-border)]">
                 <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors">Cancel</button>
                 <button onClick={handleStart} disabled={isLoading || (activeTab === 'manual' && totalQuestions === 0)} className="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
                   {isLoading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Generating...</> : <><Icon name="play" className="w-4 h-4" /> Start</>}
@@ -241,6 +276,12 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
               onKeyGenerated={(keyText) => {
                   setCorrectAnswersText(keyText);
               }}
+          />
+      )}
+      {isAiParserOpen && (
+          <AIParserModal
+            onClose={() => setIsAiParserOpen(false)}
+            onDataReady={handleDataFromParser}
           />
       )}
     </>

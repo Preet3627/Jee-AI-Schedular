@@ -1,6 +1,7 @@
 import React from 'react';
 import { ResultData } from '../types';
 import Icon from './Icon';
+import { renderMarkdown } from '../utils/markdownParser';
 
 interface TestAnalysisReportProps {
   result: ResultData;
@@ -85,9 +86,10 @@ const TestAnalysisReport: React.FC<TestAnalysisReportProps> = ({ result, onAnaly
             {/* AI Suggestions */}
             <div>
                 <h4 className="font-bold text-lg text-white mb-2 flex items-center gap-2"><Icon name="gemini" className="w-5 h-5" /> AI Suggestions</h4>
-                <div className="bg-gray-900/50 p-4 rounded-lg text-sm text-gray-300 whitespace-pre-wrap">
-                    {aiSuggestions}
-                </div>
+                <div 
+                  className="bg-gray-900/50 p-4 rounded-lg text-sm text-gray-300 prose prose-invert prose-sm break-words"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(aiSuggestions) }}
+                />
             </div>
 
             {/* Incorrect Questions */}

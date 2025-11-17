@@ -34,7 +34,10 @@ const AIGenerateFlashcardsModal: React.FC<AIGenerateFlashcardsModalProps> = ({ s
     setGeneratedCards(null);
 
     try {
-      const result = await api.generateFlashcards({ topic, syllabus: examSyllabus });
+      const weaknessesContext = student.CONFIG.WEAK.length > 0 ? `Please pay special attention to these weaknesses: ${student.CONFIG.WEAK.join(', ')}.` : '';
+      const fullPrompt = `${topic}. ${weaknessesContext}`;
+      
+      const result = await api.generateFlashcards({ topic: fullPrompt, syllabus: examSyllabus });
       setGeneratedCards(result.flashcards);
     } catch (err: any) {
       setError(err.error || 'Failed to generate flashcards. The AI service may be unavailable.');
@@ -46,10 +49,17 @@ const AIGenerateFlashcardsModal: React.FC<AIGenerateFlashcardsModalProps> = ({ s
   const handleSave = () => {
     if (!generatedCards || generatedCards.length === 0) return;
     
+    // Try to guess subject from syllabus or topic
+    let subjectGuess = 'GENERAL';
+    const lowerSyllabus = (examSyllabus + topic).toLowerCase();
+    if (lowerSyllabus.includes('physics')) subjectGuess = 'PHYSICS';
+    else if (lowerSyllabus.includes('chemistry')) subjectGuess = 'CHEMISTRY';
+    else if (lowerSyllabus.includes('math')) subjectGuess = 'MATHS';
+
     const newDeck: FlashcardDeck = {
         id: `deck_${Date.now()}`,
         name: topic,
-        subject: student.CONFIG.flashcardDecks?.[0]?.subject || 'GENERAL', // Heuristic for subject
+        subject: subjectGuess,
         cards: generatedCards,
     };
     onSaveDeck(newDeck);
@@ -72,6 +82,7 @@ const AIGenerateFlashcardsModal: React.FC<AIGenerateFlashcardsModalProps> = ({ s
                 <div>
                     <label className="text-sm font-bold text-gray-400">Topic or Concept</label>
                     <input required value={topic} onChange={e => setTopic(e.target.value)} className={inputClass} placeholder="e.g., Quick formulas for Thermodynamics" />
+                    <p className="text-xs text-gray-500 mt-1">The AI will also consider your listed weaknesses.</p>
                 </div>
                 <div>
                     <label className="text-sm font-bold text-gray-400">Context from Exam Syllabus (Optional)</label>

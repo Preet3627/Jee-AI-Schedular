@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem } from '../types';
 import ScheduleList from './ScheduleList';
@@ -50,6 +48,7 @@ import FlashcardReviewModal from './flashcards/FlashcardReviewModal';
 import StudyMaterialView from './StudyMaterialView';
 import FileViewerModal from './FileViewerModal';
 import AIGenerateFlashcardsModal from './flashcards/AIGenerateFlashcardsModal';
+import EditResultModal from './EditResultModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -91,6 +90,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [practiceTask, setPracticeTask] = useState<HomeworkData | null>(null);
     const [isEditWeaknessesModalOpen, setIsEditWeaknessesModalOpen] = useState(false);
     const [isLogResultModalOpen, setIsLogResultModalOpen] = useState(false);
+    const [isEditResultModalOpen, setIsEditResultModalOpen] = useState(false);
+    const [editingResult, setEditingResult] = useState<ResultData | null>(null);
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<ExamData | null>(null);
     const [isAiMistakeModalOpen, setIsAiMistakeModalOpen] = useState(false);
@@ -278,6 +279,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         }
     };
 
+    // --- Result Handlers ---
+    const handleEditResult = (result: ResultData) => {
+        setEditingResult(result);
+        setIsEditResultModalOpen(true);
+    };
+    
+    const onUpdateResult = async (result: ResultData) => {
+        await api.updateResult(result);
+    };
+
+    const onDeleteResult = async (resultId: string) => {
+        await api.deleteResult(resultId);
+    };
+
+
     // --- Flashcard Handlers ---
     const handleSaveDeck = (deck: FlashcardDeck) => {
         const decks = student.CONFIG.flashcardDecks || [];
@@ -427,7 +443,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                                 <button onClick={() => setIsAiMistakeModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600"><Icon name="book-open" /> Analyze Mistake with AI</button>
                                 <button onClick={() => setIsLogResultModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button>
                             </div>
-                            {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} onViewAnalysis={setViewingReport} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
+                            {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} onViewAnalysis={setViewingReport} onEdit={handleEditResult} onDelete={onDeleteResult} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
                         </div>
                         <div className="space-y-8">
                              <PerformanceMetrics score={student.CONFIG.SCORE} weaknesses={student.CONFIG.WEAK} onEditWeaknesses={() => setIsEditWeaknessesModalOpen(true)} />
@@ -474,11 +490,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => setIsLogResultModalOpen(false)} onSave={onLogResult} />}
+            {isEditResultModalOpen && editingResult && <EditResultModal result={editingResult} onClose={() => { setIsEditResultModalOpen(false); setEditingResult(null); }} onSave={onUpdateResult} />}
             {isExamModalOpen && <CreateEditExamModal exam={editingExam} onClose={() => { setIsExamModalOpen(false); setEditingExam(null); }} onSave={(exam) => editingExam ? onUpdateExam(exam) : onAddExam(exam)} />}
             {isAiMistakeModalOpen && <AIMistakeAnalysisModal onClose={() => setIsAiMistakeModalOpen(false)} onSaveWeakness={handleSaveWeakness} />}
             {isAiDoubtSolverOpen && <AIDoubtSolverModal onClose={() => setIsAiDoubtSolverOpen(false)} />}
             {isAiChatOpen && <AIChatPopup history={aiChatHistory} onSendMessage={handleAiChatMessage} onClose={() => setIsAiChatOpen(false)} isLoading={isAiChatLoading} />}
-            {viewingReport && <TestReportModal result={viewingReport} onClose={() => setViewingReport(null)} onUpdateWeaknesses={onUpdateWeaknesses} student={student} />}
+            {viewingReport && <TestReportModal result={viewingReport} onClose={() => setViewingReport(null)} onUpdateWeaknesses={onUpdateWeaknesses} student={student} onSaveDeck={handleSaveDeck} />}
             
             {/* Flashcard Modals */}
             {isCreateDeckModalOpen && <CreateEditDeckModal deck={editingDeck} onClose={() => { setIsCreateDeckModalOpen(false); setEditingDeck(null); }} onSave={handleSaveDeck} />}

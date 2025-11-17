@@ -1,7 +1,7 @@
-
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
+import { renderMarkdown } from '../utils/markdownParser';
 
 interface AIMistakeAnalysisModalProps {
   onClose: () => void;
@@ -109,7 +109,10 @@ const AIMistakeAnalysisModal: React.FC<AIMistakeAnalysisModalProps> = ({ onClose
             {analysisResult && (
                 <div className="bg-gray-900/50 p-4 rounded-md border border-gray-700">
                     <h3 className="font-bold text-cyan-400 mb-2">AI Analysis: <span className="text-white font-semibold">{analysisResult.mistake_topic}</span></h3>
-                    <div className="text-sm text-gray-300 whitespace-pre-wrap">{analysisResult.explanation}</div>
+                    <div 
+                      className="text-sm text-gray-300 prose prose-invert prose-sm break-words"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(analysisResult.explanation) }}
+                    />
                     <button onClick={handleAddWeakness} className="mt-4 w-full text-center px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-500 rounded-lg">
                       Add to My Weaknesses
                     </button>

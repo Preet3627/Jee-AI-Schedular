@@ -1,7 +1,7 @@
 import React from 'react';
 
 const guideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.5.0 (JSON Only)
+# Version: 5.7.0 (JSON Only)
 # Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
 ## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
@@ -20,7 +20,8 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 {
   "schedules": [ /* ... */ ],
   "exams": [ /* ... */ ],
-  "metrics": [ /* ... */ ]
+  "metrics": [ /* ... */ ],
+  "practice_test": { /* ... */ }
 }
 \`\`\`
 
@@ -31,11 +32,12 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 | \`id\`        | string | Unique ID (e.g., \`A101\`, \`H202\`).                     | \`"A101"\`                              |
 | \`type\`      | string | \`"ACTION"\` or \`"HOMEWORK"\`.                           | \`"ACTION"\`                            |
 | \`day\`       | string | Full day name, uppercase (e.g., \`MONDAY\`).            | \`"FRIDAY"\`                            |
+| \`date\`      | string | **Optional.** \`YYYY-MM-DD\` format. Use for one-off events instead of a repeating \`day\`. | \`"2024-09-15"\`                         |
 | \`time\`      | string | \`HH:MM\` format. Required for \`ACTION\`.                | \`"20:30"\`                             |
 | \`title\`     | string | Concise title of the task.                            | \`"Rotational Dynamics Deep Dive"\`     |
 | \`detail\`    | string | A descriptive explanation.                            | \`"Fix FBD, Tension errors."\`          |
 | \`subject\`   | string | \`PHYSICS\`, \`CHEMISTRY\`, \`MATHS\`, etc.                 | \`"PHYSICS"\`                           |
-| \`q_ranges\`  | string | **For \`HOMEWORK\` only.** Semicolon-separated.         | \`"L1:1-10@p45;PYQ:5-15"\`              |
+| \`q_ranges\`  | string | **For \`HOMEWORK\` only.** Semicolon-separated. Categories: NCERT, LEVEL-1, LEVEL-2, PYQ, CD (Classroom Discussion) | \`"NCERT:1-10;LEVEL-1:5-15;PYQ:20-30"\` |
 | \`sub_type\`  | string | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`ANALYSIS\`, etc.  | \`"DEEP_DIVE"\`                         |
 | \`answers\`   | object | **For \`HOMEWORK\` only.** Optional. If asked, you MUST generate this. Maps question numbers to answers, e.g., \`{"1": "A", "2": "C", "76": "12.50"}\`. | \`{"1": "A", "2": "D"}\` |
 
@@ -61,21 +63,21 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 | \`weaknesses\` | string | **For \`WEAKNESS\` only.** Semicolon-separated.     | \`"Definite Integration;Wave Optics"\`     |
 
 ---
-## 5. Additional Schemas (for specific AI features)
-### 5.1 \`practice_test\` Object
-- **Purpose:** To generate a complete practice test on a given topic.
+### 4.4 \`practice_test\` Object (Optional)
+- **Purpose:** To generate a complete practice test on a given topic, or to import one.
 - **Top-level keys:** \`questions\`, \`answers\`.
 
-#### 5.1.1 \`questions\` Array Items
+#### 4.4.1 \`questions\` Array Items
 | Key       | Type          | Description                             | Example                                      |
 |-----------|---------------|-----------------------------------------|----------------------------------------------|
 | \`number\`  | number        | The question number, starting from 1.   | \`1\`                                          |
 | \`text\`    | string        | The full question text.                 | \`"What is the capital of France?"\`            |
-| \`options\` | array[string] | An array of 4 string options.           | \`["(A) Berlin", "(B) Madrid", "(C) Paris"]\`   |
+| \`options\` | array[string] | An array of 4 string options for MCQs. Empty for Numerical. | \`["(A) Berlin", "(B) Madrid", "(C) Paris"]\`   |
+| \`type\`    | string        | \`"MCQ"\` or \`"NUM"\`.                       | \`"MCQ"\`                                      |
 
-#### 5.1.2 \`answers\` Object
-- A JSON object mapping the question number (as a string) to the correct option letter (A, B, C, or D).
-- **Example:** \`{"1": "C"}\`
+#### 4.4.2 \`answers\` Object
+- A JSON object mapping the question number (as a string) to the correct answer.
+- **Example:** \`{"1": "C", "2": "14.5"}\`
 `;
 
 const AIGuide: React.FC = () => {

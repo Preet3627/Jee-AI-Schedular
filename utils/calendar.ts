@@ -41,13 +41,23 @@ export const exportWeekCalendar = (items: ScheduleItem[], studentName: string): 
         .filter(item => 'TIME' in item && item.TIME)
         .map(item => {
             // This type assertion is safe because of the filter above.
-            const timedItem = item as { DAY: { EN: string }, TIME: string, ID: string, CARD_TITLE: { EN: string }, FOCUS_DETAIL: { EN: string } };
+            const timedItem = item as { DAY: { EN: string }, TIME: string, ID: string, CARD_TITLE: { EN: string }, FOCUS_DETAIL: { EN: string }, date?: string };
 
-            const dayDate = getNextDateForDay(timedItem.DAY.EN);
             const [hours, minutes] = timedItem.TIME.split(':').map(Number);
             
-            const startDate = new Date(dayDate);
-            startDate.setHours(hours, minutes, 0, 0);
+            let startDate: Date;
+            let recurrenceRule = 'RRULE:FREQ=WEEKLY';
+
+            if (timedItem.date) {
+                // One-off event
+                startDate = new Date(timedItem.date);
+                recurrenceRule = ''; // No recurrence
+            } else {
+                // Weekly repeating event
+                startDate = getNextDateForDay(timedItem.DAY.EN);
+            }
+            
+            startDate.setUTCHours(hours, minutes, 0, 0); // Use UTC hours to align with toICSDate format
 
             // Assume a default duration of 1 hour for each study session
             const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
@@ -61,16 +71,28 @@ export const exportWeekCalendar = (items: ScheduleItem[], studentName: string): 
             const summary = timedItem.CARD_TITLE.EN.replace(/,/g, '\\,').replace(/;/g, '\\;');
             const description = timedItem.FOCUS_DETAIL.EN.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
 
-            return [
+            const eventParts = [
                 'BEGIN:VEVENT',
                 `UID:${uid}`,
                 `DTSTAMP:${dtstamp}`,
-                `DTSTART:${dtstart}`,
-                `DTEND:${dtend}`,
+                `DTSTART;TZID=UTC:${dtstart}`,
+                `DTEND;TZID=UTC:${dtend}`,
                 `SUMMARY:${summary}`,
                 `DESCRIPTION:${description}`,
+                'BEGIN:VALARM',
+                'TRIGGER:-PT15M',
+                'ACTION:DISPLAY',
+                'DESCRIPTION:Reminder',
+                'END:VALARM',
                 'END:VEVENT'
-            ].join('\r\n');
+            ];
+
+            if (recurrenceRule) {
+                // Insert RRULE before VALARM
+                eventParts.splice(7, 0, recurrenceRule);
+            }
+
+            return eventParts.join('\r\n');
         })
         .join('\r\n');
 

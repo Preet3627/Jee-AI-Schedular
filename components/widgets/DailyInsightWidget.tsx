@@ -1,7 +1,9 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/apiService';
 import Icon from '../Icon';
+import { motivationalQuotes } from '../../data/motivationalQuotes';
 
 interface DailyInsightWidgetProps {
     weaknesses: string[];
@@ -20,8 +22,11 @@ const DailyInsightWidget: React.FC<DailyInsightWidgetProps> = ({ weaknesses }) =
                 const result = await api.getDailyInsight(weaknesses);
                 setInsight(result);
             } catch (err) {
-                setError('Could not load AI insight.');
                 console.error(err);
+                // Fallback to a random motivational quote
+                const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+                setInsight({ quote: randomQuote, insight: "Keep pushing forward! Every small step counts towards your big goal." });
+                setError('Could not load AI insight, showing a quote instead.');
             } finally {
                 setIsLoading(false);
             }
@@ -37,7 +42,7 @@ const DailyInsightWidget: React.FC<DailyInsightWidgetProps> = ({ weaknesses }) =
                     <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 </div>
             )}
-            {error && <p className="text-center text-yellow-400">{error}</p>}
+            {error && <p className="text-center text-xs text-yellow-500 mb-2">{error}</p>}
             {insight && (
                 <div className="space-y-4">
                     <p className="text-lg font-medium text-gray-300 italic text-center">"{insight.quote}"</p>

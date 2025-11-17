@@ -62,6 +62,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
     subject: task ? task.SUBJECT_TAG.EN : 'PHYSICS',
     time: task && 'TIME' in task && task.TIME ? task.TIME : '20:00',
     day: task ? task.DAY.EN.toUpperCase() : new Date().toLocaleString('en-us', {weekday: 'long'}).toUpperCase(),
+    date: task && 'date' in task ? task.date : '', // New date field
     qRanges: task?.type === 'HOMEWORK' ? task.Q_RANGES : '',
     deckId: task?.type === 'ACTION' && task.SUB_TYPE === 'FLASHCARD_REVIEW' ? task.deckId : (decks.length > 0 ? decks[0].id : ''),
     answers: task?.type === 'HOMEWORK' ? formatAnswers(task.answers) : '',
@@ -80,19 +81,23 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
     
     const isEditing = !!task;
     let finalTask: ScheduleItem;
+    
+    // If a specific date is set, it overrides the repeating day of the week.
+    const dayData = formData.date ? { EN: new Date(formData.date).toLocaleString('en-us', {weekday: 'long'}).toUpperCase(), GU: "" } : { EN: formData.day, GU: "" };
+    const dateData = formData.date ? { date: formData.date } : {};
 
     if (taskType === 'HOMEWORK') {
         finalTask = {
             ID: isEditing && task.type === 'HOMEWORK' ? task.ID : `H${Date.now()}`,
             type: 'HOMEWORK',
             isUserCreated: true,
-            DAY: { EN: formData.day, GU: "" },
+            DAY: dayData,
+            ...dateData,
             CARD_TITLE: { EN: formData.title, GU: "" },
             FOCUS_DETAIL: { EN: formData.details, GU: "" },
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
             answers: parseAnswers(formData.answers),
-            // FIX: Add missing googleEventId if it exists on the original task
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
         } as HomeworkData;
     } else { // ACTION or FLASHCARD_REVIEW
@@ -101,13 +106,13 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             type: 'ACTION',
             SUB_TYPE: taskType === 'FLASHCARD_REVIEW' ? 'FLASHCARD_REVIEW' : 'DEEP_DIVE',
             isUserCreated: true,
-            DAY: { EN: formData.day, GU: "" },
+            DAY: dayData,
+            ...dateData,
             CARD_TITLE: { EN: formData.title, GU: "" },
             FOCUS_DETAIL: { EN: formData.details, GU: "" },
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             TIME: formData.time,
             deckId: taskType === 'FLASHCARD_REVIEW' ? formData.deckId : undefined,
-            // FIX: Add missing googleEventId if it exists on the original task
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
         } as ScheduleCardData;
     }
@@ -145,27 +150,33 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
               <label className="text-sm font-bold text-gray-400">Details</label>
               <textarea required value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} className={inputClass}></textarea>
             </div>
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                 <div className="sm:col-span-2">
-                    <label className="text-sm font-bold text-gray-400">Day</label>
-                    <select required value={formData.day} onChange={e => setFormData({...formData, day: e.target.value})} className={inputClass}>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <div>
+                    <label className="text-sm font-bold text-gray-400">Repeating Day</label>
+                    <select required value={formData.day} onChange={e => setFormData({...formData, day: e.target.value, date: ''})} className={`${inputClass} disabled:opacity-50`} disabled={!!formData.date}>
                        {daysOfWeek.map(d => <option key={d} value={d}>{d.charAt(0) + d.slice(1).toLowerCase()}</option>)}
                     </select>
                 </div>
                 <div>
+                    <label className="text-sm font-bold text-gray-400">Or Specific Date</label>
+                    <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={inputClass} />
+                </div>
+             </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <div>
                     <label className="text-sm font-bold text-gray-400">Time</label>
                     <input type="time" required={taskType !== 'HOMEWORK'} value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={`${inputClass} disabled:opacity-50`} disabled={taskType === 'HOMEWORK'} />
                 </div>
+                 <div>
+                    <label className="text-sm font-bold text-gray-400">Subject</label>
+                    <select required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className={inputClass}>
+                        <option value="PHYSICS">Physics</option>
+                        <option value="CHEMISTRY">Chemistry</option>
+                        <option value="MATHS">Maths</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                </div>
              </div>
-             <div>
-                <label className="text-sm font-bold text-gray-400">Subject</label>
-                <select required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className={inputClass}>
-                    <option value="PHYSICS">Physics</option>
-                    <option value="CHEMISTRY">Chemistry</option>
-                    <option value="MATHS">Maths</option>
-                    <option value="OTHER">Other</option>
-                </select>
-            </div>
 
             {taskType === 'HOMEWORK' && (
               <>
@@ -181,7 +192,6 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
                         </button>
                     </div>
                   <textarea value={formData.answers} onChange={e => setFormData({...formData, answers: e.target.value})} className={`${inputClass} h-24 font-mono`} placeholder="Formats:&#10;1:A, 2:C, 3:12.5 (key-value)&#10;A C 12.5 (space-separated list)" />
-                  <p className="text-xs text-gray-500 mt-1">For live answer checking. Use '1' for 'A', '2' for 'B', etc.</p>
                 </div>
               </>
             )}

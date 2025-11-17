@@ -1,7 +1,7 @@
-
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
+import { renderMarkdown } from '../utils/markdownParser';
 
 interface AIDoubtSolverModalProps {
   onClose: () => void;
@@ -93,7 +93,10 @@ const AIDoubtSolverModal: React.FC<AIDoubtSolverModalProps> = ({ onClose }) => {
             {response && (
                 <div className="bg-gray-900/50 p-4 rounded-md border border-gray-700">
                     <h3 className="font-bold text-cyan-400 mb-2">AI Response:</h3>
-                    <div className="text-sm text-gray-300 whitespace-pre-wrap">{response}</div>
+                    <div 
+                      className="text-sm text-gray-300 prose prose-invert prose-sm break-words"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(response) }}
+                    />
                 </div>
             )}
         </div>

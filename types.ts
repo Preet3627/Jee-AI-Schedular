@@ -1,5 +1,3 @@
-
-
 export type Language = 'EN' | 'GU';
 
 export interface LocalizedString {
@@ -36,6 +34,15 @@ export interface ScheduleCardData {
   isStarred?: boolean;
   googleEventId?: string;
   deckId?: string;
+  date?: string; // For one-off events, format YYYY-MM-DD
+}
+
+export interface PracticeHistory {
+  date: string; // ISO string
+  attempted: number[];
+  correct: number[];
+  incorrect: number[];
+  skipped: number[];
 }
 
 export interface HomeworkData {
@@ -51,6 +58,8 @@ export interface HomeworkData {
   isStarred?: boolean;
   googleEventId?: string;
   answers?: Record<string, string>; // e.g., { "1": "A", "2": "12.5" }
+  date?: string; // For one-off homework, format YYYY-MM-DD
+  practiceHistory?: PracticeHistory[];
 }
 
 export interface ActivityData {
@@ -81,6 +90,7 @@ export interface ResultData {
     chapterScores: Record<string, { correct: number; incorrect: number; accuracy: number }>;
     aiSuggestions: string;
     incorrectQuestionNumbers?: number[];
+    suggestedFlashcards?: { front: string; back: string; }[];
   };
   detailedMistakes?: {
     qNumber: number;
@@ -163,6 +173,7 @@ export interface PracticeQuestion {
   number: number;
   text: string;
   options: string[];
+  type: 'MCQ' | 'NUM';
 }
 
 // Represents the structure of the encrypted JSON blob in the `user_configs` table
