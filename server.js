@@ -1335,10 +1335,10 @@ apiRouter.post('/ai/parse-text', authMiddleware, async (req, res) => {
 
         const systemInstruction = `Your entire response MUST be a single, raw JSON object based on the user's text. DO NOT include any explanations, conversational text, or markdown formatting. The JSON object must adhere to the following structure, providing empty arrays [] for types not present:
 {
-  "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "date": "YYYY-MM-DD" | null, "time": "HH:MM" | null, "title": string, "detail": string, "subject": string, "q_ranges": string | null, "sub_type": "DEEP_DIVE" | "ANALYSIS" | null, "answers": object | null, "flashcards": [{ "front": string, "back": string }] | null } ],
+  "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "date": "YYYY-MM-DD" | null, "time": "HH:MM" | null, "title": string, "detail": string, "subject": string, "q_ranges": string | null, "sub_type": "DEEP_DIVE" | "ANALYSIS" | null, "answers": "stringified JSON object" | null, "flashcards": [{ "front": string, "back": string }] | null } ],
   "exams": [ { "id": string, "type": "EXAM", "subject": "PHYSICS" | "CHEMISTRY" | "MATHS" | "FULL", "title": string, "date": "YYYY-MM-DD", "time": "HH:MM", "syllabus": string } ],
   "metrics": [ { "type": "RESULT" | "WEAKNESS", "score": "marks/total" | null, "mistakes": string | null, "weaknesses": string | null } ],
-  "practice_test": { "questions": [ { "number": int, "text": string, "options": string[], "type": "MCQ" | "NUM" } ], "answers": object } | null
+  "practice_test": { "questions": [ { "number": int, "text": string, "options": string[], "type": "MCQ" | "NUM" } ], "answers": "stringified JSON object" } | null
 }
 If the user's request is vague, ask for clarification by returning an error. You MUST ask for details like timetables, exam dates, syllabus, and weak topics for schedules.`;
 
@@ -1360,7 +1360,7 @@ If the user's request is vague, ask for clarification by returning an error. You
                             subject: { type: Type.STRING },
                             q_ranges: { type: Type.STRING },
                             sub_type: { type: Type.STRING },
-                            answers: { type: Type.OBJECT, properties: {} },
+                            answers: { type: Type.STRING },
                             flashcards: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { front: { type: Type.STRING }, back: { type: Type.STRING } } } }
                         },
                         required: ['id', 'type', 'day', 'title', 'detail', 'subject']
@@ -1411,7 +1411,7 @@ If the user's request is vague, ask for clarification by returning an error. You
                                 required: ['number', 'text', 'options', 'type']
                             }
                         },
-                        answers: { type: Type.OBJECT, properties: {} }
+                        answers: { type: Type.STRING }
                     },
                     required: ['questions', 'answers']
                 }

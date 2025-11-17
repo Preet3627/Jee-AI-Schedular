@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import McqTimer from './McqTimer';
 import Icon from './Icon';
@@ -157,9 +158,20 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
 
   const handleDataFromParser = (data: any) => {
     if (data.practice_test && data.practice_test.questions && data.practice_test.answers) {
+        let parsedAnswers = data.practice_test.answers;
+        if (typeof parsedAnswers === 'string' && parsedAnswers.trim().startsWith('{')) {
+            try {
+                parsedAnswers = JSON.parse(parsedAnswers);
+            } catch (e) {
+                console.warn('Could not parse practice test answers string, treating as empty.');
+                parsedAnswers = {};
+            }
+        } else if (typeof parsedAnswers !== 'object') {
+            parsedAnswers = {};
+        }
         setPracticeMode('custom');
         setPracticeQuestions(data.practice_test.questions);
-        setPracticeAnswers(data.practice_test.answers);
+        setPracticeAnswers(parsedAnswers);
         setCategory('Imported Test');
         setSubject('MIXED');
         setIsTimerStarted(true);

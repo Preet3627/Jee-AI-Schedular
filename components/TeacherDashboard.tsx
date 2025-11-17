@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
@@ -55,10 +56,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 }
 
                 if (s.type === 'HOMEWORK') {
+                    let parsedAnswers = s.answers;
+                    if (typeof parsedAnswers === 'string' && parsedAnswers.trim().startsWith('{')) {
+                        try {
+                            parsedAnswers = JSON.parse(parsedAnswers);
+                        } catch (e) {
+                            console.warn("Could not parse homework answers string for broadcast, treating as empty.");
+                            parsedAnswers = {};
+                        }
+                    } else if (typeof parsedAnswers !== 'object') {
+                        parsedAnswers = {};
+                    }
+
                     return {
                         ID: s.id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
                         CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
-                        SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined
+                        SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined,
+                        answers: parsedAnswers
                     } as HomeworkData;
                 } else if (s.type === 'ACTION') {
                      if (!s.time) {
