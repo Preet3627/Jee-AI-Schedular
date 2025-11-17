@@ -80,6 +80,8 @@ export const api = {
     // User Data
     getMe: () => authFetch('/me'),
     updateProfile: (data: { fullName?: string; profilePhoto?: string }) => authFetch('/profile', { method: 'PUT', body: JSON.stringify(data) }),
+    generateApiToken: () => authFetch('/me/api-token', { method: 'POST' }),
+    revokeApiToken: () => authFetch('/me/api-token', { method: 'DELETE' }),
     saveTask: (task: ScheduleItem) => authFetch('/schedule-items', { method: 'POST', body: JSON.stringify({ task }) }),
     saveBatchTasks: (tasks: ScheduleItem[]) => authFetch('/schedule-items/batch', { method: 'POST', body: JSON.stringify({ tasks }) }),
     deleteTask: (taskId: string) => authFetch(`/schedule-items/${taskId}`, { method: 'DELETE' }),
@@ -121,6 +123,8 @@ export const api = {
     // Admin
     getStudents: () => authFetch('/admin/students'),
     broadcastTask: (task: ScheduleItem) => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task }) }),
+    deleteStudent: (sid: string) => authFetch(`/admin/students/${sid}`, { method: 'DELETE' }),
+    clearStudentData: (sid: string) => authFetch(`/admin/students/${sid}/clear-data`, { method: 'POST' }),
     
     // AI (secure backend endpoints)
     getDailyInsight: (weaknesses: string[]) => authFetch('/ai/daily-insight', { method: 'POST', body: JSON.stringify({ weaknesses }) }),

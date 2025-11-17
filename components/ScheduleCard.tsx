@@ -13,12 +13,13 @@ interface ScheduleCardProps {
   onStar: (id: string) => void;
   onStartPractice: (homework: HomeworkData) => void;
   onStartReviewSession: (deckId: string) => void;
+  onCompleteTask: (task: ScheduleCardData) => void;
   onMarkDoubt?: (topic: string, q_id: string) => void;
   isSubscribed: boolean;
   isPast: boolean;
 }
 
-const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onMarkDoubt, isSubscribed, isPast }) => {
+const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onCompleteTask, onMarkDoubt, isSubscribed, isPast }) => {
     const { t } = useLocalization();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -30,8 +31,9 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit,
     const canCopyCommand = cardData.type === 'ACTION' && 'ACTION_COMMAND' in cardData && !!cardData.ACTION_COMMAND;
     const canStartPractice = cardData.type === 'HOMEWORK';
     const isFlashcardReview = cardData.type === 'ACTION' && cardData.SUB_TYPE === 'FLASHCARD_REVIEW' && !!cardData.deckId;
+    const isDeepDive = cardData.type === 'ACTION' && cardData.SUB_TYPE === 'DEEP_DIVE';
     
-    const showActionsFooter = canCopyCommand || canStartPractice || isFlashcardReview;
+    const showActionsFooter = canCopyCommand || canStartPractice || isFlashcardReview || isDeepDive;
     const isSynced = 'googleEventId' in cardData && !!cardData.googleEventId;
 
 
@@ -124,6 +126,11 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit,
            {showActionsFooter && (
              <div className="mt-4 pt-4 border-t border-gray-700/50">
                 <div className="flex gap-2">
+                  {isDeepDive && (
+                    <button onClick={() => onCompleteTask(cardData as ScheduleCardData)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-green-600/80 hover:bg-green-500/80 transition-colors">
+                      <Icon name="check" className="w-4 h-4" /> Mark as Complete
+                    </button>
+                  )}
                   {isFlashcardReview && (
                     <button onClick={() => onStartReviewSession((cardData as ScheduleCardData).deckId!)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-yellow-600/80 hover:bg-yellow-500/80 transition-colors">
                       <Icon name="cards" className="w-4 h-4" /> Start Review

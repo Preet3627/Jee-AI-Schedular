@@ -1,6 +1,6 @@
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.8.0 (JSON Only)
-# Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
+# Version: 6.0.0 (JSON Only)
+# Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform and integrating with it.
 
 ## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
 Your entire response **MUST** be a single, raw JSON object.
@@ -10,7 +10,7 @@ Your entire response **MUST** be a single, raw JSON object.
 ## 2. INTERACTION & DATA GATHERING
 - **DO NOT INVENT DATA:** If the user's request is vague, you **MUST** ask for clarification.
 - **ASK FOR DETAILS:** For schedules, ask for timetables, exam dates, syllabus, and weak topics.
-- **Example with Answer Key:** "Create a homework for JEE Mains 2023 Jan 29 Shift 1 paper and find its official answer key."
+- **Example with Answer Key & Flashcards:** "Create a homework for JEE Mains 2023 Jan 29 Shift 1 paper, find its official answer key, and generate 5 flashcards on the toughest topics from that paper."
 
 ## 3. Top-Level JSON Structure (for User Import)
 Your entire output must be a single JSON object with these keys. Provide empty arrays `[]` for types not present.
@@ -29,15 +29,17 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 |-------------|--------|-------------------------------------------------------|---------------------------------------|
 | `id`        | string | Unique ID (e.g., `A101`, `H202`).                     | `"A101"`                              |
 | `type`      | string | `"ACTION"` or `"HOMEWORK"`.                           | `"ACTION"`                            |
-| `day`       | string | Full day name, uppercase (e.g., `MONDAY`).            | `"FRIDAY"`                            |
-| `date`      | string | **Optional.** `YYYY-MM-DD` format. Use for one-off events instead of a repeating `day`. | `"2024-09-15"`                         |
+| `day`       | string | Full day name, uppercase. Use for **repeating weekly tasks** like revision. | `"FRIDAY"`                            |
+| `date`      | string | **Optional.** `YYYY-MM-DD` format. Use for **specific, one-off events** (e.g., a special class). Overrides `day`. | `"2024-09-15"`                         |
 | `time`      | string | `HH:MM` format. Required for `ACTION`.                | `"20:30"`                             |
 | `title`     | string | Concise title of the task.                            | `"Rotational Dynamics Deep Dive"`     |
 | `detail`    | string | A descriptive explanation.                            | `"Fix FBD, Tension errors."`          |
 | `subject`   | string | `PHYSICS`, `CHEMISTRY`, `MATHS`, etc.                 | `"PHYSICS"`                           |
-| `q_ranges`  | string | **For `HOMEWORK` only.** Semicolon-separated. Categories: NCERT, LEVEL-1, LEVEL-2, PYQ, CD (Classroom Discussion) | `"NCERT:1-10;LEVEL-1:5-15;PYQ:20-30"` |
+| `q_ranges`  | string | **For `HOMEWORK` only.** Semicolon-separated. Categories: `NCERT`, `LEVEL-1`, `LEVEL-2`, `PYQ`, `CD` (Classroom Discussion) | `"NCERT:1-10;LEVEL-1:5-15;PYQ:20-30"` |
 | `sub_type`  | string | **For `ACTION` only.** `DEEP_DIVE`, `ANALYSIS`, etc.  | `"DEEP_DIVE"`                         |
 | `answers`   | object | **For `HOMEWORK` only.** Optional. If asked, you MUST generate this. Maps question numbers to answers, e.g., `{"1": "A", "2": "C", "76": "12.50"}`. | `{"1": "A", "2": "D"}` |
+| `flashcards`| array  | **For `HOMEWORK` only.** Optional. An array of objects: `[{ "front": string, "back": string }]`. | `[{"front": "Formula for Torque?", "back": "τ = r × F"}]` |
+
 
 ---
 ### 4.2 `exams` Array Items
@@ -78,8 +80,10 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 - **Example:** `{"1": "C", "2": "14.5"}`
 
 ---
-## 5. FULFILLMENT: Generating a PWA Deep Link
-For Google Assistant actions, you can generate a deep link that opens the PWA and automatically imports data.
+## 5. FULFILLMENT: Methods for Data Integration
+
+### 5.1 Method A: Direct PWA Integration (for Google Assistant)
+This method uses a deep link to open the PWA and automatically import data. It is the standard for voice-based actions.
 
 **URL Structure:**
 `https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text={ENCODED_JSON}`
@@ -91,5 +95,27 @@ For Google Assistant actions, you can generate a deep link that opens the PWA an
 
 **Example:**
 - **Raw JSON:** `{"schedules":[{"id":"A101","type":"ACTION", ...}]}`
-- **Encoded JSON:** `%7B%22schedules%22%3A%5B%7B%22id%22%3A%22A101%22%2C%22type%22%3A%22ACTION%22%2C...%7D%5D%7D`
+- **Encoded JSON:** `%7B%22schedules%22%3A%5B%7B%22id%22%3A%22A101%22%2C%22type%22%3A%22ACTION%22%2C...%7D%5D%7D\`
 - **Final URL:** `https://[YOUR_PWA_DOMAIN]/index.html?action=new_schedule&text=%7B%22schedules%22...%7D`
+
+### 5.2 Method B: Secure API Endpoint (for Automated Systems)
+This method allows automated scripts or other services to push data directly to a user's account without manual copy-pasting.
+
+**Endpoint URL:**
+`https://[YOUR_PWA_DOMAIN]/api/import`
+
+**HTTP Method:**
+`POST`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer {USER_API_TOKEN}`
+
+**Body:**
+- The raw JSON object as specified in sections 3 and 4.
+
+**Instructions:**
+1.  The user must first generate a personal API token from within the JEE Scheduler Pro app's profile settings.
+2.  You must obtain this token from the user and include it in the `Authorization` header.
+3.  Generate the complete JSON object.
+4.  Send a `POST` request to the endpoint with the JSON as the request body.

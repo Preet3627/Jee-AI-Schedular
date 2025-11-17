@@ -19,7 +19,7 @@ interface SettingsModalProps {
 }
 
 const aiGuideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 5.8.0 (JSON Only)
+# Version: 5.9.0 (JSON Only)
 # Purpose: To guide AI agents in generating structured JSON data for the JEE Scheduler Pro platform.
 
 ## 1. CRITICAL AI BEHAVIOR: Output Raw JSON ONLY
@@ -49,13 +49,13 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 |-------------|--------|-------------------------------------------------------|---------------------------------------|
 | \`id\`        | string | Unique ID (e.g., \`A101\`, \`H202\`).                     | \`"A101"\`                              |
 | \`type\`      | string | \`"ACTION"\` or \`"HOMEWORK"\`.                           | \`"ACTION"\`                            |
-| \`day\`       | string | Full day name, uppercase (e.g., \`MONDAY\`).            | \`"FRIDAY"\`                            |
-| \`date\`      | string | **Optional.** \`YYYY-MM-DD\` format. Use for one-off events instead of a repeating \`day\`. | \`"2024-09-15"\`                         |
+| \`day\`       | string | Full day name, uppercase. Use for **repeating weekly tasks** like revision. | \`"FRIDAY"\`                            |
+| \`date\`      | string | **Optional.** \`YYYY-MM-DD\` format. Use for **specific, one-off events** (e.g., a special class). Overrides \`day\`. | \`"2024-09-15"\`                         |
 | \`time\`      | string | \`HH:MM\` format. Required for \`ACTION\`.                | \`"20:30"\`                             |
 | \`title\`     | string | Concise title of the task.                            | \`"Rotational Dynamics Deep Dive"\`     |
 | \`detail\`    | string | A descriptive explanation.                            | \`"Fix FBD, Tension errors."\`          |
 | \`subject\`   | string | \`PHYSICS\`, \`CHEMISTRY\`, \`MATHS\`, etc.                 | \`"PHYSICS"\`                           |
-| \`q_ranges\`  | string | **For \`HOMEWORK\` only.** Semicolon-separated. Categories: NCERT, LEVEL-1, LEVEL-2, PYQ, CD (Classroom Discussion) | \`"NCERT:1-10;LEVEL-1:5-15;PYQ:20-30"\` |
+| \`q_ranges\`  | string | **For \`HOMEWORK\` only.** Semicolon-separated. Categories: \`NCERT\`, \`LEVEL-1\`, \`LEVEL-2\`, \`PYQ\`, \`CD\` (Classroom Discussion) | \`"NCERT:1-10;LEVEL-1:5-15;PYQ:20-30"\` |
 | \`sub_type\`  | string | **For \`ACTION\` only.** \`DEEP_DIVE\`, \`ANALYSIS\`, etc.  | \`"DEEP_DIVE"\`                         |
 | \`answers\`   | object | **For \`HOMEWORK\` only.** Optional. If asked, you MUST generate this. Maps question numbers to answers, e.g., \`{"1": "A", "2": "C", "76": "12.50"}\`. | \`{"1": "A", "2": "D"}\` |
 

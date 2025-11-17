@@ -121,14 +121,20 @@ const initializeDatabaseSchema = async () => {
               verification_expires DATETIME,
               password_reset_token VARCHAR(255),
               password_reset_expires DATETIME,
+              api_token VARCHAR(255) UNIQUE,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        // Add password reset columns if they don't exist
+        // Add password reset and api_token columns if they don't exist
         const [cols] = await connection.query("SHOW COLUMNS FROM users LIKE 'password_reset_token'");
         if (cols.length === 0) {
             await connection.query("ALTER TABLE users ADD COLUMN password_reset_token VARCHAR(255), ADD COLUMN password_reset_expires DATETIME");
         }
+        const [apiTokenCols] = await connection.query("SHOW COLUMNS FROM users LIKE 'api_token'");
+        if (apiTokenCols.length === 0) {
+            await connection.query("ALTER TABLE users ADD COLUMN api_token VARCHAR(255) UNIQUE");
+        }
+
 
         await connection.query(`
             CREATE TABLE IF NOT EXISTS user_configs (
@@ -250,6 +256,23 @@ const authMiddleware = async (req, res, next) => {
     res.status(401).json({ error: 'Invalid token' });
   }
 };
+
+const apiTokenAuthMiddleware = async (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized: API token is missing.' });
+    try {
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        const [[user]] = await pool.query('SELECT id, role, sid FROM users WHERE api_token = ?', [hashedToken]);
+        if (!user) return res.status(401).json({ error: 'Invalid API token.' });
+        req.userId = user.id;
+        req.userRole = user.role;
+        req.userSid = user.sid;
+        next();
+    } catch (error) {
+        res.status(500).json({ error: 'Server error during token authentication.' });
+    }
+};
+
 
 const adminMiddleware = (req, res, next) => {
     if (req.userRole !== 'admin') {
@@ -593,6 +616,28 @@ apiRouter.put('/profile', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error("Profile update error:", error);
         res.status(500).json({ error: "Failed to update profile." });
+    }
+});
+
+apiRouter.post('/me/api-token', authMiddleware, async (req, res) => {
+    try {
+        const token = crypto.randomBytes(32).toString('hex');
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        await pool.query('UPDATE users SET api_token = ? WHERE id = ?', [hashedToken, req.userId]);
+        res.json({ token }); // Return the plain text token ONLY once.
+    } catch (error) {
+        console.error("API Token generation error:", error);
+        res.status(500).json({ error: "Failed to generate API token." });
+    }
+});
+
+apiRouter.delete('/me/api-token', authMiddleware, async (req, res) => {
+    try {
+        await pool.query('UPDATE users SET api_token = NULL WHERE id = ?', [req.userId]);
+        res.status(200).json({ message: 'API token revoked.' });
+    } catch (error) {
+        console.error("API Token revocation error:", error);
+        res.status(500).json({ error: "Failed to revoke API token." });
     }
 });
 
@@ -959,20 +1004,23 @@ apiRouter.get('/study-material/content', authMiddleware, async (req, res) => {
 
 
 // --- AI ENDPOINTS ---
-const getApiKeyForUser = async (userId) => {
+const getApiKeyAndConfigForUser = async (userId) => {
     const [[userConfigRow]] = await pool.query("SELECT config FROM user_configs WHERE user_id = ?", [userId]);
+    let config = {};
+    let apiKey = process.env.API_KEY; // Fallback to global key
+
     if (userConfigRow) {
-        const config = JSON.parse(decrypt(userConfigRow.config));
+        config = JSON.parse(decrypt(userConfigRow.config));
         if (config.geminiApiKey) {
-            return config.geminiApiKey;
+            apiKey = config.geminiApiKey;
         }
     }
-    return process.env.API_KEY; // Fallback to global key
+    return { apiKey, config };
 };
 
 apiRouter.post('/ai/daily-insight', authMiddleware, async (req, res) => {
     const { weaknesses } = req.body;
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
@@ -1005,7 +1053,7 @@ apiRouter.post('/ai/analyze-mistake', authMiddleware, async (req, res) => {
     const { prompt, imageBase64 } = req.body;
     if (!prompt) return res.status(400).json({ error: "A prompt describing the mistake is required." });
 
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
@@ -1041,7 +1089,7 @@ apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
     if (!prompt) {
         return res.status(400).json({ error: "A prompt is required." });
     }
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) {
         return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
     }
@@ -1071,7 +1119,7 @@ apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
 apiRouter.post('/ai/parse-text', authMiddleware, async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: "Text is required." });
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
 
     try {
@@ -1086,17 +1134,19 @@ RULES:
 6.  **ANSWER KEY GENERATION:** If the user asks for an answer key (e.g., "create a homework for ... and also find its answer key"), you MUST find the key and populate the 'answers' field.
 7.  **STRICT SCHEMA OUTPUT:** Your output JSON MUST strictly adhere to the following structure:
     {
-      "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "time": string?, "title": string, "detail": string, "subject": string, "q_ranges": string?, "sub_type": string?, "answers": object? } ],
+      "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "time": string?, "title": string, "detail": string, "subject": string, "q_ranges": string?, "sub_type": string?, "answers": object?, "flashcards": [{ "front": string, "back": string }]? } ],
       "exams": [ { "id": string, "type": "EXAM", "subject": string, "title": string, "date": string, "time": string, "syllabus": string } ],
       "metrics": [ { "type": "RESULT" | "WEAKNESS", "score": string?, "mistakes": string?, "weaknesses": string? } ]
     }
     For metrics, 'mistakes' and 'weaknesses' should be semicolon-separated strings.
-    For HOMEWORK schedules, 'answers' is an optional JSON object mapping question numbers (as strings) to answers (strings), e.g., {"1": "A", "2": "14.2"}.`;
+    For HOMEWORK schedules, 'answers' is an optional JSON object mapping question numbers (as strings) to answers (strings), e.g., {"1": "A", "2": "12.5"}.`;
 
         const prompt = `Convert the following text into a structured JSON object based on the system instruction schema.\n\nUSER TEXT TO CONVERT:\n${text}`;
         
+        const model = config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
+
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: model,
             contents: prompt,
             config: { 
                 systemInstruction,
@@ -1138,7 +1188,7 @@ apiRouter.post('/ai/analyze-test-results', authMiddleware, async (req, res) => {
     const { imageBase64, userAnswers, timings, syllabus } = req.body;
     if (!imageBase64 || !userAnswers || !timings || !syllabus) return res.status(400).json({ error: "Answer key image, user answers, timings, and syllabus are required." });
 
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
@@ -1169,8 +1219,10 @@ apiRouter.post('/ai/analyze-test-results', authMiddleware, async (req, res) => {
         
         Analyze the provided answer key image and the student's data. Return the full analysis in the specified JSON format.`;
         
+        const model = config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
+
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro', // Use a more powerful model for this complex task
+            model: model, 
             contents: {
                 parts: [
                     { text: prompt },
@@ -1194,7 +1246,7 @@ apiRouter.post('/ai/analyze-specific-mistake', authMiddleware, async (req, res) 
     const { imageBase64, prompt } = req.body;
     if (!imageBase64 || !prompt) return res.status(400).json({ error: "Image of the question and a description are required." });
 
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
@@ -1232,7 +1284,7 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
     const { history, prompt, imageBase64 } = req.body;
     if (!prompt) return res.status(400).json({ error: "A prompt is required." });
 
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured. Please add a Gemini API key in settings." });
 
     try {
@@ -1252,8 +1304,10 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
         }
         contents.push({ role: 'user', parts: userParts });
 
+        const model = config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-flash'; // Chat should be fast
+
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: model,
             contents: contents,
             config: { systemInstruction },
         });
@@ -1269,7 +1323,7 @@ apiRouter.post('/ai/generate-flashcards', authMiddleware, async (req, res) => {
     const { topic, syllabus } = req.body;
     if (!topic) return res.status(400).json({ error: "A topic is required." });
 
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
@@ -1306,7 +1360,7 @@ apiRouter.post('/ai/generate-answer-key', authMiddleware, async (req, res) => {
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: "A prompt is required." });
 
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
@@ -1343,7 +1397,7 @@ apiRouter.post('/ai/generate-practice-test', authMiddleware, async (req, res) =>
         return res.status(400).json({ error: "Topic, number of questions, and difficulty are required." });
     }
 
-    const apiKey = await getApiKeyForUser(req.userId);
+    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
@@ -1375,8 +1429,10 @@ apiRouter.post('/ai/generate-practice-test', authMiddleware, async (req, res) =>
         
         const fullPrompt = `Generate a ${difficulty} level practice test with ${numQuestions} questions on the topic of "${topic}" for a JEE aspirant.`;
         
+        const model = config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-flash'; // Practice tests can be flash
+
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: model,
             contents: fullPrompt,
             config: { 
                 systemInstruction,
@@ -1416,6 +1472,54 @@ apiRouter.post('/admin/broadcast-task', authMiddleware, adminMiddleware, async (
     } catch (error) {
         console.error("Broadcast error:", error);
         res.status(500).json({ error: 'Broadcast failed' });
+    }
+});
+
+apiRouter.delete('/admin/students/:sid', authMiddleware, adminMiddleware, async (req, res) => {
+    const { sid } = req.params;
+    try {
+        // The ON DELETE CASCADE constraint on foreign keys will handle related data.
+        const [result] = await pool.query('DELETE FROM users WHERE sid = ? AND role = "student"', [sid]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Student not found or user is not a student.' });
+        }
+        res.status(200).json({ message: `Student ${sid} deleted successfully.` });
+    } catch (error) {
+        console.error(`Error deleting student ${sid}:`, error);
+        res.status(500).json({ error: 'Server error while deleting student.' });
+    }
+});
+
+apiRouter.post('/admin/students/:sid/clear-data', authMiddleware, adminMiddleware, async (req, res) => {
+    const { sid } = req.params;
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const [[user]] = await connection.query('SELECT id FROM users WHERE sid = ?', [sid]);
+        if (!user) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        const userId = user.id;
+
+        // 1. Delete schedule items
+        await connection.query('DELETE FROM schedule_items WHERE user_id = ?', [userId]);
+
+        // 2. Reset user_configs to default
+        const defaultConfig = { WAKE: '06:00', SCORE: '0/300', WEAK: [], UNACADEMY_SUB: false, settings: { accentColor: '#0891b2', blurEnabled: true, mobileLayout: 'standard', forceOfflineMode: false, perQuestionTime: 180 }, RESULTS: [], EXAMS: [], STUDY_SESSIONS: [], DOUBTS: [], flashcardDecks: [] };
+        const encryptedDefaultConfig = encrypt(JSON.stringify(defaultConfig));
+        await connection.query('UPDATE user_configs SET config = ? WHERE user_id = ?', [encryptedDefaultConfig, userId]);
+
+        await connection.commit();
+        res.status(200).json({ message: `Data for student ${sid} has been cleared.` });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error(`Error clearing data for student ${sid}:`, error);
+        res.status(500).json({ error: 'Server error while clearing data.' });
+    } finally {
+        connection.release();
     }
 });
 

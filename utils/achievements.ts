@@ -15,6 +15,9 @@ export const calculateAchievements = (student: StudentData, allDoubts: DoubtData
         { name: "Prodigy", description: "Score over 200 in a mock test.", icon: 'star' },
         { name: "Perfectionist", description: "Score over 250 in a mock test.", icon: 'star' },
         { name: "Study Streak", description: "Log study sessions on 3 different days.", icon: 'streak' },
+        { name: "Dedicated Learner", description: "Have 20 or more items in your schedule.", icon: 'schedule' },
+        { name: "Weekend Warrior", description: "Log a study session on a Saturday or Sunday.", icon: 'calendar' },
+        { name: "Flashcard Fanatic", description: "Create a flashcard deck with 20+ cards.", icon: 'cards' },
         { name: "Curious Mind", description: "Post your first doubt in the community forum.", icon: 'message' },
         { name: "Problem Solver", description: "Provide a solution to another student's doubt.", icon: 'fixed' },
         { name: "Community Helper", description: "Solve 3 or more doubts for others.", icon: 'users' }
@@ -26,7 +29,7 @@ export const calculateAchievements = (student: StudentData, allDoubts: DoubtData
     
     const studentDoubtsCount = allDoubts.filter(doubt => doubt.user_sid === student.sid).length;
 
-    const uniqueStudyDays = new Set(student.STUDY_SESSIONS.map(s => s.date)).size;
+    const uniqueStudyDays = new Set(student.STUDY_SESSIONS.map(s => s.date));
 
     return achievements.map(ach => {
         let unlocked = false;
@@ -44,7 +47,19 @@ export const calculateAchievements = (student: StudentData, allDoubts: DoubtData
                 unlocked = student.RESULTS.some(r => parseInt(r.SCORE.split('/')[0]) >= 250);
                 break;
             case "Study Streak":
-                unlocked = uniqueStudyDays >= 3;
+                unlocked = uniqueStudyDays.size >= 3;
+                break;
+            case "Dedicated Learner":
+                unlocked = student.SCHEDULE_ITEMS.length >= 20;
+                break;
+            case "Weekend Warrior":
+                unlocked = student.STUDY_SESSIONS.some(s => {
+                    const day = new Date(s.date).getDay();
+                    return day === 0 || day === 6;
+                });
+                break;
+            case "Flashcard Fanatic":
+                unlocked = student.CONFIG.flashcardDecks?.some(d => d.cards.length >= 20) || false;
                 break;
             case "Curious Mind":
                 unlocked = studentDoubtsCount > 0;

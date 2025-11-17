@@ -47,6 +47,22 @@ const App: React.FC = () => {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, []);
+    
+    // Prevent accidental page exit
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = ''; // For Chrome
+            return ''; // For other browsers
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
+
 
     const handleSaveTask = async (task: ScheduleItem) => {
         let taskToSave = { ...task };
@@ -281,6 +297,19 @@ const App: React.FC = () => {
             alert('Restore failed. Please try again.');
         }
     };
+    
+    const onDeleteUser = async (sid: string) => {
+        if (window.confirm(`Are you SURE you want to permanently delete user ${sid}? All their data will be lost forever.`)) {
+            try {
+                await api.deleteStudent(sid);
+                setAllStudents(prev => prev.filter(s => s.sid !== sid));
+                alert(`Student ${sid} deleted.`);
+            } catch (error: any) {
+                alert(`Failed to delete student: ${error.message}`);
+            }
+        }
+    };
+
 
     const checkBackend = useCallback(async () => {
         try {
@@ -410,7 +439,7 @@ const App: React.FC = () => {
                     <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${useToolbarLayout ? 'pb-24' : ''}`}>
                         <Header user={{ name: dashboardUser.fullName, id: dashboardUser.sid, profilePhoto: dashboardUser.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         {userRole === 'admin' ? (
-                            <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBroadcastTask={api.broadcastTask} />
+                            <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={onDeleteUser} onBroadcastTask={api.broadcastTask} />
                         ) : (
                             <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateConfig={handleUpdateConfig} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportWeekCalendar(currentUser.SCHEDULE_ITEMS, currentUser.fullName)} onBatchImport={handleBatchImport} googleAuthStatus={googleAuthStatus} onGoogleSignIn={gcal.handleSignIn} onGoogleSignOut={gcal.handleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} />
                         )}
@@ -425,7 +454,7 @@ const App: React.FC = () => {
                  <div style={{'--accent-color': '#0891b2'} as React.CSSProperties} className="safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                         <Header user={{ name: 'Admin', id: 'ADMIN_DEMO', profilePhoto: currentUser?.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
-                        <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={()=>{}} onBroadcastTask={() => alert("Broadcast disabled in demo mode")} />
+                        <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={() => alert("Deletion disabled in demo mode")} onBroadcastTask={() => alert("Broadcast disabled in demo mode")} />
                     </div>
                 </div>
             );

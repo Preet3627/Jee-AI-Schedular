@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import McqTimer from './McqTimer';
 import Icon from './Icon';
 import { getQuestionNumbersFromRanges } from '../utils/qRangesParser';
@@ -11,6 +11,7 @@ interface CustomPracticeModalProps {
   onClose: () => void;
   onSessionComplete: (duration: number, questions_solved: number, questions_skipped: number[]) => void;
   initialTask?: HomeworkData | null;
+  aiInitialTopic?: string | null;
   defaultPerQuestionTime: number;
   onLogResult: (result: ResultData) => void;
   onUpdateWeaknesses: (weaknesses: string[]) => void;
@@ -47,7 +48,7 @@ const parseAnswers = (text: string): Record<string, string> => {
 
 
 const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
-  const { onClose, onSessionComplete, initialTask, defaultPerQuestionTime, onLogResult, student, onUpdateWeaknesses, onSaveTask } = props;
+  const { onClose, onSessionComplete, initialTask, aiInitialTopic, defaultPerQuestionTime, onLogResult, student, onUpdateWeaknesses, onSaveTask } = props;
   const [activeTab, setActiveTab] = useState<'ai' | 'manual' | 'jeeMains'>(initialTask ? 'manual' : 'ai');
   const [qRanges, setQRanges] = useState(initialTask?.Q_RANGES || '');
   const [subject, setSubject] = useState(initialTask?.SUBJECT_TAG.EN || 'PHYSICS');
@@ -57,8 +58,8 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
   const [correctAnswersText, setCorrectAnswersText] = useState('');
   
   // AI State
-  const [aiTopic, setAiTopic] = useState('');
-  const [aiNumQuestions, setAiNumQuestions] = useState(10);
+  const [aiTopic, setAiTopic] = useState(aiInitialTopic || '');
+  const [aiNumQuestions, setAiNumQuestions] = useState(aiInitialTopic ? 5 : 10);
   const [aiDifficulty, setAiDifficulty] = useState('Medium');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -76,12 +77,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
 
   const questionNumbers = useMemo(() => getQuestionNumbersFromRanges(qRanges), [qRanges]);
   const totalQuestions = questionNumbers.length;
-
-  const handleClose = () => {
-    setIsExiting(true);
-    setTimeout(onClose, 300);
-  };
-
+  
   const handleStart = async () => {
     setError('');
     if (activeTab === 'manual') {
@@ -120,6 +116,22 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
             setIsLoading(false);
         }
     }
+  };
+
+  useEffect(() => {
+    if (aiInitialTopic) {
+        setActiveTab('ai');
+        setAiTopic(aiInitialTopic);
+        setCategory('Post-Session Quiz');
+        // Automatically start the generation
+        handleStart();
+    }
+  }, [aiInitialTopic]);
+
+
+  const handleClose = () => {
+    setIsExiting(true);
+    setTimeout(onClose, 300);
   };
   
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

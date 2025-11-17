@@ -60,6 +60,7 @@ export interface HomeworkData {
   answers?: Record<string, string>; // e.g., { "1": "A", "2": "12.5" }
   date?: string; // For one-off homework, format YYYY-MM-DD
   practiceHistory?: PracticeHistory[];
+  flashcards?: { front: string; back: string }[]; // For AI-generated cards
 }
 
 export interface ActivityData {
@@ -197,6 +198,7 @@ export interface Config {
         perQuestionTime: number; // Default time in seconds per MCQ
         hasGeminiKey?: boolean; // A safe flag for the frontend
         showAiChatAssistant?: boolean;
+        creditSaver?: boolean; // Use faster, cheaper AI models
     };
 }
 
@@ -210,6 +212,7 @@ export interface StudentData {
     profilePhoto: string;
     isVerified: boolean;
     role: 'student' | 'admin';
+    apiToken?: string; // Only sent once on generation
 
     // Data from other tables, combined by the backend
     CONFIG: Config;

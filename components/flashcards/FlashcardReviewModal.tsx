@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { FlashcardDeck, Flashcard } from '../../types';
 import Icon from '../Icon';
@@ -127,9 +128,18 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
         </footer>
       </div>
       <style>{`
-        .perspective-1000 { perspective: 1000px; }
-        .transform-style-preserve-3d { transform-style: preserve-3d; }
-        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .perspective-1000 { 
+          perspective: 1000px; 
+          -webkit-perspective: 1000px;
+        }
+        .transform-style-preserve-3d { 
+          transform-style: preserve-3d;
+          -webkit-transform-style: preserve-3d;
+        }
+        .backface-hidden { 
+          backface-visibility: hidden; 
+          -webkit-backface-visibility: hidden;
+        }
       `}</style>
     </div>
   );

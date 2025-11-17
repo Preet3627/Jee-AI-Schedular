@@ -5,6 +5,7 @@ import AIGuide from './AIGuide';
 import MessagingModal from './MessagingModal';
 import CreateEditTaskModal from './CreateEditTaskModal';
 import AIParserModal from './AIParserModal';
+import { api } from '../api/apiService';
 
 interface TeacherDashboardProps {
     students: StudentData[];
@@ -89,6 +90,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
             alert(`Error processing data: ${error.message}`);
         }
     };
+    
+    const handleClearData = async (student: StudentData) => {
+        const confirmation = window.prompt(`This will reset all data (schedules, results, config) for ${student.fullName} (${student.sid}). This cannot be undone. To confirm, type the student's ID:`);
+        if (confirmation === student.sid) {
+            try {
+                await api.clearStudentData(student.sid);
+                alert(`Successfully cleared all data for ${student.fullName}.`);
+            } catch (error: any) {
+                alert(`Failed to clear data: ${error.message}`);
+            }
+        } else if (confirmation !== null) {
+            alert("Confirmation failed. Student ID did not match.");
+        }
+    };
+
 
     return (
         <main className="mt-8">
@@ -100,7 +116,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 </nav>
             </div>
             <div className="mt-6">
-                {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={setMessagingStudent} />}
+                {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={setMessagingStudent} onClearData={handleClearData} />}
                 {activeTab === 'broadcast' && <BroadcastManager onOpenModal={() => setIsBroadcastModalOpen(true)} onOpenAIModal={() => setIsAIBroadcastModalOpen(true)} />}
                 {activeTab === 'guide' && <AIGuide />}
             </div>
@@ -118,7 +134,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
     );
 };
 
-const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string) => void, onDeleteUser: (sid: string) => void, onStartMessage: (student: StudentData) => void }> = ({ students, onToggleSub, onDeleteUser, onStartMessage }) => (
+const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string) => void, onDeleteUser: (sid: string) => void, onStartMessage: (student: StudentData) => void, onClearData: (student: StudentData) => void }> = ({ students, onToggleSub, onDeleteUser, onStartMessage, onClearData }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {students.map(student => (
             <div key={student.sid} className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
@@ -131,7 +147,8 @@ const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                      <button onClick={() => onStartMessage(student)} className="w-full flex items-center justify-center gap-2 bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="message" className="w-3.5 h-3.5"/> Message</button>
-                    <button onClick={() => onDeleteUser(student.sid)} className="w-full bg-red-800 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Delete</button>
+                    <button onClick={() => onClearData(student)} className="w-full bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Clear Data</button>
+                    <button onClick={() => onDeleteUser(student.sid)} className="w-full col-span-2 bg-red-800 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Delete User</button>
                 </div>
             </div>
         ))}
