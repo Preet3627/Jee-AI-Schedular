@@ -5,9 +5,11 @@ import { api } from '../api/apiService';
 interface AIParserModalProps {
   onClose: () => void;
   onDataReady: (data: any) => void;
+  onPracticeTestReady: (data: any) => void;
+  onOpenGuide: () => void;
 }
 
-const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) => {
+const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onPracticeTestReady, onOpenGuide }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,15 +29,23 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) =
     setError('');
 
     const text = inputText.trim();
+    
+    const handleResult = (result: any) => {
+        if (result.practice_test) {
+            onPracticeTestReady(result.practice_test);
+        } else if (result.schedules?.length || result.exams?.length || result.metrics?.length) {
+            onDataReady(result);
+        } else {
+            setError("The AI couldn't find any actionable data in your text. Please check the format or try rephrasing.");
+        }
+    };
 
     // Attempt 1: Parse as valid JSON
     try {
       const jsonData = JSON.parse(text);
-      if (jsonData && (jsonData.schedules || jsonData.exams || jsonData.metrics || jsonData.practice_test)) {
-        onDataReady(jsonData);
-        setIsLoading(false);
-        return;
-      }
+      handleResult(jsonData);
+      setIsLoading(false);
+      return;
     } catch (e) {
       // Not valid JSON, proceed.
     }
@@ -46,12 +56,11 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) =
         const correctionResult = await api.correctJson(text);
         const correctedData = JSON.parse(correctionResult.correctedJson);
         if (correctedData && Object.keys(correctedData).length > 0) {
-            onDataReady(correctedData);
+            handleResult(correctedData);
             setIsLoading(false);
             return;
         }
       } catch (correctionError) {
-        // Correction failed, fall through to natural language parsing.
         console.warn("AI JSON correction failed, falling back to text parser:", correctionError);
       }
     }
@@ -59,7 +68,7 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) =
     // Attempt 3: Fallback to parsing as unstructured text
     try {
       const result = await api.parseText(text);
-      onDataReady(result);
+      handleResult(result);
     } catch (parseError: any) {
       console.error("AI Parser error:", parseError);
       setError(parseError.error || 'Failed to parse data. The AI service may be unavailable or the format is unrecognized.');
@@ -74,8 +83,13 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady }) =
   return (
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-white mb-2">AI Data Import</h2>
-        <p className="text-sm text-gray-400 mb-4">Paste unstructured text or raw JSON. The AI will convert it into structured data for your schedule.</p>
+        <div className="flex justify-between items-center">
+            <div>
+                <h2 className="text-2xl font-bold text-white mb-2">AI Data Import</h2>
+                <p className="text-sm text-gray-400 mb-4">Paste unstructured text or raw JSON to import data or start a practice test.</p>
+            </div>
+            <button onClick={onOpenGuide} className="text-xs font-semibold text-cyan-400 hover:underline flex-shrink-0">View Guide</button>
+        </div>
         
         <textarea
             value={inputText}

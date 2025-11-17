@@ -107,7 +107,14 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit,
                   </span>
                   {'TIME' in cardData && cardData.TIME && <span className="text-sm font-mono text-gray-400">{cardData.TIME}</span>}
               </div>
-              <h3 className="text-lg font-bold text-white my-3">{t(CARD_TITLE)}</h3>
+              <h3 className="text-lg font-bold text-white my-3 flex items-center gap-2 flex-wrap">
+                <span>{t(CARD_TITLE)}</span>
+                {type === 'HOMEWORK' && cardData.category && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        {cardData.category}
+                    </span>
+                )}
+              </h3>
               <p className="text-sm text-gray-400 mb-4">{t(FOCUS_DETAIL)}</p>
                {type === 'HOMEWORK' && 'Q_RANGES' in cardData && (
                 <div className="text-xs font-mono text-cyan-300 space-y-1">

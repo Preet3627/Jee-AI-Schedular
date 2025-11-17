@@ -44,14 +44,12 @@ const BottomToolbar: React.FC<BottomToolbarProps> = ({ activeTab, setActiveTab, 
             <div className="flex justify-around items-center h-full max-w-7xl mx-auto px-1">
                 {leftItems.map((item) => <NavButton key={item.id} item={item} />)}
                 
-                <div className="-mt-8 z-10">
-                     <button 
-                        onClick={onFabClick}
-                        className="w-16 h-16 rounded-full bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)] flex items-center justify-center text-white shadow-lg shadow-cyan-500/30 transition-transform hover:scale-110 active:scale-100 border-4 border-gray-900"
-                    >
-                        <Icon name="plus" className="w-8 h-8" />
-                    </button>
-                </div>
+                <button 
+                    onClick={onFabClick}
+                    className="w-14 h-14 rounded-2xl bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)] flex items-center justify-center text-white shadow-lg shadow-cyan-500/30 transition-transform hover:scale-110 active:scale-100"
+                >
+                    <Icon name="plus" className="w-8 h-8" />
+                </button>
 
                 {rightItems.map((item) => <NavButton key={item.id} item={item} />)}
             </div>

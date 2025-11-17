@@ -427,8 +427,6 @@ const App: React.FC = () => {
                         setGoogleAuthStatus('unconfigured');
                     }
                 );
-            } else if (backendStatus === 'online') {
-                setGoogleAuthStatus('unconfigured');
             }
         };
 

@@ -24,7 +24,7 @@ const getNextDateForDay = (dayString: string): Date => {
     const currentDayIndex = now.getDay();
     let dayDifference = targetDayIndex - currentDayIndex;
 
-    // If the target day is in the past for the current week, schedule it for the following week.
+    // If the target day has already passed this week, schedule for next week.
     if (dayDifference < 0) {
         dayDifference += 7;
     }
@@ -50,14 +50,14 @@ export const exportWeekCalendar = (items: ScheduleItem[], studentName: string): 
 
             if (timedItem.date) {
                 // One-off event
-                startDate = new Date(timedItem.date);
+                startDate = new Date(`${timedItem.date}T00:00:00`);
                 recurrenceRule = ''; // No recurrence
             } else {
                 // Weekly repeating event
                 startDate = getNextDateForDay(timedItem.DAY.EN);
             }
             
-            startDate.setUTCHours(hours, minutes, 0, 0); // Use UTC hours to align with toICSDate format
+            startDate.setHours(hours, minutes, 0, 0);
 
             // Assume a default duration of 1 hour for each study session
             const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
@@ -75,8 +75,8 @@ export const exportWeekCalendar = (items: ScheduleItem[], studentName: string): 
                 'BEGIN:VEVENT',
                 `UID:${uid}`,
                 `DTSTAMP:${dtstamp}`,
-                `DTSTART;TZID=UTC:${dtstart}`,
-                `DTEND;TZID=UTC:${dtend}`,
+                `DTSTART:${dtstart}`,
+                `DTEND:${dtend}`,
                 `SUMMARY:${summary}`,
                 `DESCRIPTION:${description}`,
                 'BEGIN:VALARM',

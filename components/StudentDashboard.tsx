@@ -2,7 +2,7 @@
 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData } from '../types';
+import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion } from '../types';
 import ScheduleList from './ScheduleList';
 import Icon, { IconName } from './Icon';
 // FIX: Corrected import path for component.
@@ -55,6 +55,7 @@ import EditResultModal from './EditResultModal';
 import MusicVisualizerWidget from './widgets/MusicVisualizerWidget';
 import GoogleAssistantGuideModal from './GoogleAssistantGuideModal';
 import DeepLinkConfirmationModal from './DeepLinkConfirmationModal';
+import AIGuideModal from './AIGuideModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -106,6 +107,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [isAiMistakeModalOpen, setIsAiMistakeModalOpen] = useState(false);
     const [viewingReport, setViewingReport] = useState<ResultData | null>(null);
     const [isAssistantGuideOpen, setIsAssistantGuideOpen] = useState(false);
+    const [isAiGuideModalOpen, setIsAiGuideModalOpen] = useState(false);
     const [deepLinkData, setDeepLinkData] = useState<any | null>(null);
     
     // AI Chat State
@@ -113,6 +115,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [aiChatHistory, setAiChatHistory] = useState<{ role: string; parts: { text: string }[] }[]>([]);
     const [showAiChatFab, setShowAiChatFab] = useState(student.CONFIG.settings.showAiChatAssistant !== false && !!student.CONFIG.settings.hasGeminiKey);
     const [isAiChatLoading, setIsAiChatLoading] = useState(false);
+    const [aiPracticeTest, setAiPracticeTest] = useState<{ questions: PracticeQuestion[], answers: Record<string, string> } | null>(null);
 
     // AI Doubt Solver State
     const [isAiDoubtSolverOpen, setIsAiDoubtSolverOpen] = useState(false);
@@ -287,6 +290,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         }
     };
     
+    const handleAiPracticeTest = (data: { questions: PracticeQuestion[], answers: Record<string, string> }) => {
+        setAiPracticeTest(data);
+        setisAiParserModalOpen(false); // Close parser
+        setTimeout(() => setIsPracticeModalOpen(true), 300); // Open practice modal after transition
+    };
+
     const handleCompleteTask = (task: ScheduleCardData) => {
         onDeleteTask(task.ID);
     };
@@ -562,9 +571,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {renderContent()}
 
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
-            {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} />}
-            {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
-            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={() => setIsAssistantGuideOpen(true)} />}
+            {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} onPracticeTestReady={handleAiPracticeTest} onOpenGuide={() => setIsAiGuideModalOpen(true)} />}
+            {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} aiPracticeTest={aiPracticeTest} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); setAiPracticeTest(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
+            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={() => setIsAssistantGuideOpen(true)} onOpenAiGuide={() => setIsAiGuideModalOpen(true)} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => {setIsLogResultModalOpen(false); setInitialScoreForModal(undefined); setInitialMistakesForModal(undefined);}} onSave={onLogResult} initialScore={initialScoreForModal} initialMistakes={initialMistakesForModal} />}
             {isEditResultModalOpen && editingResult && <EditResultModal result={editingResult} onClose={() => { setIsEditResultModalOpen(false); setEditingResult(null); }} onSave={onUpdateResult} />}
@@ -599,8 +608,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {/* Study Material Modal */}
             {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
 
-            {/* Assistant Guide Modal */}
+            {/* Assistant & AI Guide Modals */}
             {isAssistantGuideOpen && <GoogleAssistantGuideModal onClose={() => setIsAssistantGuideOpen(false)} />}
+            {isAiGuideModalOpen && <AIGuideModal onClose={() => setIsAiGuideModalOpen(false)} />}
             
             {/* Renders the bottom toolbar only if the mobile layout is active. */}
             {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={() => { setEditingTask(null); setIsCreateModalOpen(true); }} />}

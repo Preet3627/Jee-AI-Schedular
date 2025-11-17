@@ -53,6 +53,7 @@ export interface HomeworkData {
   FOCUS_DETAIL: LocalizedString;
   Q_RANGES: string;
   type: 'HOMEWORK';
+  category?: 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ' | 'Custom';
   TIME?: string;
   isUserCreated?: boolean;
   isStarred?: boolean;

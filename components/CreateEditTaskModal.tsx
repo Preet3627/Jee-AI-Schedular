@@ -64,6 +64,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
     day: task ? task.DAY.EN.toUpperCase() : new Date().toLocaleString('en-us', {weekday: 'long'}).toUpperCase(),
     date: task && 'date' in task ? task.date : '', // New date field
     qRanges: task?.type === 'HOMEWORK' ? task.Q_RANGES : '',
+    category: task?.type === 'HOMEWORK' ? task.category || 'Custom' : 'Custom',
     deckId: task?.type === 'ACTION' && task.SUB_TYPE === 'FLASHCARD_REVIEW' ? task.deckId : (decks.length > 0 ? decks[0].id : ''),
     answers: task?.type === 'HOMEWORK' ? formatAnswers(task.answers) : '',
   });
@@ -97,6 +98,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             FOCUS_DETAIL: { EN: formData.details, GU: "" },
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
+            category: formData.category as HomeworkData['category'],
             answers: parseAnswers(formData.answers),
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
         } as HomeworkData;
@@ -183,6 +185,16 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
                 <div>
                   <label className="text-sm font-bold text-gray-400">Question Ranges</label>
                   <input value={formData.qRanges} onChange={e => setFormData({...formData, qRanges: e.target.value})} className={inputClass} placeholder="e.g., Ex 1.1: 1-10; PYQs: 15-20" />
+                </div>
+                <div>
+                  <label className="text-sm font-bold text-gray-400">Category</label>
+                  <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className={inputClass}>
+                      <option value="Custom">Custom</option>
+                      <option value="Level-1">Level-1</option>
+                      <option value="Level-2">Level-2</option>
+                      <option value="Classroom-Discussion">Classroom-Discussion</option>
+                      <option value="PYQ">PYQ</option>
+                  </select>
                 </div>
                 <div>
                     <div className="flex justify-between items-center">

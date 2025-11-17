@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import Icon from './Icon';
 
 const guideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 8.1.0 (Hybrid Output: Deep Link & JSON)
+# Version: 8.2.0 (Hybrid Output: Deep Link & JSON)
 # Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform and integrating with it.
 
 ## 1. Interaction Model: Deep Link vs. JSON Block
@@ -16,8 +17,8 @@ Your primary goal is to make it easy for the user to get data into the app. Choo
 - **Why:** This is convenient for the user.
 
 ### C. Use a **JSON CODE BLOCK** for **LARGE or COMPLEX** requests.
-- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed.
-- **Why:** Deep links can become too long for browsers. A JSON block is robust for large data.
+- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed. This is also the required format for generating a **Practice Test**.
+- **Why:** Deep links can become too long for browsers. A JSON block is robust for large data and required for complex actions like starting a practice test.
 
 ---
 ## 2. Format 1: The Deep Link
@@ -72,35 +73,65 @@ Of course. Copy the complete code block below and paste it into the "AI Import" 
 \`\`\`
 
 ### Full JSON Schema (for Code Blocks):
-Your entire output must be a single JSON object with these keys. Provide empty arrays \`[]\` for types not present.
+Your entire output must be a single JSON object with these keys. Provide empty arrays \`[]\` or \`null\` for types not present.
 - \`schedules\`: An array of schedule items.
 - \`exams\`: An array of exam items.
 - \`metrics\`: An array of results or weaknesses.
 - \`practice_test\`: An object for a practice test, or \`null\`.
 
-### Detailed Schema: \`metrics\`
-The \`metrics\` array is used for logging test results and identifying areas for improvement. A single user query might generate both a \`RESULT\` and a \`WEAKNESS\` object if they mention both.
+### Detailed Schema: \`schedules\`
+| Key | Type | Description |
+|---|---|---|
+| \`id\` | string | A unique identifier (e.g., "A101", "H203"). |
+| \`type\` | string | \`"ACTION"\` for study sessions, \`"HOMEWORK"\` for assignments. |
+| \`day\` | string | Full day name, e.g., \`"MONDAY"\`. |
+| \`date\` | string| Optional \`YYYY-MM-DD\` for one-off events. |
+| \`time\` | string| Optional \`HH:MM\` time. Required for \`ACTION\`. |
+| \`title\` | string | The main title of the task. |
+| \`detail\`| string | A short description. |
+| \`subject\`| string| \`"PHYSICS"\`, \`"CHEMISTRY"\`, \`"MATHS"\`, \`"OTHER"\`. |
+| \`q_ranges\`| string | **For \`HOMEWORK\`**. Question numbers, e.g., \`"1-15; 20-25"\`. |
+| \`category\`| string | **For \`HOMEWORK\`**. Optional: \`"Level-1"\`, \`"Level-2"\`, \`"Classroom-Discussion"\`, \`"PYQ"\`, \`"Custom"\`. |
+| \`sub_type\`| string | **For \`ACTION\`**. E.g., \`"DEEP_DIVE"\`, \`"ANALYSIS"\`. |
+| \`answers\`| string | Stringified JSON of answers, e.g., \`"{\\"1\\":\\"A\\", \\"2\\":\\"C\\"}"\`. |
 
+### Detailed Schema: \`metrics\`
 | Key | Type | For | Description & Example |
 |---|---|---|---|
 | \`type\` | string | Both | Must be \`"RESULT"\` or \`"WEAKNESS"\`. |
 | \`score\` | string | \`RESULT\` | A string in \`"marks/total"\` format. E.g., \`"215/300"\`. |
-| \`mistakes\` | string | \`RESULT\` | A single string of all mistake topics, separated by **semicolons**. E.g., \`"Wave Optics; P-Block Elements; Integration by Parts"\`. |
+| \`mistakes\` | string | \`RESULT\` | A single string of all mistake topics, separated by **semicolons**. E.g., \`"Wave Optics; P-Block Elements"\`. |
 | \`weaknesses\` | string | \`WEAKNESS\`| A single string of all weakness topics, separated by **semicolons**. E.g., \`"Rotational Dynamics; Mole Concept"\`. |
 
-**Example \`metrics\` Array:**
+### Detailed Schema: \`practice_test\`
+Use this to launch an interactive practice session immediately. The app will open a timer with these questions.
+
+| Key | Type | Description |
+|---|---|---|
+| \`questions\`| array | An array of question objects. |
+| \`answers\` | string | A stringified JSON object mapping question number to correct answer. |
+
+**Question Object Schema (inside \`questions\` array):**
+| Key | Type | Description |
+|---|---|---|
+| \`number\` | integer | The question number, starting from 1. |
+| \`text\` | string | The full text of the question. |
+| \`options\` | array | An array of 4 strings for MCQ options. Must start with (A), (B), etc. |
+| \`type\` | string | \`"MCQ"\` for multiple choice, \`"NUM"\` for numerical. |
+
+**Example \`practice_test\` object:**
 \`\`\`json
-"metrics": [
-  {
-    "type": "RESULT",
-    "score": "185/300",
-    "mistakes": "Integration by Parts; Wave Optics"
-  },
-  {
-    "type": "WEAKNESS",
-    "weaknesses": "Thermodynamics; Electrostatics"
-  }
-]
+"practice_test": {
+  "questions": [
+    {
+      "number": 1,
+      "text": "A block of mass 'm' is on a rough horizontal surface...",
+      "options": ["(A) 2 m/s", "(B) 4 m/s", "(C) 6 m/s", "(D) 8 m/s"],
+      "type": "MCQ"
+    }
+  ],
+  "answers": "{\\"1\\":\\"B\\"}"
+}
 \`\`\`
 `;
 
@@ -194,11 +225,26 @@ const GuideRenderer: React.FC<{ content: string }> = ({ content }) => {
 
 
 const AIGuide: React.FC = () => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        // We need to strip markdown for the clipboard version
+        const plainText = guideText.replace(/`/g, '').replace(/\*/g, '');
+        navigator.clipboard.writeText(plainText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     return (
-        <div className="bg-gray-800/70 p-6 rounded-lg border border-gray-700 max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-4">AI Agent Guide</h2>
-            <p className="text-gray-400 mb-6">
-                Use the following documentation to instruct a Large Language Model (like Gemini) to generate valid JSON data for batch importing schedules, exams, or student metrics.
+        <div>
+             <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-white">AI Agent Guide</h2>
+                <button onClick={handleCopy} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">
+                    <Icon name={copied ? 'check' : 'copy'} className="w-4 h-4" /> {copied ? 'Copied!' : 'Copy Guide'}
+                </button>
+            </div>
+            <p className="text-gray-400 mb-6 text-sm">
+                Use this documentation to instruct a Large Language Model (like Gemini) to generate valid JSON data for batch importing schedules, exams, or student metrics.
             </p>
             <div className="bg-gray-900/70 p-4 rounded-md border border-gray-600 max-h-[60vh] overflow-y-auto">
                 <GuideRenderer content={guideText} />

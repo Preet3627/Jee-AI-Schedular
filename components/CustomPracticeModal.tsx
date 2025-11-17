@@ -11,6 +11,7 @@ interface CustomPracticeModalProps {
   onClose: () => void;
   onSessionComplete: (duration: number, questions_solved: number, questions_skipped: number[]) => void;
   initialTask?: HomeworkData | null;
+  aiPracticeTest?: { questions: PracticeQuestion[], answers: Record<string, string> } | null;
   aiInitialTopic?: string | null;
   defaultPerQuestionTime: number;
   onLogResult: (result: ResultData) => void;
@@ -48,7 +49,7 @@ const parseAnswers = (text: string): Record<string, string> => {
 
 
 const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
-  const { onClose, onSessionComplete, initialTask, aiInitialTopic, defaultPerQuestionTime, onLogResult, student, onUpdateWeaknesses, onSaveTask } = props;
+  const { onClose, onSessionComplete, initialTask, aiPracticeTest, aiInitialTopic, defaultPerQuestionTime, onLogResult, student, onUpdateWeaknesses, onSaveTask } = props;
   const [activeTab, setActiveTab] = useState<'ai' | 'manual' | 'jeeMains'>(initialTask ? 'manual' : 'ai');
   const [qRanges, setQRanges] = useState(initialTask?.Q_RANGES || '');
   const [subject, setSubject] = useState(initialTask?.SUBJECT_TAG.EN || 'PHYSICS');
@@ -121,15 +122,26 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
     }
   };
 
-  useEffect(() => {
-    if (aiInitialTopic) {
-        setActiveTab('ai');
-        setAiTopic(aiInitialTopic);
-        setCategory('Post-Session Quiz');
-        // Automatically start the generation
-        handleStart();
-    }
-  }, [aiInitialTopic]);
+    useEffect(() => {
+        if (aiInitialTopic) {
+            setActiveTab('ai');
+            setAiTopic(aiInitialTopic);
+            setCategory('Post-Session Quiz');
+            // Automatically start the generation
+            handleStart();
+        }
+    }, [aiInitialTopic]);
+
+    useEffect(() => {
+        if (aiPracticeTest) {
+            setPracticeQuestions(aiPracticeTest.questions);
+            setPracticeAnswers(aiPracticeTest.answers);
+            setPracticeMode('custom');
+            setCategory('AI Imported Test');
+            setSubject('MIXED');
+            setIsTimerStarted(true);
+        }
+    }, [aiPracticeTest]);
 
 
   const handleClose = () => {
@@ -346,6 +358,8 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
           <AIParserModal
             onClose={() => setIsAiParserOpen(false)}
             onDataReady={handleDataFromParser}
+            onPracticeTestReady={() => {}} // This will be handled by the StudentDashboard
+            onOpenGuide={() => {}} // This will be handled by the StudentDashboard
           />
       )}
     </>

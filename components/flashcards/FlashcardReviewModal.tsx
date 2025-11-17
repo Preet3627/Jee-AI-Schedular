@@ -62,7 +62,7 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
   if (!currentCard && !isReviewComplete) {
       return (
         <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
-            <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
+            <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
                 <p className="text-center text-gray-400">This deck has no cards to review.</p>
                 <button onClick={handleClose} className="mt-4 w-full px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">Close</button>
             </div>
