@@ -57,7 +57,7 @@ import DeepLinkConfirmationModal from './DeepLinkConfirmationModal';
 import AIGuideModal from './AIGuideModal';
 import { useAuth } from '../context/AuthContext';
 import FlashcardWidget from './widgets/FlashcardWidget';
-import MoveTasksModal from './components/MoveTasksModal';
+import MoveTasksModal from './MoveTasksModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
