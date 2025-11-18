@@ -32,8 +32,10 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onP
     const text = inputText.trim();
     
     const handleResult = (result: any) => {
-        if (result.practice_test) {
-            onPracticeTestReady(result.practice_test);
+        if (result.practice_test || result.homework_assignment) {
+            onPracticeTestReady(result.practice_test || result.homework_assignment);
+        } else if (result.flashcard_deck) {
+            onDataReady(result);
         } else if (result.schedules?.length || result.exams?.length || result.metrics?.length) {
             onDataReady(result);
         } else {
@@ -41,17 +43,22 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onP
         }
     };
 
-    // Attempt 1: Parse as valid JSON
+    // Attempt 1: Parse as valid JSON (works offline)
     try {
       const jsonData = JSON.parse(text);
-      handleResult(jsonData);
-      setIsLoading(false);
-      return;
+      if (jsonData && typeof jsonData === 'object') {
+        // Check if it contains any of our expected top-level keys
+        if (jsonData.flashcard_deck || jsonData.homework_assignment || jsonData.practice_test || jsonData.schedules?.length || jsonData.exams?.length || jsonData.metrics?.length) {
+          handleResult(jsonData);
+          setIsLoading(false);
+          return;
+        }
+      }
     } catch (e) {
-      // Not valid JSON, proceed.
+      // Not valid JSON, proceed to AI parsing.
     }
 
-    // Attempt 2: If it looks like broken JSON, try to correct it
+    // Attempt 2: If it looks like broken JSON, try to correct it online
     if (text.startsWith('{') || text.startsWith('[')) {
       try {
         const correctionResult = await api.correctJson(text);
@@ -66,7 +73,7 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onP
       }
     }
     
-    // Attempt 3: Fallback to parsing as unstructured text
+    // Attempt 3: Fallback to parsing as unstructured text online
     try {
       const result = await api.parseText(text);
       handleResult(result);

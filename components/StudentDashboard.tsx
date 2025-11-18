@@ -222,7 +222,23 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             setInitialScoreForModal(`${data.score}/${data.max_score}`);
             setInitialMistakesForModal(data.details);
             setIsLogResultModalOpen(true);
+        } else if (action === 'flashcard_review') {
+            const taskToEdit = {
+                ID: '',
+                type: 'ACTION',
+                SUB_TYPE: 'FLASHCARD_REVIEW',
+                CARD_TITLE: createLocalizedString(data.topic),
+                FOCUS_DETAIL: createLocalizedString(data.details || `Review flashcards for ${data.topic}`),
+                SUBJECT_TAG: createLocalizedString(data.subject?.toUpperCase()),
+                DAY: createLocalizedString(getDayFromDate(data.date)),
+                date: data.date,
+                TIME: data.time || '10:00',
+                isUserCreated: true,
+            };
+            setEditingTask(taskToEdit as ScheduleItem);
+            setIsCreateModalOpen(true);
         }
+
 
     }, [deepLinkAction]);
 
@@ -266,6 +282,33 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
     const handleDataImport = (structuredData: any) => {
         try {
+             // Flashcard Deck handling
+            if (structuredData.flashcard_deck) {
+                const newDeckData = structuredData.flashcard_deck;
+                if (!newDeckData.name || !newDeckData.subject || !Array.isArray(newDeckData.cards)) {
+                    throw new Error("Flashcard deck data is malformed.");
+                }
+                const newDeck: FlashcardDeck = {
+                    id: `deck_${Date.now()}`,
+                    name: newDeckData.name,
+                    subject: newDeckData.subject.toUpperCase(),
+                    chapter: newDeckData.chapter,
+                    isLocked: false,
+                    cards: newDeckData.cards.map((card: any, index: number) => {
+                        if (!card.front || !card.back) {
+                            throw new Error(`Card at index ${index} is missing front or back content.`);
+                        }
+                        return {
+                            id: `card_${Date.now()}_${index}`,
+                            front: card.front,
+                            back: card.back
+                        };
+                    })
+                };
+                handleSaveDeck(newDeck); // This will call onUpdateConfig
+                alert(`New flashcard deck "${newDeck.name}" created with ${newDeck.cards.length} cards!`);
+            }
+            
             const createLocalizedString = (text: string) => ({ EN: text || '', GU: '' });
             
             const schedules: ScheduleItem[] = (structuredData.schedules || [])
@@ -334,7 +377,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     weaknesses.length > 0 && `weakness entries`
                 ].filter(Boolean).join(', ');
                 alert(`Import successful! Added: ${messages}.`);
-            } else {
+            } else if (!structuredData.flashcard_deck) {
                  alert("No valid data was found to import. Please check the JSON format or use the AI Guide.");
             }
 

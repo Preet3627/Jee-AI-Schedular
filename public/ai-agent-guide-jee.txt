@@ -28,6 +28,23 @@ To ensure formulas and chemical equations are rendered correctly, use the follow
 ## 3. Output Formats: Deep Link vs. JSON Block
 Your response should be a single JSON object. For quick actions via chat, this can be wrapped in a deep link. For large data imports, provide it as a raw JSON code block.
 
+### A. Deep Links (for Quick, Single Actions)
+- **Use Case:** Creating a *single* task, logging a *single* score.
+- **URL Structure:** `https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}`
+  - `{ACTION_TYPE}`: `new_schedule`, `log_score`, `create_homework`, `flashcard_review`.
+  - `{URL_ENCODED_JSON}`: A URL-encoded JSON object for one task (see schema below).
+
+**Deep Link `data` object schema:**
+| Key | Type | Description |
+|---|---|---|
+| `subject` | string | `Physics`, `Chemistry`, `Math`. |
+| `topic` | string | Specific chapter or concept. |
+| `date` | string | `YYYY-MM-DD`. |
+| `time` | string | **For `new_schedule` & `flashcard_review`**. `HH:MM` format. |
+| `details`| string | Notes for the task. |
+| `score` | number | **For `log_score`**. |
+| `max_score`| number | **For `log_score`**. |
+
 ---
 ## 4. Full JSON Schema (for Code Blocks)
 Your entire output must be a single JSON object with these top-level keys. Provide empty arrays `[]` or `null` for types not present.
@@ -44,6 +61,7 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `id` | string | Unique ID (e.g., "A101"). |
 | `type` | string | `"ACTION"` or `"HOMEWORK"`. **Rule:** If the user requests 'PYQs', 'questions', or 'problems', you **MUST** use `HOMEWORK`. |
 | `day` | string | Full day name, e.g., `"MONDAY"`. |
+| `date` | string | Optional `YYYY-MM-DD` for one-off tasks. |
 | `title` | string | Task title. Use advanced formatting. |
 | `detail`| string | Description. Use advanced formatting. |
 | `subject`| string| `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`. |
