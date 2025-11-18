@@ -1,14 +1,14 @@
-# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 11.0.0 (Scientific Symbols & Diagram Generation)
+# Universal Data Documentation for AI Agents (NEET Scheduler Pro)
+# Version: 11.0.0 (NEET Edition)
 
 ## 1. Core Concept: The Internal Knowledge Base
-The AI now operates with a comprehensive, built-in library for Physics, Chemistry, and Maths. All academic content generation (tips, flashcards, MCQs, explanations) **must be sourced from this internal knowledge base**. This ensures accuracy and consistency.
+The AI now operates with a comprehensive, built-in library for Physics, Chemistry, and Biology (Botany & Zoology). All academic content generation (tips, flashcards, MCQs, explanations) **must be sourced from this internal knowledge base**. This ensures accuracy and consistency for the NEET curriculum.
 
 **How to Interact:**
 - When a user asks for academic content, frame your request to the AI by referencing its library.
-- **Example:** "Generate 5 MCQs from the 'Rotational Motion' section of your library."
-- **Example:** "Explain 'Hybridization' using your internal knowledge base."
-- **Example:** "Create a flashcard deck for 'Trigonometric Identities' based on your library content."
+- **Example:** "Generate 5 MCQs from the 'Plant Kingdom' section of your Biology library."
+- **Example:** "Explain 'Hybridization' using your internal chemistry knowledge base."
+- **Example:** "Create a flashcard deck for 'Human Reproduction' based on your library content."
 
 ---
 ## 2. Advanced Text Formatting
@@ -23,26 +23,16 @@ To ensure formulas and chemical equations are rendered correctly, use the follow
 
 ---
 ## 3. Output Formats: Deep Link vs. JSON Block
+Your response should be a single JSON object. For quick actions via chat, this can be wrapped in a deep link. For large data imports, provide it as a raw JSON code block.
 
 ### A. Deep Links (for Quick, Single Actions)
 - **Use Case:** Creating a *single* task, logging a *single* score.
 - **URL Structure:** `https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}`
   - `{ACTION_TYPE}`: `new_schedule`, `log_score`, `create_homework`.
-  - `{URL_ENCODED_JSON}`: A URL-encoded JSON object for one task (see schema below).
-
-**Deep Link `data` object schema:**
-| Key | Type | Description |
-|---|---|---|
-| `subject` | string | `Physics`, `Chemistry`, `Math`. |
-| `topic` | string | Specific chapter or concept. |
-| `date` | string | `YYYY-MM-DD`. |
-| `time` | string | **For `new_schedule`**. `HH:MM` format. |
-| `details`| string | Notes for the task. |
-| `score` | number | **For `log_score`**. |
-| `max_score`| number | **For `log_score`**. |
+  - `{URL_ENCODED_JSON}`: A URL-encoded JSON object for one task.
 
 ### B. JSON Code Block (for Large, Complex, or Specific Generation)
-- **Use Case:** Batch imports (schedules, exams), or generating a **Practice Test**, **Flashcard Deck**, or **Full Homework Assignment**.
+- **Use Case:** Batch imports, or generating a **Practice Test**, **Flashcard Deck**, or **Full Homework Assignment**.
 - **Format:** Your entire response **MUST** be a single, raw JSON object inside a markdown code block.
 
 ---
@@ -63,7 +53,7 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `day` | string | Full day name, e.g., `"MONDAY"`. |
 | `title` | string | Task title. Use advanced formatting. |
 | `detail`| string | Description. Use advanced formatting. |
-| `subject`| string| `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`. |
+| `subject`| string| `"PHYSICS"`, `"CHEMISTRY"`, `"BIOLOGY"`. |
 | `q_ranges`| string | **For `HOMEWORK`**. E.g., `"1-15; 20-25"`. |
 | `answers`| string | Stringified JSON, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
 
@@ -71,7 +61,7 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | Key | Type | Description |
 |---|---|---|
 | `name`| string | Name of the new deck. |
-| `subject` | string | `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`. |
+| `subject` | string | `"PHYSICS"`, `"CHEMISTRY"`, `"BIOLOGY"`. |
 | `chapter` | string | Optional: Chapter name for organization. |
 | `cards` | array | Array of flashcard objects (`{ "front": string, "back": string }`). |
 
@@ -89,9 +79,6 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `text` | string | Full question text. Use advanced formatting. |
 | `options`| array | For `MCQ`, array of 4 strings. For `NUM`, `[]`. |
 | `type` | string | `"MCQ"` or `"NUM"`. |
-
-**NCERT-Specific Requests:**
-If a user asks for homework from an NCERT textbook (e.g., "schedule NCERT Physics chapter 2, questions 1 to 5"), you must generate a `homework_assignment` using your internal knowledge base to find the question text, answers, and solutions.
 
 ---
 ## 5. Scientific Symbols & Diagrams
@@ -112,19 +99,4 @@ You can render common scientific and mathematical symbols using LaTeX-like comma
 | `\Delta`   | Δ          |
 
 ### B. Diagrams
-The system **cannot render image-based diagrams** directly from your JSON output. However, you can create textual descriptions or ASCII art to represent diagrams, which will be rendered in a pre-formatted block.
-
-**Example for a Free Body Diagram:**
-"Create a textual diagram for a block on an inclined plane. Show the normal force (N) perpendicular to the surface, gravity (mg) pointing straight down, and friction (f) pointing up the incline."
-
-Your response inside a `detail` field could be:
-\`\`\`
-      /N
-     /
-    /
-   /______
-  / \      \
- /   \ mg    \
-/_____\_______\
-   f
-\`\`\`
+The system **cannot render image-based diagrams** directly from your JSON output. However, you can create textual descriptions or ASCII art to represent diagrams (e.g., Punnett squares, floral diagrams), which will be rendered in a pre-formatted block.

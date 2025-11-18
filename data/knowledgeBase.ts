@@ -55,4 +55,30 @@ export const knowledgeBase = {
       - **Logarithms:** The rule for changing base is log_b(a) = log_c(a) / log_c(b). The natural logarithm, log_e(x), is often written as ln(x).
       - **Binomial Theorem:** (x+y)^n = Σ [nCr * x^{n-r} * y^r] for r from 0 to n.
     `,
+    BIOLOGY: `
+      **Cell Biology:**
+      - **Cell Theory:** All living organisms are composed of cells; the cell is the basic unit of life; all cells arise from pre-existing cells.
+      - **Mitochondria:** Powerhouse of the cell, site of cellular respiration and ATP synthesis.
+      - **Mitosis:** Cell division resulting in two diploid (2n) daughter cells. Stages: Prophase, Metaphase, Anaphase, Telophase.
+      
+      **Genetics:**
+      - **Mendel's Laws:** Law of Segregation, Law of Independent Assortment.
+      - **DNA Structure:** Double helix model by Watson and Crick, composed of nucleotides (A, T, C, G).
+      - **Central Dogma:** DNA -> RNA -> Protein. (Transcription -> Translation).
+
+      **Human Physiology:**
+      - **Nervous System:** Neurons transmit signals via action potentials. The synapse is the junction between two neurons.
+      - **Endocrine System:** Hormones like insulin (regulates blood sugar) and adrenaline (fight or flight) regulate body functions.
+      - **Circulatory System:** The heart pumps blood through arteries, veins, and capillaries. Red blood cells carry oxygen via hemoglobin.
+
+      **Plant Physiology:**
+      - **Photosynthesis:** 6CO_2 + 6H_2O + Light Energy -> C_6H_{12}O_6 + 6O_2. Occurs in chloroplasts.
+      - **Transpiration:** The loss of water vapor from plants, primarily through stomata.
+      - **Plant Hormones:** Auxins (growth), Gibberellins (stem elongation), Cytokinins (cell division).
+      
+      **Ecology:**
+      - **Food Chain:** The sequence of transfers of matter and energy in the form of food from organism to organism.
+      - **Ecological Succession:** The process of change in the species structure of an ecological community over time.
+      - **Biomes:** Major life zones characterized by vegetation type (e.g., tropical rainforest, desert).
+    `,
 };

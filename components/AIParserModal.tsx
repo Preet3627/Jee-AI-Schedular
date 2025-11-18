@@ -7,9 +7,10 @@ interface AIParserModalProps {
   onDataReady: (data: any) => void;
   onPracticeTestReady: (data: any) => void;
   onOpenGuide: () => void;
+  examType?: 'JEE' | 'NEET';
 }
 
-const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onPracticeTestReady, onOpenGuide }) => {
+const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onPracticeTestReady, onOpenGuide, examType }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -88,7 +89,7 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onP
                 <h2 className="text-2xl font-bold text-white mb-2">AI Data Import</h2>
                 <p className="text-sm text-gray-400 mb-4">Paste unstructured text or raw JSON to import data or start a practice test.</p>
             </div>
-            <button onClick={onOpenGuide} className="text-xs font-semibold text-cyan-400 hover:underline flex-shrink-0">View Guide</button>
+            <button onClick={onOpenGuide} className="text-xs font-semibold text-cyan-400 hover:underline flex-shrink-0">View {examType} Guide</button>
         </div>
         
         <textarea

@@ -180,15 +180,20 @@ const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {students.map(student => (
             <div key={student.sid} className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
-                 <div className="flex items-center gap-3 mb-3">
-                    <div className="relative">
-                        <img src={student.profilePhoto} alt={student.fullName} className="w-12 h-12 rounded-full object-cover" />
-                        {isOnline(student.last_seen) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800" title="Online"></div>}
+                 <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <img src={student.profilePhoto} alt={student.fullName} className="w-12 h-12 rounded-full object-cover" />
+                            {isOnline(student.last_seen) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800" title="Online"></div>}
+                        </div>
+                        <div>
+                           <h3 className="font-bold text-white">{student.fullName}</h3>
+                           <p className="text-sm text-gray-400">{student.sid}</p>
+                        </div>
                     </div>
-                    <div>
-                       <h3 className="font-bold text-white">{student.fullName}</h3>
-                       <p className="text-sm text-gray-400">{student.sid}</p>
-                    </div>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${student.CONFIG.settings.examType === 'NEET' ? 'bg-green-800 text-green-300' : 'bg-cyan-800 text-cyan-300'}`}>
+                        {student.CONFIG.settings.examType || 'N/A'}
+                    </span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                     <button onClick={() => onImpersonate(student.sid)} className="w-full flex items-center justify-center gap-2 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="login" className="w-3.5 h-3.5"/> Impersonate</button>

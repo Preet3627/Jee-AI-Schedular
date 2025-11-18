@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { FlashcardDeck, Flashcard } from '../../types';
 import Icon from '../Icon';
@@ -34,6 +32,12 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
   const handleClose = () => {
     setIsExiting(true);
     setTimeout(onClose, 300);
+  };
+  
+  const handleShuffle = () => {
+    setShuffledCards(prev => [...prev].sort(() => Math.random() - 0.5));
+    setCurrentIndex(0);
+    setIsFlipped(false);
   };
 
   const advanceCard = (addToReview: boolean) => {
@@ -93,9 +97,16 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
                    </p>
                 )}
             </div>
-            <button onClick={handleClose} className="p-2 rounded-full hover:bg-white/10 text-gray-300">
-                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
+            <div className="flex items-center gap-2">
+                 {!isReviewComplete && (
+                    <button onClick={handleShuffle} className="p-2 rounded-full hover:bg-white/10 text-gray-300" title="Shuffle Deck">
+                        <Icon name="shuffle" className="w-5 h-5" />
+                    </button>
+                 )}
+                <button onClick={handleClose} className="p-2 rounded-full hover:bg-white/10 text-gray-300">
+                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
         </header>
 
         <div className="flex-grow flashcard-container min-h-[300px]" onClick={() => !isReviewComplete && setIsFlipped(!isFlipped)}>

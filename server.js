@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -1686,7 +1685,7 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
 
         const systemInstruction = `You are a helpful and friendly AI assistant for JEE aspirants with the ability to modify user data through function calls. Your goal is to help students with their academic questions, provide guidance, and manage their schedule.
         - Use the provided user schedule data to find the correct IDs for updating or deleting tasks.
-        - When asked to perform an action (create, update, delete), use the provided tools.
+        - When asked to perform an action (create, update, delete, generate flashcards), use the provided tools.
         - After a tool is called, you MUST confirm what you did in a friendly message (e.g., "I've deleted that task for you.").
         - Politely decline questions outside of academics and student wellness. Be encouraging and supportive.
         ${context}
@@ -1741,12 +1740,27 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
             }
         };
 
+        const generateFlashcardDeckFunction = {
+            name: 'generateFlashcardDeck',
+            description: 'Generates a new flashcard deck based on a topic or syllabus and saves it for the user.',
+            parameters: {
+                type: Type.OBJECT,
+                properties: {
+                    topic: { type: Type.STRING, description: 'The main topic for the flashcard deck, e.g., "Rotational Motion".' },
+                    subject: { type: Type.STRING, description: 'The subject of the deck, e.g., "PHYSICS", "CHEMISTRY", "MATHS".' },
+                    chapter: { type: Type.STRING, description: 'Optional chapter name to categorize the deck.' },
+                    syllabus: { type: Type.STRING, description: 'Optional syllabus context to narrow down the content.' }
+                },
+                required: ['topic', 'subject']
+            }
+        };
+
         let response = await ai.models.generateContent({
             model: model,
             contents: contents,
             config: { 
                 systemInstruction,
-                tools: [{ functionDeclarations: [createOrUpdateTaskFunction, deleteTasksFunction] }]
+                tools: [{ functionDeclarations: [createOrUpdateTaskFunction, deleteTasksFunction, generateFlashcardDeckFunction] }]
             },
         });
         
@@ -1788,6 +1802,46 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
                         toolResult = { success: true, message: `Deleted ${taskIds.length} tasks.` };
                     } else {
                         toolResult = { success: false, message: "No task IDs provided to delete." };
+                    }
+                } else if (fc.name === 'generateFlashcardDeck') {
+                    const { topic, subject, chapter, syllabus } = fc.args;
+
+                    const generationSystemInstruction = `You are an expert academic content creator for JEE aspirants...`; // Simplified for brevity
+                    const generationPrompt = `Generate 5-10 flashcards for the topic: "${topic}". ${syllabus ? `Syllabus: ${syllabus}`: ''}`;
+                    
+                    const cardGenResponse = await ai.models.generateContent({
+                        model: 'gemini-2.5-flash',
+                        contents: generationPrompt,
+                        config: { 
+                            systemInstruction: generationSystemInstruction,
+                            responseMimeType: 'application/json'
+                        },
+                    });
+                
+                    const { flashcards } = JSON.parse(cardGenResponse.text);
+                
+                    if (flashcards && flashcards.length > 0) {
+                        const [[userConfigRow]] = await pool.query("SELECT config FROM user_configs WHERE user_id = ?", [req.userId]);
+                        const currentConfig = JSON.parse(decrypt(userConfigRow.config));
+                        
+                        const newDeck = {
+                            id: `deck_${Date.now()}`,
+                            name: topic,
+                            subject: subject.toUpperCase(),
+                            chapter: chapter || undefined,
+                            isLocked: false,
+                            cards: flashcards.map((card, i) => ({ ...card, id: `card_${Date.now()}_${i}` })),
+                        };
+                
+                        if (!currentConfig.flashcardDecks) currentConfig.flashcardDecks = [];
+                        currentConfig.flashcardDecks.push(newDeck);
+                
+                        const encryptedConfig = encrypt(JSON.stringify(currentConfig));
+                        await pool.query('UPDATE user_configs SET config = ? WHERE user_id = ?', [encryptedConfig, req.userId]);
+                
+                        toolResult = { success: true, message: `Successfully created a new flashcard deck named "${topic}".` };
+                    } else {
+                        toolResult = { success: false, message: "Could not generate any flashcards for that topic." };
                     }
                 }
                 functionResponses.push({

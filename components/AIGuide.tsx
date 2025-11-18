@@ -1,139 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from './Icon';
 
-const guideText = `# Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 8.2.0 (Hybrid Output: Deep Link & JSON)
-# Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform and integrating with it.
-
-## 1. Interaction Model: Deep Link vs. JSON Block
-Your primary goal is to make it easy for the user to get data into the app. Choose your output format based on the user's request:
-
-### A. Use DEEP LINKS for **QUICK, SINGLE ACTIONS**.
-- **When:** User asks to create a *single* task, log a *single* score.
-- **Why:** This provides a one-click action for the user.
-
-### B. Use a **BATCH IMPORT DEEP LINK** for **SMALL BATCHES**.
-- **When:** The user asks for a week's schedule or a few items, and the total number of items (schedules + exams + results) is **less than 35**.
-- **Why:** This is convenient for the user.
-
-### C. Use a **JSON CODE BLOCK** for **LARGE or COMPLEX** requests.
-- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed. This is also the required format for generating a **Practice Test**.
-- **Why:** Deep links can become too long for browsers. A JSON block is robust for large data and required for complex actions like starting a practice test.
-
----
-## 2. Format 1: The Deep Link
-
-### A. Single-Item Actions
-Construct the URL like this: \`https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}\`
-- **\`{ACTION_TYPE}\`**: \`new_schedule\`, \`log_score\`, or \`create_homework\`.
-- **\`{URL_ENCODED_JSON}\`**: A **single JSON object** for one task.
-
-**Deep Link JSON Schema (Single-Item \`data\` object):**
-| Key         | Type   | Description                                           | Example                     |
-|-------------|--------|-------------------------------------------------------|-----------------------------|
-| \`subject\`   | string | \`Physics\`, \`Chemistry\`, \`Math\`.                       | \`"Physics"\`                 |
-| \`topic\`     | string | Specific chapter or concept.                          | \`"Rotational Dynamics"\`     |
-| \`date\`      | string | \`YYYY-MM-DD\`. Calculate from "tomorrow", "Friday", etc. | \`"2025-11-18"\`              |
-| \`time\`      | string | **For \`new_schedule\`**. \`HH:MM\` format.                | \`"19:00"\`                   |
-| \`details\`   | string | Specific notes for the task.                          | \`"Practice torque problems"\`|
-| \`score\`     | number | **For \`log_score\`**. The student's score.              | \`210\`                       |
-| \`max_score\` | number | **For \`log_score\`**. The total possible score.         | \`300\`                       |
-
-### B. Multi-Item Actions (Batch Import)
-Construct the URL like this: \`https://jee.ponsrischool.in/?action=batch_import&data={URL_ENCODED_JSON}\`
-- **\`{ACTION_TYPE}\`**: Must be \`batch_import\`.
-- **\`{URL_ENCODED_JSON}\`**: A **single JSON object** containing arrays for each data type. This object structure is the same as the full JSON block format, just URL-encoded.
-
----
-## 3. Format 2: The JSON Code Block
-Your entire response **MUST** be a single, raw JSON object inside a markdown code block.
-
-**Example User Presentation:**
-**User:** "Create a full weekly schedule for me."
-**Your Response:**
-Of course. Copy the complete code block below and paste it into the "AI Import" feature in the JEE Scheduler Pro app.
-\`\`\`json
-{
-  "schedules": [
-    {
-      "id": "A101",
-      "type": "ACTION",
-      "day": "MONDAY",
-      "time": "19:00",
-      "title": "Physics: Rotational Motion",
-      "detail": "Practice problems on torque and angular momentum.",
-      "subject": "PHYSICS",
-      "sub_type": "DEEP_DIVE"
-    }
-  ],
-  "exams": [],
-  "metrics": [],
-  "practice_test": null
+interface AIGuideProps {
+  examType?: 'JEE' | 'NEET';
 }
-\`\`\`
-
-### Full JSON Schema (for Code Blocks):
-Your entire output must be a single JSON object with these keys. Provide empty arrays \`[]\` or \`null\` for types not present.
-- \`schedules\`: An array of schedule items.
-- \`exams\`: An array of exam items.
-- \`metrics\`: An array of results or weaknesses.
-- \`practice_test\`: An object for a practice test, or \`null\`.
-
-### Detailed Schema: \`schedules\`
-| Key | Type | Description |
-|---|---|---|
-| \`id\` | string | A unique identifier (e.g., "A101", "H203"). |
-| \`type\` | string | \`"ACTION"\` for study sessions, \`"HOMEWORK"\` for assignments. |
-| \`day\` | string | Full day name, e.g., \`"MONDAY"\`. |
-| \`date\` | string| Optional \`YYYY-MM-DD\` for one-off events. |
-| \`time\` | string| Optional \`HH:MM\` time. Required for \`ACTION\`. |
-| \`title\` | string | The main title of the task. |
-| \`detail\`| string | A short description. |
-| \`subject\`| string| \`"PHYSICS"\`, \`"CHEMISTRY"\`, \`"MATHS"\`, \`"OTHER"\`. |
-| \`q_ranges\`| string | **For \`HOMEWORK\`**. Question numbers, e.g., \`"1-15; 20-25"\`. |
-| \`category\`| string | **For \`HOMEWORK\`**. Optional: \`"Level-1"\`, \`"Level-2"\`, \`"Classroom-Discussion"\`, \`"PYQ"\`, \`"Custom"\`. |
-| \`sub_type\`| string | **For \`ACTION\`**. E.g., \`"DEEP_DIVE"\`, \`"ANALYSIS"\`. |
-| \`answers\`| string | Stringified JSON of answers, e.g., \`"{\\"1\\":\\"A\\", \\"2\\":\\"C\\"}"\`. |
-
-### Detailed Schema: \`metrics\`
-| Key | Type | For | Description & Example |
-|---|---|---|---|
-| \`type\` | string | Both | Must be \`"RESULT"\` or \`"WEAKNESS"\`. |
-| \`score\` | string | \`RESULT\` | A string in \`"marks/total"\` format. E.g., \`"215/300"\`. |
-| \`mistakes\` | string | \`RESULT\` | A single string of all mistake topics, separated by **semicolons**. E.g., \`"Wave Optics; P-Block Elements"\`. |
-| \`weaknesses\` | string | \`WEAKNESS\`| A single string of all weakness topics, separated by **semicolons**. E.g., \`"Rotational Dynamics; Mole Concept"\`. |
-
-### Detailed Schema: \`practice_test\`
-Use this to launch an interactive practice session immediately. The app will open a timer with these questions.
-
-| Key | Type | Description |
-|---|---|---|
-| \`questions\`| array | An array of question objects. |
-| \`answers\` | string | A stringified JSON object mapping question number to correct answer. |
-
-**Question Object Schema (inside \`questions\` array):**
-| Key | Type | Description |
-|---|---|---|
-| \`number\` | integer | The question number, starting from 1. |
-| \`text\` | string | The full text of the question. |
-| \`options\` | array | An array of 4 strings for MCQ options. Must start with (A), (B), etc. |
-| \`type\` | string | \`"MCQ"\` for multiple choice, \`"NUM"\` for numerical. |
-
-**Example \`practice_test\` object:**
-\`\`\`json
-"practice_test": {
-  "questions": [
-    {
-      "number": 1,
-      "text": "A block of mass 'm' is on a rough horizontal surface...",
-      "options": ["(A) 2 m/s", "(B) 4 m/s", "(C) 6 m/s", "(D) 8 m/s"],
-      "type": "MCQ"
-    }
-  ],
-  "answers": "{\\"1\\":\\"B\\"}"
-}
-\`\`\`
-`;
 
 const GuideRenderer: React.FC<{ content: string }> = ({ content }) => {
   const renderLine = (line: string, index: number) => {
@@ -224,11 +94,29 @@ const GuideRenderer: React.FC<{ content: string }> = ({ content }) => {
 };
 
 
-const AIGuide: React.FC = () => {
+const AIGuide: React.FC<AIGuideProps> = ({ examType = 'JEE' }) => {
+    const [guideText, setGuideText] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
     const [copied, setCopied] = useState(false);
 
+    useEffect(() => {
+        const guideFile = examType === 'NEET' ? '/ai-agent-guide-neet.txt' : '/ai-agent-guide-jee.txt';
+        setIsLoading(true);
+        fetch(guideFile)
+            .then(response => {
+                if (!response.ok) throw new Error('Guide not found');
+                return response.text();
+            })
+            .then(text => setGuideText(text))
+            .catch(error => {
+                console.error('Error loading AI guide:', error);
+                setGuideText('Error: Could not load the AI guide.');
+            })
+            .finally(() => setIsLoading(false));
+    }, [examType]);
+
+
     const handleCopy = () => {
-        // We need to strip markdown for the clipboard version
         const plainText = guideText.replace(/`/g, '').replace(/\*/g, '');
         navigator.clipboard.writeText(plainText);
         setCopied(true);
@@ -238,8 +126,8 @@ const AIGuide: React.FC = () => {
     return (
         <div>
              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-white">AI Agent Guide</h2>
-                <button onClick={handleCopy} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">
+                <h2 className="text-2xl font-bold text-white">AI Agent Guide ({examType})</h2>
+                <button onClick={handleCopy} disabled={isLoading} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50">
                     <Icon name={copied ? 'check' : 'copy'} className="w-4 h-4" /> {copied ? 'Copied!' : 'Copy Guide'}
                 </button>
             </div>
@@ -247,7 +135,7 @@ const AIGuide: React.FC = () => {
                 Use this documentation to instruct a Large Language Model (like Gemini) to generate valid JSON data for batch importing schedules, exams, or student metrics.
             </p>
             <div className="bg-gray-900/70 p-4 rounded-md border border-gray-600 max-h-[60vh] overflow-y-auto">
-                <GuideRenderer content={guideText} />
+                {isLoading ? <p>Loading guide...</p> : <GuideRenderer content={guideText} />}
             </div>
         </div>
     );

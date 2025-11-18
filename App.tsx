@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -17,6 +18,7 @@ import { exportCalendar } from './utils/calendar';
 import * as gcal from './utils/googleCalendar';
 import * as gdrive from './utils/googleDrive';
 import * as auth from './utils/googleAuth';
+import ExamTypeSelectionModal from './components/ExamTypeSelectionModal';
 
 // FIX: Add global declarations for Google API objects to resolve TypeScript errors.
 declare global {
@@ -40,6 +42,7 @@ const App: React.FC = () => {
     const [resetToken, setResetToken] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [deepLinkAction, setDeepLinkAction] = useState<any>(null);
+    const [isExamTypeModalOpen, setIsExamTypeModalOpen] = useState(false);
 
 
     useEffect(() => {
@@ -86,6 +89,13 @@ const App: React.FC = () => {
             handleDeepLink(dataStr);
         }
     }, []);
+
+    useEffect(() => {
+        // If a user is logged in but hasn't selected an exam type, show the selection modal.
+        if (currentUser && userRole === 'student' && !isDemoMode && !currentUser.CONFIG.settings.examType) {
+            setIsExamTypeModalOpen(true);
+        }
+    }, [currentUser, userRole, isDemoMode]);
     
 
     const handleGoogleSignOut = () => {
@@ -450,9 +460,22 @@ const App: React.FC = () => {
     }, [googleClientId, backendStatus]);
 
 
+    const handleSelectExamType = async (examType: 'JEE' | 'NEET') => {
+        if (!currentUser) return;
+        // Create a deep copy to avoid direct state mutation
+        const newSettings = JSON.parse(JSON.stringify(currentUser.CONFIG.settings));
+        newSettings.examType = examType;
+        await handleUpdateConfig({ settings: newSettings });
+        setIsExamTypeModalOpen(false);
+    };
+
     const renderContent = () => {
         if (isLoading) {
             return <div className="flex items-center justify-center min-h-screen"><div className="text-xl animate-pulse">Initializing Interface...</div></div>;
+        }
+
+        if (isExamTypeModalOpen) {
+            return <ExamTypeSelectionModal onSelect={handleSelectExamType} />;
         }
 
         if (backendStatus === 'misconfigured') {

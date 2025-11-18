@@ -162,6 +162,8 @@ export interface FlashcardDeck {
   name: string;
   subject: string;
   cards: Flashcard[];
+  chapter?: string;
+  isLocked?: boolean;
 }
 
 export interface StudyMaterialItem {
@@ -201,6 +203,7 @@ export interface Config {
         hasGeminiKey?: boolean; // A safe flag for the frontend
         showAiChatAssistant?: boolean;
         creditSaver?: boolean; // Use faster, cheaper AI models
+        examType?: 'JEE' | 'NEET';
     };
 }
 

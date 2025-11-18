@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { FlashcardDeck } from '../../types';
 
@@ -11,6 +10,7 @@ interface CreateEditDeckModalProps {
 const CreateEditDeckModal: React.FC<CreateEditDeckModalProps> = ({ deck, onClose, onSave }) => {
   const [name, setName] = useState(deck?.name || '');
   const [subject, setSubject] = useState(deck?.subject || 'PHYSICS');
+  const [chapter, setChapter] = useState(deck?.chapter || '');
   const [isExiting, setIsExiting] = useState(false);
 
   const handleClose = () => {
@@ -27,6 +27,8 @@ const CreateEditDeckModal: React.FC<CreateEditDeckModalProps> = ({ deck, onClose
       name: name.trim(),
       subject: subject.trim().toUpperCase(),
       cards: deck?.cards || [],
+      chapter: chapter.trim() || undefined,
+      isLocked: deck?.isLocked || false,
     };
     onSave(finalDeck);
     handleClose();
@@ -45,9 +47,15 @@ const CreateEditDeckModal: React.FC<CreateEditDeckModalProps> = ({ deck, onClose
             <label className="text-sm font-bold text-gray-400">Deck Name</label>
             <input required value={name} onChange={e => setName(e.target.value)} className={inputClass} placeholder="e.g., Organic Chemistry Reactions" />
           </div>
-          <div>
-            <label className="text-sm font-bold text-gray-400">Subject Tag</label>
-            <input required value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} placeholder="e.g., CHEMISTRY" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label className="text-sm font-bold text-gray-400">Subject Tag</label>
+                <input required value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} placeholder="e.g., CHEMISTRY" />
+            </div>
+            <div>
+                <label className="text-sm font-bold text-gray-400">Chapter (Optional)</label>
+                <input value={chapter} onChange={e => setChapter(e.target.value)} className={inputClass} placeholder="e.g., Aldehydes & Ketones" />
+            </div>
           </div>
           <div className="flex justify-end gap-4 pt-4">
             <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">Cancel</button>

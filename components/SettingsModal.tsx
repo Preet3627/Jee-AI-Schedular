@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Config } from '../types';
 import Icon from './Icon';
@@ -32,6 +33,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [showAiChat, setShowAiChat] = useState(settings.showAiChatAssistant !== false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [calendarSync, setCalendarSync] = useState(isCalendarSyncEnabled || false);
+  const [examType, setExamType] = useState(settings.examType || 'JEE');
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
@@ -63,6 +65,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         perQuestionTime,
         showAiChatAssistant: showAiChat,
         isCalendarSyncEnabled: calendarSync,
+        examType: examType as 'JEE' | 'NEET',
     };
     if (geminiApiKey.trim()) {
         settingsToSave.geminiApiKey = geminiApiKey.trim();
@@ -130,7 +133,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
               <div className="mt-4 bg-gray-900/50 p-3 rounded-lg border border-gray-700 space-y-2">
                 <p className="text-sm font-semibold text-cyan-400">API Integration</p>
                  <button type="button" onClick={onOpenAiGuide} className="w-full text-center px-4 py-2 text-sm font-semibold text-cyan-300 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50">
-                    View AI Agent Guide & API Docs
+                    View AI Agent Guide ({examType})
                 </button>
                 <p className="text-xs text-gray-400">
                     You can generate and manage your personal API token from the <span className="font-bold text-gray-200">My Profile</span> page (click your name in the header).
@@ -198,6 +201,13 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
           <div>
              <h3 className="text-base font-bold text-gray-300">App Preferences</h3>
              <div className="mt-4 space-y-4">
+                <div>
+                    <label htmlFor="examType" className="text-base font-bold text-gray-300">Primary Exam</label>
+                    <select id="examType" value={examType} onChange={(e) => setExamType(e.target.value as 'JEE' | 'NEET')} className={inputClass}>
+                        <option value="JEE">JEE (Engineering)</option>
+                        <option value="NEET">NEET (Medical)</option>
+                    </select>
+                </div>
                 <ToggleSwitch id="ai-chat-toggle" label="Show AI Chat Assistant" desc="Shows the floating Gemini icon on the dashboard." checked={showAiChat} onChange={setShowAiChat} />
                 <ToggleSwitch id="blur-toggle" label="Enable UI Blur Effect" desc="May improve performance on some devices." checked={blurEnabled} onChange={setBlurEnabled} />
                 <ToggleSwitch id="mobile-layout-toggle" label="Enable Simplified Mobile View" desc="Uses a bottom toolbar on small screens." checked={mobileLayout === 'toolbar'} onChange={(c) => setMobileLayout(c ? 'toolbar' : 'standard')} />
