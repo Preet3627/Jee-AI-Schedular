@@ -22,6 +22,12 @@ export function renderMarkdown(text: string): string {
         .replace(/~~(.*?)~~/g, '<del>$1</del>')
         // Inline code (`code`)
         .replace(/`([^`]+)`/g, '<code class="bg-gray-700/50 text-cyan-300 text-sm rounded px-1.5 py-0.5 font-mono">$1</code>')
+        // Superscript (text^{...} or text^...)
+        .replace(/\^\{([^}]+)\}/g, '<sup>$1</sup>')
+        .replace(/\^([\w\d\+\-]+)/g, '<sup>$1</sup>')
+        // Subscript (text_{...} or text_...)
+        .replace(/_\{([^}]+)\}/g, '<sub>$1</sub>')
+        .replace(/_(\d+)/g, '<sub>$1</sub>')
         // Newlines to <br>
         .replace(/\n/g, '<br />');
 

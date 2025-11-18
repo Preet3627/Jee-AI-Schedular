@@ -9,6 +9,14 @@ interface FlashcardReviewModalProps {
   onClose: () => void;
 }
 
+const subjectColors: Record<string, string> = {
+  PHYSICS: 'border-cyan-500',
+  CHEMISTRY: 'border-green-500',
+  MATHS: 'border-amber-500',
+  DEFAULT: 'border-purple-500',
+};
+
+
 const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClose }) => {
   const [isExiting, setIsExiting] = useState(false);
   const [shuffledCards, setShuffledCards] = useState<Flashcard[]>([]);
@@ -69,6 +77,8 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
         </div>
       )
   }
+  
+  const cardColorClass = subjectColors[deck.subject] || subjectColors.DEFAULT;
 
   return (
     <div className={`fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md ${animationClasses}`} onClick={handleClose}>
@@ -88,22 +98,20 @@ const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClo
             </button>
         </header>
 
-        <div className="flex-grow">
+        <div className="flex-grow flashcard-container min-h-[300px]" onClick={() => !isReviewComplete && setIsFlipped(!isFlipped)}>
             {isReviewComplete ? (
                  <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl">
                     <Icon name="trophy" className="w-20 h-20 text-yellow-400" />
                     <p className="text-2xl text-white text-center mt-4">Review Complete!</p>
                 </div>
             ) : (
-                <div 
-                    className={`w-full h-full min-h-[300px] flex items-center justify-center p-6 border rounded-xl cursor-pointer transition-colors duration-300 ${isFlipped ? 'bg-gray-800/80 border-[var(--glass-border)]' : 'bg-[var(--glass-bg)] border-[var(--glass-border)]'}`}
-                    onClick={() => setIsFlipped(!isFlipped)}
-                >
-                    {isFlipped ? (
-                        <p className="text-xl text-gray-300 text-center">{currentCard?.back}</p>
-                    ) : (
-                        <p className="text-2xl text-white text-center">{currentCard?.front}</p>
-                    )}
+                <div className={`flashcard-inner ${isFlipped ? 'flashcard-flipped' : ''}`}>
+                    <div className={`flashcard-front bg-[var(--glass-bg)] border-2 ${cardColorClass}`}>
+                        <p className="text-2xl text-white">{currentCard?.front}</p>
+                    </div>
+                    <div className={`flashcard-back bg-gray-800/80 border-2 ${cardColorClass}`}>
+                        <p className="text-xl text-gray-300">{currentCard?.back}</p>
+                    </div>
                 </div>
             )}
         </div>

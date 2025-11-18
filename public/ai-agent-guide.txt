@@ -1,5 +1,5 @@
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 8.2.0 (Hybrid Output: Deep Link & JSON)
+# Version: 8.3.0 (Hybrid Output: Deep Link & JSON)
 # Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform and integrating with it.
 
 ## 1. Interaction Model: Deep Link vs. JSON Block
@@ -14,11 +14,18 @@ Your primary goal is to make it easy for the user to get data into the app. Choo
 - **Why:** This is convenient for the user.
 
 ### C. Use a **JSON CODE BLOCK** for **LARGE or COMPLEX** requests.
-- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed. This is also the required format for generating a **Practice Test**.
-- **Why:** Deep links can become too long for browsers. A JSON block is robust for large data and required for complex actions like starting a practice test.
+- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed. This is also the required format for generating a **Practice Test** or a **Flashcard Deck**.
+- **Why:** Deep links can become too long for browsers. A JSON block is robust for large data and required for complex actions.
 
 ---
-## 2. Format 1: The Deep Link
+## 2. Text Formatting
+To ensure formulas and chemical equations are displayed correctly, use the following simple text formatting in any `title` or `detail` string:
+- **Subscript:** Use an underscore `_` before a number. Example: `H_2O` will be rendered as H₂O.
+- **Superscript:** Use a caret `^` before a character or group. Example: `x^2` becomes x², `Fe^{2+}` becomes Fe²⁺.
+- **Math:** For complex math, use standard programming notation. Example: `sqrt(b^2 - 4ac)`.
+
+---
+## 3. Format 1: The Deep Link
 
 ### A. Single-Item Actions
 Construct the URL like this: `https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}`
@@ -42,39 +49,16 @@ Construct the URL like this: `https://jee.ponsrischool.in/?action=batch_import&d
 - `{URL_ENCODED_JSON}`: A **single JSON object** containing arrays for each data type. This object structure is the same as the full JSON block format, just URL-encoded.
 
 ---
-## 3. Format 2: The JSON Code Block
+## 4. Format 2: The JSON Code Block
 Your entire response **MUST** be a single, raw JSON object inside a markdown code block.
 
-**Example User Presentation:**
-**User:** "Create a full weekly schedule for me."
-**Your Response:**
-Of course. Copy the complete code block below and paste it into the "AI Import" feature in the JEE Scheduler Pro app.
-```json
-{
-  "schedules": [
-    {
-      "id": "A101",
-      "type": "ACTION",
-      "day": "MONDAY",
-      "time": "19:00",
-      "title": "Physics: Rotational Motion",
-      "detail": "Practice problems on torque and angular momentum.",
-      "subject": "PHYSICS",
-      "sub_type": "DEEP_DIVE"
-    }
-  ],
-  "exams": [],
-  "metrics": [],
-  "practice_test": null
-}
-```
-
-### Full JSON Schema (for Code Blocks):
+### Full JSON Schema:
 Your entire output must be a single JSON object with these keys. Provide empty arrays `[]` or `null` for types not present.
 - `schedules`: An array of schedule items.
 - `exams`: An array of exam items.
 - `metrics`: An array of results or weaknesses.
 - `practice_test`: An object for a practice test, or `null`.
+- `flashcard_deck`: An object for a new flashcard deck, or `null`.
 
 ### Detailed Schema: `schedules`
 | Key | Type | Description |
@@ -92,13 +76,20 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 | `sub_type`| string | **For `ACTION`**. E.g., `"DEEP_DIVE"`, `"ANALYSIS"`. |
 | `answers`| string | Stringified JSON of answers, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
 
-### Detailed Schema: `metrics`
-| Key | Type | For | Description & Example |
-|---|---|---|---|
-| `type` | string | Both | Must be `"RESULT"` or `"WEAKNESS"`. |
-| `score` | string | `RESULT` | A string in `"marks/total"` format. E.g., `"215/300"`. |
-| `mistakes` | string | `RESULT` | A single string of all mistake topics, separated by **semicolons**. E.g., `"Wave Optics; P-Block Elements"`. |
-| `weaknesses` | string | `WEAKNESS`| A single string of all weakness topics, separated by **semicolons**. E.g., `"Rotational Dynamics; Mole Concept"`. |
+### Detailed Schema: `flashcard_deck`
+Use this to generate a new deck of flashcards from a prompt.
+
+| Key | Type | Description |
+|---|---|---|
+| `name`| string | The name of the new deck (e.g., "Thermodynamics Formulas"). |
+| `subject` | string | `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`, `"GENERAL"`. |
+| `cards` | array | An array of flashcard objects. |
+
+**Flashcard Object Schema (inside `cards` array):**
+| Key | Type | Description |
+|---|---|---|
+| `front` | string | The question or term for the front of the card. |
+| `back` | string | The answer or definition for the back of the card. |
 
 ### Detailed Schema: `practice_test`
 Use this to launch an interactive practice session immediately. The app will open a timer with these questions.
@@ -115,18 +106,3 @@ Use this to launch an interactive practice session immediately. The app will ope
 | `text` | string | The full text of the question. |
 | `options` | array | An array of 4 strings for MCQ options. Must start with (A), (B), etc. |
 | `type` | string | `"MCQ"` for multiple choice, `"NUM"` for numerical. |
-
-**Example `practice_test` object:**
-```json
-"practice_test": {
-  "questions": [
-    {
-      "number": 1,
-      "text": "A block of mass 'm' is on a rough horizontal surface...",
-      "options": ["(A) 2 m/s", "(B) 4 m/s", "(C) 6 m/s", "(D) 8 m/s"],
-      "type": "MCQ"
-    }
-  ],
-  "answers": "{\"1\":\"B\"}"
-}
-```

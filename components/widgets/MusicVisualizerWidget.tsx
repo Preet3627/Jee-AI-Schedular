@@ -6,8 +6,6 @@ const MusicVisualizerWidget: React.FC = () => {
     const [isPlaying, setIsPlaying] = useState(false);
     
     useEffect(() => {
-        // FIX: The MediaSession API does not have `addEventListener` for metadata or playback state changes.
-        // The correct way to monitor for these changes is to poll the properties periodically.
         if (!('mediaSession' in navigator)) {
             return;
         }
@@ -20,7 +18,7 @@ const MusicVisualizerWidget: React.FC = () => {
         // Initial state check
         updateState();
 
-        // Set up an interval to poll for changes
+        // Set up an interval to poll for changes, which is the correct way for this API.
         const intervalId = setInterval(updateState, 1000); // Poll every second
 
         // Cleanup interval on component unmount
