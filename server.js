@@ -15,6 +15,7 @@ import crypto from 'crypto';
 // FIX: Correct import for GoogleGenAI to resolve server crash. FunctionDeclaration is a type and not needed in JS.
 import { GoogleGenAI, Type } from '@google/genai';
 import { parseStringPromise } from 'xml2js';
+import { knowledgeBase } from './data/knowledgeBase.js';
 
 // --- SERVER SETUP ---
 const app = express();
@@ -121,9 +122,16 @@ const initializeDatabaseSchema = async () => {
               password_reset_token VARCHAR(255),
               password_reset_expires DATETIME,
               api_token VARCHAR(255) UNIQUE,
-              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              last_seen TIMESTAMP
             )
         `);
+        // Add last_seen column if it doesn't exist
+        const [lastSeenCols] = await connection.query("SHOW COLUMNS FROM users LIKE 'last_seen'");
+        if (lastSeenCols.length === 0) {
+            await connection.query("ALTER TABLE users ADD COLUMN last_seen TIMESTAMP NULL");
+        }
+        
         // Add password reset and api_token columns if they don't exist
         const [cols] = await connection.query("SHOW COLUMNS FROM users LIKE 'password_reset_token'");
         if (cols.length === 0) {
@@ -158,10 +166,16 @@ const initializeDatabaseSchema = async () => {
               user_id INT NOT NULL,
               question TEXT NOT NULL,
               question_image MEDIUMTEXT,
+              status ENUM('active', 'archived', 'deleted') DEFAULT 'active',
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         `);
+        const [doubtStatusCols] = await connection.query("SHOW COLUMNS FROM doubts LIKE 'status'");
+        if (doubtStatusCols.length === 0) {
+            await connection.query("ALTER TABLE doubts ADD COLUMN status ENUM('active', 'archived', 'deleted') DEFAULT 'active'");
+        }
+        
         await connection.query(`
             CREATE TABLE IF NOT EXISTS solutions (
               id INT AUTO_INCREMENT PRIMARY KEY,
@@ -313,7 +327,7 @@ const syncBroadcastsForUser = async (userId, connection) => {
 };
 
 const getUserData = async (userId) => {
-    const [[user]] = await pool.query('SELECT id, sid, email, full_name, role, profile_photo, is_verified FROM users WHERE id = ?', [userId]);
+    const [[user]] = await pool.query('SELECT id, sid, email, full_name, role, profile_photo, is_verified, last_seen FROM users WHERE id = ?', [userId]);
     if (!user) return null;
     
     // User data that is safe to send to the client
@@ -325,6 +339,7 @@ const getUserData = async (userId) => {
         role: user.role,
         profilePhoto: user.profile_photo,
         isVerified: !!user.is_verified,
+        last_seen: user.last_seen,
     };
 
     const [scheduleRows] = await pool.query('SELECT item_data FROM schedule_items WHERE user_id = ?', [userId]);
@@ -698,6 +713,16 @@ If the user's request is valid but lacks an optional field (like \`time\` or \`d
 
 
 // --- USER DATA ENDPOINTS ---
+apiRouter.post('/heartbeat', authMiddleware, async(req, res) => {
+    try {
+        await pool.query('UPDATE users SET last_seen = NOW() WHERE id = ?', [req.userId]);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("Heartbeat update error:", error);
+        res.status(500).json({ error: "Failed to update user status." });
+    }
+});
+
 apiRouter.get('/me', authMiddleware, async (req, res) => {
     try {
         const user = await getUserData(req.userId);
@@ -994,7 +1019,7 @@ apiRouter.post('/import', apiTokenAuthMiddleware, async (req, res) => {
 apiRouter.get('/doubts/all', authMiddleware, async (req, res) => {
     try {
         const [doubts] = await pool.query(`
-            SELECT d.id, d.user_id, d.question, d.question_image, d.created_at, u.sid as user_sid, u.full_name as author_name, u.profile_photo as author_photo
+            SELECT d.id, d.user_id, d.question, d.question_image, d.created_at, d.status, u.sid as user_sid, u.full_name as author_name, u.profile_photo as author_photo
             FROM doubts d JOIN users u ON d.user_id = u.id ORDER BY d.created_at DESC
         `);
         const [solutions] = await pool.query(`
@@ -1218,6 +1243,20 @@ apiRouter.get('/study-material/content', authMiddleware, async (req, res) => {
 
 
 // --- AI ENDPOINTS ---
+const knowledgeBaseText = `
+### INTERNAL KNOWLEDGE BASE
+You have access to the following comprehensive library for JEE subjects. Ground your answers and content generation in this information.
+
+**PHYSICS:**
+${knowledgeBase.PHYSICS}
+
+**CHEMISTRY:**
+${knowledgeBase.CHEMISTRY}
+
+**MATHS:**
+${knowledgeBase.MATHS}
+`;
+
 const getApiKeyAndConfigForUser = async (userId) => {
     const [[userConfigRow]] = await pool.query("SELECT config FROM user_configs WHERE user_id = ?", [userId]);
     let config = {};
@@ -1267,10 +1306,11 @@ apiRouter.post('/ai/daily-insight', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are a helpful AI assistant for JEE aspirants. Your task is to provide a daily motivational quote and a relevant, useful piece of academic information (like a formula, a key concept, or a common mistake to avoid).
+        const systemInstruction = `You are a helpful AI assistant for JEE aspirants. Your task is to provide a daily motivational quote and a relevant, useful piece of academic information.
         Your response MUST be a single, valid JSON object with two keys: "quote" and "insight".
         - "quote": A short, motivational quote for a student.
-        - "insight": A string containing a relevant formula or important point. Make it concise and easy to understand.`;
+        - "insight": A string containing a relevant formula or important point, sourced from the provided knowledge base. Make it concise and easy to understand.
+        ${knowledgeBaseText}`;
         
         let prompt = `Generate a quote and an insight for a student.`;
         if (syllabus) {
@@ -1306,7 +1346,8 @@ apiRouter.post('/ai/analyze-mistake', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are a JEE test preparation expert. A student has provided an image of a question and a description of their mistake. Analyze their conceptual error. Respond ONLY with a valid JSON object with two keys: "mistake_topic" (a short, specific topic name like "Conservation of Momentum") and "explanation" (a detailed but concise explanation of the fundamental concept they misunderstood and how to correct it). Do not include any other text or markdown formatting.`;
+        const systemInstruction = `You are a JEE test preparation expert. A student has provided an image of a question and a description of their mistake. Analyze their conceptual error using your internal knowledge base. Respond ONLY with a valid JSON object with two keys: "mistake_topic" (a short, specific topic name like "Conservation of Momentum") and "explanation" (a detailed but concise explanation of the fundamental concept they misunderstood and how to correct it). Do not include any other text or markdown formatting.
+        ${knowledgeBaseText}`;
 
         const contentParts = [{ text: `Student's mistake description: "${prompt}"` }];
         if (imageBase64) {
@@ -1345,9 +1386,12 @@ apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
     try {
         const ai = new GoogleGenAI({ apiKey });
         
+        const systemInstruction = `You are an expert JEE tutor. Answer the student's question accurately and concisely, using the provided knowledge base as your primary reference. Use markdown and the specified text formats (e.g., H_2O, x^2, log_b(x)) for clarity.
+        ${knowledgeBaseText}`;
+
         const contents = { parts: [{ text: prompt }] };
         if (imageBase64) {
-            contents.parts.push({
+            contents.parts.unshift({
                 inlineData: { mimeType: 'image/jpeg', data: imageBase64 }
             });
         }
@@ -1355,6 +1399,9 @@ apiRouter.post('/ai/solve-doubt', authMiddleware, async (req, res) => {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: contents,
+            config: {
+                systemInstruction
+            }
         });
 
         res.json({ response: response.text });
@@ -1373,13 +1420,8 @@ apiRouter.post('/ai/parse-text', authMiddleware, async (req, res) => {
     try {
         const ai = new GoogleGenAI({ apiKey });
 
-        const systemInstruction = `Your entire response MUST be a single, raw JSON object based on the user's text. DO NOT include any explanations, conversational text, or markdown formatting. The JSON object must adhere to the following structure, providing empty arrays [] for types not present:
-{
-  "schedules": [ { "id": string, "type": "ACTION" | "HOMEWORK", "day": string, "date": "YYYY-MM-DD" | null, "time": "HH:MM" | null, "title": string, "detail": string, "subject": string, "q_ranges": string | null, "sub_type": "DEEP_DIVE" | "ANALYSIS" | null, "answers": "stringified JSON object" | null, "flashcards": [{ "front": string, "back": string }] | null } ],
-  "exams": [ { "id": string, "type": "EXAM", "subject": "PHYSICS" | "CHEMISTRY" | "MATHS" | "FULL", "title": string, "date": "YYYY-MM-DD", "time": "HH:MM", "syllabus": string } ],
-  "metrics": [ { "type": "RESULT" | "WEAKNESS", "score": "marks/total" | null, "mistakes": string | null, "weaknesses": string | null } ],
-  "practice_test": { "questions": [ { "number": int, "text": string, "options": string[], "type": "MCQ" | "NUM" } ], "answers": "stringified JSON object" } | null
-}
+        const systemInstruction = `Your entire response MUST be a single, raw JSON object based on the user's text. DO NOT include any explanations, conversational text, or markdown formatting. The JSON object must adhere to the provided schema. Use the knowledge base for context on subjects and topics.
+${knowledgeBaseText}
 If the user's request is vague, ask for clarification by returning an error. You MUST ask for details like timetables, exam dates, syllabus, and weak topics for schedules.`;
 
         // Modular and robust schema definition
@@ -1508,24 +1550,13 @@ apiRouter.post('/ai/analyze-test-results', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are an expert AI assistant for analyzing JEE Mains exam results. You will be given an image of an answer key, a JSON object of the student's answers, a JSON object of the time spent per question, and the exam syllabus.
-        Your task is multi-faceted:
-        1.  **Grade the Exam:** Extract correct answers from the image. Compare with student answers. Calculate the score using the JEE Mains scheme (+4/-1 for MCQs, +4/0 for Numericals, 0 for unattempted).
-        2.  **Analyze Timing:** Calculate the total time spent on Physics, Chemistry, and Maths. Identify the subject that took the most time.
-        3.  **Analyze Mistakes by Syllabus:** Using the provided syllabus, map each incorrect question number to its corresponding chapter/topic. Aggregate the number of correct and incorrect answers for each chapter mentioned in the syllabus. Calculate accuracy for each chapter.
-        4.  **Provide Suggestions:** Generate a concise, actionable paragraph of suggestions for improvement based on the performance, timing, and weak chapters.
+        const systemInstruction = `You are an expert AI assistant for analyzing JEE Mains exam results. Your tasks:
+        1.  **Grade the Exam:** Extract answers from the image. Grade using +4/-1 (MCQ), +4/0 (Num).
+        2.  **Analyze Timing & Mistakes:** Use the syllabus and knowledge base to map incorrect questions to topics. Calculate subject timings.
+        3.  **Provide Suggestions:** Generate actionable suggestions.
 
-        **Output Format:** Your ENTIRE response MUST be a single, valid JSON object. Do not include any other text, explanations, or markdown formatting. The JSON object must have the following structure:
-        {
-          "score": number,
-          "totalMarks": number,
-          "correctQuestionNumbers": number[],
-          "incorrectQuestionNumbers": number[],
-          "unattemptedQuestionNumbers": number[],
-          "subjectTimings": { "PHYSICS": number (seconds), "CHEMISTRY": number (seconds), "MATHS": number (seconds) },
-          "chapterScores": { "Chapter Name from Syllabus": { "correct": number, "incorrect": number, "accuracy": number (0-100) } },
-          "aiSuggestions": "string"
-        }`;
+        **Output Format:** Your ENTIRE response MUST be a single, valid JSON object with the specified structure. Do not include any other text.
+        ${knowledgeBaseText}`;
             
         const prompt = `
         Student's Answers: ${JSON.stringify(userAnswers)}
@@ -1566,10 +1597,11 @@ apiRouter.post('/ai/analyze-specific-mistake', authMiddleware, async (req, res) 
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are a master JEE tutor. A student has uploaded an image of a specific question they got wrong and a brief description of their error. Your task is to provide a clear, concise analysis.
+        const systemInstruction = `You are a master JEE tutor. A student has uploaded an image of a specific question they got wrong and a brief description of their error. Your task is to provide a clear, concise analysis using the knowledge base.
         **Output Format:** Your ENTIRE response MUST be a single, valid JSON object with two keys:
-        1. "topic": A very specific, short topic name for this question (e.g., "Moment of Inertia of a Cone", "SN2 Reaction Mechanism").
-        2. "explanation": A step-by-step explanation. Start by stating the core concept, then identify the student's likely error based on their description, and finally, provide the correct method to solve the problem. Use markdown for formatting within the explanation string.`;
+        1. "topic": A very specific, short topic name for this question.
+        2. "explanation": A step-by-step explanation. Start with the core concept, identify the error, and provide the correct method. Use markdown for formatting.
+        ${knowledgeBaseText}`;
             
         const fullPrompt = `Student's description of mistake: "${prompt}". Please analyze the attached question image and provide the analysis in the specified JSON format.`;
         
@@ -1616,7 +1648,8 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
         - When asked to perform an action (create, update, delete), use the provided tools.
         - After a tool is called, you MUST confirm what you did in a friendly message (e.g., "I've deleted that task for you.").
         - Politely decline questions outside of academics and student wellness. Be encouraging and supportive.
-        ${context}`;
+        ${context}
+        ${knowledgeBaseText}`;
         
         const contents = [];
         if (history) {
@@ -1749,13 +1782,11 @@ apiRouter.post('/ai/generate-flashcards', authMiddleware, async (req, res) => {
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are an expert academic content creator for JEE aspirants. Your task is to generate a series of flashcards (question/answer pairs) based on a given topic.
+        const systemInstruction = `You are an expert academic content creator for JEE aspirants. Your task is to generate flashcards based on a given topic, using the knowledge base.
         - Prioritize fundamental concepts, important formulas, and common points of confusion.
-        - If a syllabus is provided, ensure the flashcards are highly relevant to that context.
-        - Keep the 'front' (question) concise and clear.
-        - Keep the 'back' (answer) accurate and to the point.
         - Your entire response MUST be a single, valid JSON object with one key: "flashcards". The value should be an array of objects, each with "front" and "back" string properties.
-        - Do not include any other text, explanations, or markdown formatting.`;
+        - Do not include any other text, explanations, or markdown formatting.
+        ${knowledgeBaseText}`;
 
         const prompt = `Generate 5-10 flashcards for the topic: "${topic}".
         ${syllabus ? `Focus on concepts relevant to this syllabus: "${syllabus}".` : ''}
@@ -1823,30 +1854,13 @@ apiRouter.post('/ai/generate-practice-test', authMiddleware, async (req, res) =>
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are an expert JEE test generator. Your task is to create a practice test based on user specifications.
-        **CRITICAL: Your entire output MUST be a single, valid JSON object and nothing else.** Do not include markdown, explanations, or any text outside the JSON.
+        const systemInstruction = `You are an expert JEE test generator. Create a practice test based on user specifications, using the internal knowledge base.
+        **CRITICAL: Your entire output MUST be a single, valid JSON object and nothing else.**
         The JSON object must have two top-level keys: "questions" and "answers".
 
-        1.  **"questions"**: An array of question objects. Each object must have:
-            - "number": The question number (integer, starting from 1).
-            - "text": The full text of the question.
-            - "options": An array of 4 strings representing the multiple-choice options.
-
-        2.  **"answers"**: A JSON object mapping the question number (as a string) to the correct option letter (A, B, C, or D).
-
-        Example Output Structure:
-        {
-          "questions": [
-            {
-              "number": 1,
-              "text": "What is the capital of France?",
-              "options": ["(A) Berlin", "(B) Madrid", "(C) Paris", "(D) Rome"]
-            }
-          ],
-          "answers": {
-            "1": "C"
-          }
-        }`;
+        1.  **"questions"**: An array of question objects, each with: "number", "text", "options" (array of 4 strings).
+        2.  **"answers"**: A JSON object mapping question number (string) to the correct option letter (A, B, C, or D).
+        ${knowledgeBaseText}`;
         
         const fullPrompt = `Generate a ${difficulty} level practice test with ${numQuestions} questions on the topic of "${topic}" for a JEE aspirant.`;
         
@@ -1874,11 +1888,42 @@ apiRouter.post('/ai/generate-practice-test', authMiddleware, async (req, res) =>
 // --- ADMIN ENDPOINTS ---
 apiRouter.get('/admin/students', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const [students] = await pool.query("SELECT id, sid, email, full_name, role, profile_photo FROM users WHERE role = 'student'");
+        const [students] = await pool.query("SELECT id, sid, email, full_name, role, profile_photo, last_seen FROM users WHERE role = 'student'");
         const studentsWithData = await Promise.all(students.map(s => getUserData(s.id)));
         res.json(studentsWithData);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch students' });
+    }
+});
+
+apiRouter.put('/admin/doubts/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['archived', 'deleted', 'active'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status provided.' });
+    }
+    try {
+        await pool.query('UPDATE doubts SET status = ? WHERE id = ?', [status, id]);
+        res.status(200).json({ message: `Doubt ${id} status updated to ${status}.` });
+    } catch (error) {
+        console.error(`Error updating doubt ${id}:`, error);
+        res.status(500).json({ error: 'Server error while updating doubt status.' });
+    }
+});
+
+apiRouter.post('/admin/impersonate/:sid', authMiddleware, adminMiddleware, async (req, res) => {
+    const { sid } = req.params;
+    try {
+        const [[student]] = await pool.query('SELECT id, sid FROM users WHERE sid = ? AND role = "student"', [sid]);
+        if (!student) {
+            return res.status(404).json({ error: 'Student not found.' });
+        }
+        // Generate a standard token for the student
+        const token = jwt.sign({ id: student.id, sid: student.sid }, JWT_SECRET, { expiresIn: '1h' }); // Shorter expiry for impersonation
+        res.json({ token });
+    } catch (error) {
+        console.error(`Error impersonating student ${sid}:`, error);
+        res.status(500).json({ error: 'Server error during impersonation.' });
     }
 });
 

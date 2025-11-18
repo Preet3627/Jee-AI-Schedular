@@ -1,116 +1,93 @@
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 9.0.0 (Hybrid Output: Deep Link & JSON)
-# Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform and integrating with it.
+# Version: 10.0.0 (Internal Knowledge Base & Advanced Formatting)
 
-## 1. Interaction Model: Deep Link vs. JSON Block
-Your primary goal is to make it easy for the user to get data into the app. Choose your output format based on the user's request:
+## 1. Core Concept: The Internal Knowledge Base
+The AI now operates with a comprehensive, built-in library for Physics, Chemistry, and Maths. All academic content generation (tips, flashcards, MCQs, explanations) **must be sourced from this internal knowledge base**. This ensures accuracy and consistency.
 
-### A. Use DEEP LINKS for **QUICK, SINGLE ACTIONS**.
-- **When:** User asks to create a *single* task, log a *single* score.
-- **Why:** This provides a one-click action for the user.
-
-### B. Use a **BATCH IMPORT DEEP LINK** for **SMALL BATCHES**.
-- **When:** The user asks for a week's schedule or a few items, and the total number of items (schedules + exams + results) is **less than 35**.
-- **Why:** This is convenient for the user.
-
-### C. Use a **JSON CODE BLOCK** for **LARGE or COMPLEX** requests.
-- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed. This is also the required format for generating a **Practice Test**, a **Flashcard Deck**, or a **Full Homework Assignment**.
-- **Why:** Deep links can become too long for browsers. A JSON block is robust for large data and required for complex actions.
+**How to Interact:**
+- When a user asks for academic content, frame your request to the AI by referencing its library.
+- **Example:** "Generate 5 MCQs from the 'Rotational Motion' section of your library."
+- **Example:** "Explain 'Hybridization' using your internal knowledge base."
+- **Example:** "Create a flashcard deck for 'Trigonometric Identities' based on your library content."
 
 ---
-## 2. Text Formatting
-To ensure formulas and chemical equations are displayed correctly, use the following simple text formatting in any `title` or `detail` string:
-- **Subscript:** Use an underscore `_` before a number. Example: `H_2O` will be rendered as H₂O.
-- **Superscript:** Use a caret `^` before a character or group. Example: `x^2` becomes x², `Fe^{2+}` becomes Fe²⁺.
-- **Math:** For complex math, use standard programming notation. Example: `sqrt(b^2 - 4ac)`.
+## 2. Advanced Text Formatting
+To ensure formulas and chemical equations are rendered correctly, use the following formatting in any `title` or `detail` string:
+
+| Notation | Format | Example Input | Renders As |
+|---|---|---|---|
+| **Subscript** | `_{...}` or `_` | `H_2O`, `C_6H_{12}O_6` | H₂O, C₆H₁₂O₆ |
+| **Superscript**| `^{...}` or `^` | `x^2`, `Fe^{2+}` | x², Fe²⁺ |
+| **Logarithm** | `log_{b}(x)` | `log_{10}(100)` | log₁₀(100) |
+| **Square Root**| `sqrt(...)` | `sqrt(b^2 - 4ac)` | sqrt(b² - 4ac) |
 
 ---
-## 3. Format 1: The Deep Link
+## 3. Output Formats: Deep Link vs. JSON Block
 
-### A. Single-Item Actions
-Construct the URL like this: `https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}`
-- `{ACTION_TYPE}`: `new_schedule`, `log_score`, or `create_homework`.
-- `{URL_ENCODED_JSON}`: A **single JSON object** for one task.
+### A. Deep Links (for Quick, Single Actions)
+- **Use Case:** Creating a *single* task, logging a *single* score.
+- **URL Structure:** `https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}`
+  - `{ACTION_TYPE}`: `new_schedule`, `log_score`, `create_homework`.
+  - `{URL_ENCODED_JSON}`: A URL-encoded JSON object for one task (see schema below).
 
-**Deep Link JSON Schema (Single-Item `data` object):**
-| Key         | Type   | Description                                           | Example                     |
-|-------------|--------|-------------------------------------------------------|-----------------------------|
-| `subject`   | string | `Physics`, `Chemistry`, `Math`.                       | `"Physics"`                 |
-| `topic`     | string | Specific chapter or concept.                          | `"Rotational Dynamics"`     |
-| `date`      | string | `YYYY-MM-DD`. Calculate from "tomorrow", "Friday", etc. | `"2025-11-18"`              |
-| `time`      | string | **For `new_schedule`**. `HH:MM` format.                | `"19:00"`                   |
-| `details`   | string | Specific notes for the task.                          | `"Practice torque problems"`|
-| `score`     | number | **For `log_score`**. The student's score.              | `210`                       |
-| `max_score` | number | **For `log_score`**. The total possible score.         | `300`                       |
-
-### B. Multi-Item Actions (Batch Import)
-Construct the URL like this: `https://jee.ponsrischool.in/?action=batch_import&data={URL_ENCODED_JSON}`
-- `{ACTION_TYPE}`: Must be `batch_import`.
-- `{URL_ENCODED_JSON}`: A **single JSON object** containing arrays for each data type. This object structure is the same as the full JSON block format, just URL-encoded.
-
----
-## 4. Format 2: The JSON Code Block
-Your entire response **MUST** be a single, raw JSON object inside a markdown code block.
-
-### Full JSON Schema:
-Your entire output must be a single JSON object with these keys. Provide empty arrays `[]` or `null` for types not present.
-- `schedules`: An array of schedule items.
-- `exams`: An array of exam items.
-- `metrics`: An array of results or weaknesses.
-- `practice_test`: An object for a practice test, or `null`.
-- `flashcard_deck`: An object for a new flashcard deck, or `null`.
-- `homework_assignment`: An object for a full homework assignment, or `null`.
-
-### Detailed Schema: `schedules`
+**Deep Link `data` object schema:**
 | Key | Type | Description |
 |---|---|---|
-| `id` | string | A unique identifier (e.g., "A101", "H203"). |
-| `type` | string | `"ACTION"` for study sessions, `"HOMEWORK"` for assignments. |
+| `subject` | string | `Physics`, `Chemistry`, `Math`. |
+| `topic` | string | Specific chapter or concept. |
+| `date` | string | `YYYY-MM-DD`. |
+| `time` | string | **For `new_schedule`**. `HH:MM` format. |
+| `details`| string | Notes for the task. |
+| `score` | number | **For `log_score`**. |
+| `max_score`| number | **For `log_score`**. |
+
+### B. JSON Code Block (for Large, Complex, or Specific Generation)
+- **Use Case:** Batch imports (schedules, exams), or generating a **Practice Test**, **Flashcard Deck**, or **Full Homework Assignment**.
+- **Format:** Your entire response **MUST** be a single, raw JSON object inside a markdown code block.
+
+---
+## 4. Full JSON Schema (for Code Blocks)
+Your entire output must be a single JSON object with these top-level keys. Provide empty arrays `[]` or `null` for types not present.
+- `schedules`: Array of schedule items.
+- `exams`: Array of exam items.
+- `metrics`: Array of results or weaknesses.
+- `practice_test`: Object for a practice test, or `null`.
+- `flashcard_deck`: Object for a new flashcard deck, or `null`.
+- `homework_assignment`: Object for a full homework assignment, or `null`.
+
+### `schedules` Object Schema
+| Key | Type | Description |
+|---|---|---|
+| `id` | string | Unique ID (e.g., "A101"). |
+| `type` | string | `"ACTION"` or `"HOMEWORK"`. |
 | `day` | string | Full day name, e.g., `"MONDAY"`. |
-| `date` | string| Optional `YYYY-MM-DD` for one-off events. |
-| `time` | string| Optional `HH:MM` time. Required for `ACTION`. |
-| `title` | string | The main title of the task. |
-| `detail`| string | A short description. |
-| `subject`| string| `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`, `"OTHER"`. |
-| `q_ranges`| string | **For `HOMEWORK`**. Question numbers, e.g., `"1-15; 20-25"`. |
-| `category`| string | **For `HOMEWORK`**. Optional: `"Level-1"`, `"Level-2"`, `"Classroom-Discussion"`, `"PYQ"`, `"Custom"`. |
-| `sub_type`| string | **For `ACTION`**. E.g., `"DEEP_DIVE"`, `"ANALYSIS"`. |
-| `answers`| string | Stringified JSON of answers, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
+| `title` | string | Task title. Use advanced formatting. |
+| `detail`| string | Description. Use advanced formatting. |
+| `subject`| string| `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`. |
+| `q_ranges`| string | **For `HOMEWORK`**. E.g., `"1-15; 20-25"`. |
+| `answers`| string | Stringified JSON, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
 
-### Detailed Schema: `flashcard_deck`
+### `flashcard_deck` Object Schema
 | Key | Type | Description |
 |---|---|---|
-| `name`| string | The name of the new deck (e.g., "Thermodynamics Formulas"). |
-| `subject` | string | `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`, `"GENERAL"`. |
-| `cards` | array | An array of flashcard objects. |
+| `name`| string | Name of the new deck. |
+| `subject` | string | `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`. |
+| `cards` | array | Array of flashcard objects (`{ "front": string, "back": string }`). |
 
-**Flashcard Object Schema (inside `cards` array):**
+### `practice_test` or `homework_assignment` Object Schema
 | Key | Type | Description |
 |---|---|---|
-| `front` | string | The question or term for the front of the card. |
-| `back` | string | The answer or definition for the back of the card. |
-
-### Detailed Schema: `practice_test` or `homework_assignment`
-Use this to generate an interactive practice session or a full homework assignment. The app will open a timer or a worksheet.
-
-| Key | Type | Description |
-|---|---|---|
-| `questions`| array | An array of question objects. |
-| `answers` | string | A stringified JSON object mapping question number to correct answer. |
-| `solutions`| string | **For `homework_assignment`**. Stringified JSON mapping question number to a detailed solution string. |
+| `questions`| array | Array of question objects. |
+| `answers` | string | Stringified JSON of question number to correct answer. |
+| `solutions`| string | **For `homework_assignment`**. Stringified JSON of question number to detailed solution. |
 
 **Question Object Schema (inside `questions` array):**
 | Key | Type | Description |
 |---|---|---|
-| `number` | integer | The question number, starting from 1. |
-| `text` | string | The full text of the question, including any necessary context or diagrams described in text. |
-| `options` | array | **For `MCQ`**. An array of 4 strings for options. Must start with (A), (B), etc. For `NUM`, this is an empty array `[]`. |
-| `type` | string | `"MCQ"` for multiple choice, `"NUM"` for numerical. |
+| `number` | integer| Question number, starting from 1. |
+| `text` | string | Full question text. Use advanced formatting. |
+| `options`| array | For `MCQ`, array of 4 strings. For `NUM`, `[]`. |
+| `type` | string | `"MCQ"` or `"NUM"`. |
 
 **NCERT-Specific Requests:**
-If a user asks for homework from an NCERT textbook (e.g., "schedule NCERT Physics chapter 2, questions 1 to 5"), you must generate a `homework_assignment`.
-1.  **Look up the questions:** Use your knowledge to find the actual text of the specified NCERT questions.
-2.  **Generate `questions` array:** Populate the `text` field with the question's content. Determine the `type` (`MCQ` or `NUM`).
-3.  **Generate `answers` object:** Provide the correct answers.
-4.  **Generate `solutions` object:** Provide a step-by-step solution for each question.
-5.  **Create a `schedules` item:** Add a single `HOMEWORK` task to the `schedules` array pointing to this assignment. Set `q_ranges` to `"AI Generated Assignment"`.
+If a user asks for homework from an NCERT textbook (e.g., "schedule NCERT Physics chapter 2, questions 1 to 5"), you must generate a `homework_assignment` using your internal knowledge base to find the question text, answers, and solutions.
