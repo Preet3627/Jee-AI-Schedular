@@ -133,6 +133,7 @@ export interface DoubtData {
   author_name: string;
   author_photo: string;
   solutions: SolutionData[];
+  status?: 'active' | 'archived' | 'deleted';
 }
 
 export interface MessageData {
@@ -214,6 +215,7 @@ export interface StudentData {
     isVerified: boolean;
     role: 'student' | 'admin';
     apiToken?: string; // Only sent once on generation
+    last_seen?: string; // ISO timestamp for online status
 
     // Data from other tables, combined by the backend
     CONFIG: Config;

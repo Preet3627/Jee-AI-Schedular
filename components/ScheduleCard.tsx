@@ -17,9 +17,13 @@ interface ScheduleCardProps {
   onMarkDoubt?: (topic: string, q_id: string) => void;
   isSubscribed: boolean;
   isPast: boolean;
+  isSelectMode: boolean;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
 }
 
-const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onCompleteTask, onMarkDoubt, isSubscribed, isPast }) => {
+const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
+    const { cardData, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onCompleteTask, onMarkDoubt, isSubscribed, isPast, isSelectMode, isSelected, onSelect } = props;
     const { t } = useLocalization();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -56,26 +60,46 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit,
       setTimeout(() => setCopied(false), 2000);
     };
 
+    const handleCardClick = () => {
+        if (isSelectMode) {
+            onSelect(cardData.ID);
+        }
+    };
+
   return (
-    <div className={`bg-gray-800/50 rounded-lg border border-gray-700/80 p-5 transition-all duration-300 hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/10 relative backdrop-blur-sm group ${isPast ? 'opacity-60' : ''}`}>
+    <div 
+      className={`bg-gray-800/50 rounded-lg border border-gray-700/80 p-5 transition-all duration-300 hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/10 relative backdrop-blur-sm group ${isPast ? 'opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-cyan-500' : ''}`}
+      onClick={handleCardClick}
+    >
       
-      {isSynced && (
+      {isSynced && !isSelectMode && (
         <div className="absolute top-3 left-3" title="Synced with Google Calendar">
           <Icon name="calendar" className="w-4 h-4 text-green-400" />
         </div>
       )}
+      
+      {isSelectMode && (
+          <div className="absolute top-3 left-3">
+              <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onSelect(cardData.ID)}
+                  className="w-5 h-5 rounded text-cyan-600 bg-gray-700 border-gray-600 focus:ring-cyan-500"
+              />
+          </div>
+      )}
 
-      {isManageable && (
+      {isManageable && !isSelectMode && (
           <div className="absolute top-3 right-3 flex items-center gap-1">
-              <button onClick={() => onStar(cardData.ID)} title="Add to Today's Focus" className="text-gray-400 hover:text-yellow-400 p-1.5 rounded-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={(e) => { e.stopPropagation(); onStar(cardData.ID); }} title="Add to Today's Focus" className="text-gray-400 hover:text-yellow-400 p-1.5 rounded-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Icon name="star" className={`w-5 h-5 ${isStarred ? 'text-yellow-400 fill-current' : ''}`} />
               </button>
               <div ref={menuRef}>
-                  <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-400 hover:text-white p-1.5 rounded-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }} className="text-gray-400 hover:text-white p-1.5 rounded-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Icon name="ellipsis" className="w-5 h-5" />
                   </button>
                   {isMenuOpen && (
-                      <div className={`popup-menu ${isMenuOpen ? 'popup-enter' : 'popup-exit'} absolute right-0 mt-2 w-48 bg-gray-900/80 border border-gray-700 rounded-lg shadow-lg backdrop-blur-xl z-10`}>
+                      <div className={`popup-menu ${isMenuOpen ? 'popup-enter' : 'popup-exit'} absolute right-0 mt-2 w-48 bg-gray-900/80 border border-gray-700 rounded-lg shadow-lg backdrop-blur-xl z-10`} onClick={e => e.stopPropagation()}>
                           <ul className="py-1">
                               <li>
                                   <button onClick={() => { onEdit(cardData); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50">
@@ -130,7 +154,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({ cardData, onDelete, onEdit,
               )}
           </div>
 
-           {showActionsFooter && (
+           {showActionsFooter && !isSelectMode && (
              <div className="mt-4 pt-4 border-t border-gray-700/50">
                 <div className="flex gap-2">
                   {isDeepDive && (

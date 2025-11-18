@@ -1,11 +1,10 @@
 
 
-
 import React from 'react';
 import { useLocalization } from '../context/LocalizationContext';
 import ScheduleCard from './ScheduleCard';
-// FIX: Added ScheduleCardData to imports to be used in props.
 import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
+import Icon from './Icon';
 
 interface ScheduleListProps {
     items: ScheduleItem[];
@@ -20,9 +19,20 @@ interface ScheduleListProps {
     isSubscribed: boolean;
     view: 'upcoming' | 'past';
     onViewChange: (view: 'upcoming' | 'past') => void;
+    isSelectMode: boolean;
+    selectedTaskIds: string[];
+    onTaskSelect: (taskId: string) => void;
+    onToggleSelectMode: () => void;
+    onDeleteSelected: () => void;
 }
 
-const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onMarkDoubt, onCompleteTask, isSubscribed, view, onViewChange }) => {
+const ScheduleList: React.FC<ScheduleListProps> = (props) => {
+    const { 
+        items, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, 
+        onStartReviewSession, onMarkDoubt, onCompleteTask, isSubscribed, 
+        view, onViewChange, isSelectMode, selectedTaskIds, onTaskSelect, 
+        onToggleSelectMode, onDeleteSelected 
+    } = props;
     const { t } = useLocalization();
 
     const daysOfWeek = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
@@ -62,14 +72,19 @@ const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, on
 
 
     return (
-        <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm">
+        <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm relative">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-cyan-400 tracking-widest uppercase">
                     {t({ EN: "Weekly Schedule", GU: "સાપ્ताહિક શેડ્યૂલ" })}
                 </h2>
-                 <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-900/50">
-                    <TabButton tabId="upcoming">Upcoming</TabButton>
-                    <TabButton tabId="past">History</TabButton>
+                <div className="flex items-center gap-2">
+                    <button onClick={onToggleSelectMode} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${isSelectMode ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                        {isSelectMode ? 'Cancel' : 'Select'}
+                    </button>
+                    <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-900/50">
+                        <TabButton tabId="upcoming">Upcoming</TabButton>
+                        <TabButton tabId="past">History</TabButton>
+                    </div>
                 </div>
             </div>
             <div className="space-y-4">
@@ -88,7 +103,10 @@ const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, on
                                 onMarkDoubt={onMarkDoubt}
                                 onCompleteTask={onCompleteTask}
                                 isSubscribed={isSubscribed}
-                                isPast={false} // isPast is for dimming, which we don't want in either dedicated view.
+                                isPast={false}
+                                isSelectMode={isSelectMode}
+                                isSelected={selectedTaskIds.includes(card.ID)}
+                                onSelect={onTaskSelect}
                              />
                         )
                     })
@@ -99,6 +117,17 @@ const ScheduleList: React.FC<ScheduleListProps> = ({ items, onDelete, onEdit, on
                     </div>
                 )}
             </div>
+            
+            {isSelectMode && (
+                <div className="sticky bottom-4 mt-4 w-full flex justify-center">
+                    <div className="bg-gray-900/80 border border-gray-700 backdrop-blur-lg rounded-full shadow-lg p-2 flex items-center gap-2 animate-scaleIn">
+                        <span className="text-sm font-semibold text-white px-3">{selectedTaskIds.length} selected</span>
+                        <button onClick={onDeleteSelected} disabled={selectedTaskIds.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full bg-red-600 text-white hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <Icon name="trash" className="w-4 h-4" /> Delete
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

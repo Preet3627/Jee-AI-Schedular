@@ -233,7 +233,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     };
 
     const navigate = (newIndex: number) => {
-        if (isNavigating && newIndex !== currentQuestionIndex + 1) return; // Allow auto-next but not manual clicks during transition
+        if (isNavigating && newIndex !== currentQuestionIndex + 1) return;
         setIsNavigating(true);
 
         if (newIndex >= 0 && newIndex < totalQuestions) {
@@ -243,12 +243,12 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             }
             
             setTimeout(() => {
+                setFeedback(null); // FIX: Reset feedback before showing the new question.
                 questionStartTimeRef.current = Date.now();
-                setFeedback(null);
                 setCurrentQuestionIndex(newIndex);
                 setIsPaletteOpen(false);
                 setTimeout(() => setIsNavigating(false), 50);
-            }, 300); // Wait for fade-out animation
+            }, 300);
         } else {
             setIsNavigating(false);
         }
@@ -479,7 +479,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                 <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10" onClick={() => setIsPaletteOpen(false)}>
                     <div className="bg-gray-800 p-4 rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <h4 className="font-bold text-lg mb-4">Question Palette</h4>
-                        <div className="grid grid-cols-5 gap-2">
+                        <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
                             {questionNumbers.map((qNum, index) => {
                                 const isAnswered = qNum in answers && answers[qNum] !== '';
                                 const isMarked = markedForReview.includes(qNum);
@@ -492,7 +492,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                                 else if(isMarked) statusClass = 'bg-yellow-600';
 
                                 return (
-                                    <button key={qNum} onClick={() => navigate(index)} className={`w-12 h-12 rounded-md font-semibold transition-colors ${statusClass}`}>
+                                    <button key={qNum} onClick={() => navigate(index)} className={`w-10 h-10 text-xs rounded-md font-semibold transition-colors ${statusClass}`}>
                                         {qNum}
                                     </button>
                                 );

@@ -1,7 +1,8 @@
-
 import React, { useState, useRef } from 'react';
 import { StudentData, DoubtData } from '../types';
 import Icon from './Icon';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../api/apiService';
 
 interface CommunityDashboardProps {
   student: StudentData;
@@ -12,6 +13,7 @@ interface CommunityDashboardProps {
 }
 
 const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDoubts, onPostDoubt, onPostSolution, onAskAi }) => {
+  const { userRole, refreshUser } = useAuth();
   const [newDoubt, setNewDoubt] = useState('');
   const [doubtImage, setDoubtImage] = useState<string | null>(null);
   const [solutionTexts, setSolutionTexts] = useState<{[key: string]: string}>({});
@@ -45,6 +47,25 @@ const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDou
     onPostSolution(doubtId, solutionText);
     setSolutionTexts(prev => ({...prev, [doubtId]: ''}));
   };
+  
+  const handleUpdateDoubtStatus = async (doubtId: string, status: 'archived' | 'deleted') => {
+      const confirmation = status === 'deleted'
+        ? window.confirm("Are you sure you want to permanently delete this doubt?")
+        : window.confirm("Are you sure you want to archive this doubt? It will be hidden from the main view.");
+        
+      if (confirmation) {
+          try {
+              await api.updateDoubtStatus(doubtId, status);
+              refreshUser(); // This will re-fetch allDoubts from App.tsx
+          } catch (error) {
+              alert(`Failed to update doubt: ${error}`);
+          }
+      }
+  };
+
+  const filteredDoubts = userRole === 'admin'
+    ? allDoubts.filter(d => d.status !== 'deleted')
+    : allDoubts.filter(d => d.status === 'active' || !d.status);
 
   return (
     <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm">
@@ -80,18 +101,27 @@ const CommunityDashboard: React.FC<CommunityDashboardProps> = ({ student, allDou
       </form>
 
       <div className="space-y-6">
-        {allDoubts.length === 0 && <p className="text-gray-500 text-center py-8">No doubts have been posted yet. Be the first!</p>}
+        {filteredDoubts.length === 0 && <p className="text-gray-500 text-center py-8">No doubts have been posted yet. Be the first!</p>}
         
-        {allDoubts.map(doubt => (
-          <div key={doubt.id} className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-            <div className="flex items-start gap-3">
-              <img src={doubt.author_photo} alt={doubt.author_name} className="w-10 h-10 rounded-full object-cover" />
-              <div>
-                <p className="font-semibold text-white">{doubt.author_name} <span className="text-xs text-gray-400 font-normal">({doubt.user_sid})</span></p>
-                <p className="text-sm text-gray-300 mt-1 whitespace-pre-wrap">{doubt.question}</p>
-                {doubt.question_image && <img src={`data:image/jpeg;base64,${doubt.question_image}`} alt="Doubt attachment" className="mt-2 max-w-sm max-h-80 rounded-md" />}
-                <p className="text-xs text-gray-500 mt-2">{new Date(doubt.created_at).toLocaleString()}</p>
+        {filteredDoubts.map(doubt => (
+          <div key={doubt.id} className={`p-4 rounded-lg border ${doubt.status === 'archived' ? 'bg-gray-800/20 border-gray-700/50 opacity-70' : 'bg-gray-800/50 border-gray-700'}`}>
+            <div className="flex justify-between items-start">
+              <div className="flex items-start gap-3">
+                <img src={doubt.author_photo} alt={doubt.author_name} className="w-10 h-10 rounded-full object-cover" />
+                <div>
+                  <p className="font-semibold text-white">{doubt.author_name} <span className="text-xs text-gray-400 font-normal">({doubt.user_sid})</span></p>
+                  <p className="text-sm text-gray-300 mt-1 whitespace-pre-wrap">{doubt.question}</p>
+                  {doubt.question_image && <img src={`data:image/jpeg;base64,${doubt.question_image}`} alt="Doubt attachment" className="mt-2 max-w-sm max-h-80 rounded-md" />}
+                  <p className="text-xs text-gray-500 mt-2">{new Date(doubt.created_at).toLocaleString()}</p>
+                </div>
               </div>
+               {userRole === 'admin' && (
+                    <div className="flex items-center gap-1">
+                        {doubt.status === 'archived' && <span className="text-xs font-bold text-yellow-400">ARCHIVED</span>}
+                        <button onClick={() => handleUpdateDoubtStatus(doubt.id, 'archived')} className="p-1.5 text-gray-400 hover:text-yellow-400"><Icon name="bell" className="w-4 h-4" /></button>
+                        <button onClick={() => handleUpdateDoubtStatus(doubt.id, 'deleted')} className="p-1.5 text-gray-400 hover:text-red-400"><Icon name="trash" className="w-4 h-4" /></button>
+                    </div>
+                )}
             </div>
             
             <div className="mt-4 pl-12 space-y-3">

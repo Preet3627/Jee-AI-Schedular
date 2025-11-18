@@ -79,12 +79,15 @@ export const api = {
     
     // User Data
     getMe: () => authFetch('/me'),
+    heartbeat: () => authFetch('/heartbeat', { method: 'POST' }),
     updateProfile: (data: { fullName?: string; profilePhoto?: string }) => authFetch('/profile', { method: 'PUT', body: JSON.stringify(data) }),
     generateApiToken: () => authFetch('/me/api-token', { method: 'POST' }),
     revokeApiToken: () => authFetch('/me/api-token', { method: 'DELETE' }),
     saveTask: (task: ScheduleItem) => authFetch('/schedule-items', { method: 'POST', body: JSON.stringify({ task }) }),
     saveBatchTasks: (tasks: ScheduleItem[]) => authFetch('/schedule-items/batch', { method: 'POST', body: JSON.stringify({ tasks }) }),
     deleteTask: (taskId: string) => authFetch(`/schedule-items/${taskId}`, { method: 'DELETE' }),
+    deleteBatchTasks: (taskIds: string[]) => authFetch('/schedule-items/batch-delete', { method: 'POST', body: JSON.stringify({ taskIds }) }),
+    clearAllSchedule: () => authFetch('/schedule-items/clear-all', { method: 'POST' }),
     updateConfig: (updates: Partial<Config>) => authFetch('/config', { method: 'POST', body: JSON.stringify(updates) }),
     fullSync: (userData: StudentData) => authFetch('/user-data/full-sync', { method: 'POST', body: JSON.stringify({ userData }) }),
     updateResult: (result: ResultData) => authFetch('/results', { method: 'PUT', body: JSON.stringify({ result }) }),
@@ -95,6 +98,8 @@ export const api = {
     getAllDoubts: () => authFetch('/doubts/all'),
     postDoubt: (question: string, question_image?: string) => authFetch('/doubts', { method: 'POST', body: JSON.stringify({ question, question_image }) }),
     postSolution: (doubtId: string, solution: string, solution_image?: string) => authFetch(`/doubts/${doubtId}/solutions`, { method: 'POST', body: JSON.stringify({ solution, solution_image }) }),
+    updateDoubtStatus: (doubtId: string, status: 'archived' | 'deleted') => authFetch(`/admin/doubts/${doubtId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+
 
     // Study Material
     getStudyMaterial: (path: string) => authFetch(`/study-material/browse?path=${encodeURIComponent(path)}`),
@@ -122,6 +127,7 @@ export const api = {
 
     // Admin
     getStudents: () => authFetch('/admin/students'),
+    impersonateStudent: (sid: string) => authFetch(`/admin/impersonate/${sid}`, { method: 'POST' }),
     broadcastTask: (task: ScheduleItem) => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task }) }),
     deleteStudent: (sid: string) => authFetch(`/admin/students/${sid}`, { method: 'DELETE' }),
     clearStudentData: (sid: string) => authFetch(`/admin/students/${sid}/clear-data`, { method: 'POST' }),

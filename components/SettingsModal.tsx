@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Config } from '../types';
 import Icon from './Icon';
@@ -18,10 +19,11 @@ interface SettingsModalProps {
   onApiKeySet: () => void;
   onOpenAssistantGuide: () => void;
   onOpenAiGuide: () => void;
+  onClearAllSchedule: () => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
-  const { settings, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet, onOpenAssistantGuide, onOpenAiGuide } = props;
+  const { settings, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet, onOpenAssistantGuide, onOpenAiGuide, onClearAllSchedule } = props;
   const [accentColor, setAccentColor] = useState(settings.accentColor || '#0891b2');
   const [blurEnabled, setBlurEnabled] = useState(settings.blurEnabled !== false);
   const [mobileLayout, setMobileLayout] = useState(settings.mobileLayout || 'standard');
@@ -222,6 +224,19 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                 <input id="per-question-time" type="number" value={perQuestionTime} onChange={e => setPerQuestionTime(parseInt(e.target.value, 10))} className={inputClass} />
             </div>
           </div>
+
+          <div className="border-t border-gray-700/50"></div>
+
+          <div>
+             <h3 className="text-base font-bold text-red-400">Danger Zone</h3>
+             <div className="mt-2 bg-red-900/30 p-3 rounded-lg border border-red-500/50 space-y-2">
+                <p className="text-xs text-red-200">These actions are permanent and cannot be undone.</p>
+                <button type="button" onClick={onClearAllSchedule} className="w-full px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg">
+                    Clear All Schedule Data
+                </button>
+             </div>
+          </div>
+
 
           <div className="flex justify-end gap-4 pt-4">
             <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700">Cancel</button>

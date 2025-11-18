@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +15,6 @@ const ChatMessage: React.FC<{ message: { role: string, parts: { text: string }[]
     const { currentUser } = useAuth();
     const isUser = message.role === 'user';
     
-    // The AI's response might not be available yet.
     const messageText = message.parts[0]?.text || '';
 
     return (
@@ -24,7 +24,7 @@ const ChatMessage: React.FC<{ message: { role: string, parts: { text: string }[]
                 className={`max-w-[80%] px-3 py-2 rounded-xl prose prose-invert prose-sm break-words ${isUser ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}`}
                 dangerouslySetInnerHTML={{ __html: renderMarkdown(messageText) }}
             />
-            {isUser && <img src={currentUser?.profilePhoto} className="w-6 h-6 rounded-full self-start flex-shrink-0" alt="user" />}
+            {isUser && currentUser?.profilePhoto && <img src={currentUser.profilePhoto} className="w-6 h-6 rounded-full self-start flex-shrink-0" alt="user" />}
         </div>
     );
 };
@@ -38,7 +38,6 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
   const chatBodyRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    // Scroll to bottom of chat on new message
     if (chatBodyRef.current) {
       chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     }
@@ -63,7 +62,6 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
         const reader = new FileReader();
         reader.onload = (e) => {
             const text = e.target?.result as string;
-            // Send the content of the JSON file as a prompt to the AI
             onSendMessage(`Import this JSON data: ${text}`);
         };
         reader.readAsText(file);
@@ -104,6 +102,7 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
       </header>
       
       <main ref={chatBodyRef} className="flex-grow p-3 overflow-y-auto space-y-4">
+        <ChatMessage message={{ role: 'model', parts: [{ text: "Hello! I'm your AI assistant. You can ask me to create, update, or delete schedule items for you. How can I help?" }] }} />
         {history.map((msg, index) => <ChatMessage key={index} message={msg} />)}
         {isLoading && (
             <div className="flex items-end gap-2 justify-start">

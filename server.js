@@ -808,6 +808,32 @@ apiRouter.delete('/schedule-items/:id', authMiddleware, async (req, res) => {
     }
 });
 
+apiRouter.post('/schedule-items/batch-delete', authMiddleware, async (req, res) => {
+    const { taskIds } = req.body;
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+        return res.status(400).json({ error: 'An array of task IDs is required.' });
+    }
+    try {
+        const placeholders = taskIds.map(() => '?').join(',');
+        await pool.query(`DELETE FROM schedule_items WHERE user_id = ? AND item_id_str IN (${placeholders})`, [req.userId, ...taskIds]);
+        res.status(200).json({ message: `${taskIds.length} items deleted successfully.` });
+    } catch (error) {
+        console.error("Error batch deleting tasks:", error);
+        res.status(500).json({ error: 'Failed to delete tasks.' });
+    }
+});
+
+apiRouter.post('/schedule-items/clear-all', authMiddleware, async (req, res) => {
+    try {
+        await pool.query('DELETE FROM schedule_items WHERE user_id = ?', [req.userId]);
+        res.status(200).json({ message: 'All schedule items have been cleared.' });
+    } catch (error) {
+        console.error("Error clearing schedule:", error);
+        res.status(500).json({ error: 'Failed to clear schedule.' });
+    }
+});
+
+
 apiRouter.post('/config', authMiddleware, async (req, res) => {
     try {
         const updates = req.body;
@@ -1581,16 +1607,14 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
         const fullUserData = await getUserData(req.userId);
 
         const context = `
-        Here is the user's current data for context:
-        - Weaknesses: ${fullUserData.CONFIG.WEAK.join(', ') || 'None listed.'}
-        - Upcoming Exams: ${fullUserData.EXAMS.map(e => `${e.title} on ${e.date}`).join('; ') || 'None scheduled.'}
-        - Flashcard Decks: ${fullUserData.CONFIG.flashcardDecks?.map(d => d.name).join(', ') || 'None created.'}
+        Here is the user's current schedule for context. When asked to modify or delete something, find the relevant ID from this list and use it in your function call.
+        ${JSON.stringify(fullUserData.SCHEDULE_ITEMS, null, 2)}
         `;
 
         const systemInstruction = `You are a helpful and friendly AI assistant for JEE aspirants with the ability to modify user data through function calls. Your goal is to help students with their academic questions, provide guidance, and manage their schedule.
-        - Use the provided user data context to give personalized advice.
-        - When asked to perform an action (delete, import, schedule), use the provided tools.
-        - After a tool is called, you MUST confirm what you did in a friendly message (e.g., "I've deleted 3 duplicate tasks for you.").
+        - Use the provided user schedule data to find the correct IDs for updating or deleting tasks.
+        - When asked to perform an action (create, update, delete), use the provided tools.
+        - After a tool is called, you MUST confirm what you did in a friendly message (e.g., "I've deleted that task for you.").
         - Politely decline questions outside of academics and student wellness. Be encouraging and supportive.
         ${context}`;
         
@@ -1609,21 +1633,35 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
         const model = userStoredConfig.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
         
         // --- Function Calling Setup ---
-        const deleteDuplicateTasksFunction = {
-            name: 'deleteDuplicateTasks',
-            description: "Finds and deletes duplicate schedule items or exams for the user. A duplicate is defined as having the same title, day/date, and time.",
-            parameters: { type: Type.OBJECT, properties: {} },
-        };
-
-        const importJsonDataFunction = {
-            name: 'importJsonData',
-            description: "Imports schedule items, exams, or results from a JSON string provided by the user.",
+        const createOrUpdateTaskFunction = {
+            name: 'createOrUpdateTask',
+            description: 'Creates a new schedule item or updates an existing one.',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
-                    jsonDataString: { type: Type.STRING, description: "The raw JSON string containing the data to import." }
+                    id: { type: Type.STRING, description: 'The ID of the task to update. Omit to create a new task.' },
+                    title: { type: Type.STRING },
+                    details: { type: Type.STRING },
+                    subject: { type: Type.STRING, description: 'PHYSICS, CHEMISTRY, MATHS, or OTHER' },
+                    day: { type: Type.STRING, description: 'e.g., MONDAY, TUESDAY' },
+                    time: { type: Type.STRING, description: 'HH:MM format. Required for study sessions.' },
+                    date: { type: Type.STRING, description: 'YYYY-MM-DD for one-off events. Overrides day.' },
+                    type: { type: Type.STRING, enum: ['ACTION', 'HOMEWORK'] },
+                    q_ranges: { type: Type.STRING, description: 'For homework, e.g., "1-10; 15"' }
                 },
-                required: ['jsonDataString']
+                required: ['title', 'subject', 'details', 'type']
+            }
+        };
+
+        const deleteTasksFunction = {
+            name: 'deleteTasks',
+            description: 'Deletes one or more schedule items based on their unique IDs.',
+            parameters: {
+                type: Type.OBJECT,
+                properties: {
+                    taskIds: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'An array of specific task IDs to delete.' }
+                },
+                required: ['taskIds']
             }
         };
 
@@ -1632,43 +1670,54 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
             contents: contents,
             config: { 
                 systemInstruction,
-                tools: [{ functionDeclarations: [deleteDuplicateTasksFunction, importJsonDataFunction] }]
+                tools: [{ functionDeclarations: [createOrUpdateTaskFunction, deleteTasksFunction] }]
             },
         });
         
         if (response.functionCalls && response.functionCalls.length > 0) {
             const functionResponses = [];
             for (const fc of response.functionCalls) {
-                let toolResult;
-                if (fc.name === 'deleteDuplicateTasks') {
-                    // Execute the local function
-                    const [allTasks] = await pool.query('SELECT id, item_data FROM schedule_items WHERE user_id = ?', [req.userId]);
-                    const seen = new Set();
-                    const duplicates = [];
-                    for (const task of allTasks) {
-                        const item = typeof task.item_data === 'string' ? JSON.parse(task.item_data) : task.item_data;
-                        const key = `${item.CARD_TITLE.EN}-${item.DAY.EN}-${item.TIME || item.date || ''}`;
-                        if (seen.has(key)) {
-                            duplicates.push(task.id);
-                        } else {
-                            seen.add(key);
-                        }
+                let toolResult = { success: false, message: "Unknown function" };
+                if (fc.name === 'createOrUpdateTask') {
+                    const { id, title, details, subject, day, time, date, type, q_ranges } = fc.args;
+                    const isUpdate = !!id;
+                    const taskId = isUpdate ? id : `${type.charAt(0)}${Date.now()}`;
+                    
+                    const dayData = date ? { EN: new Date(`${date}T12:00:00Z`).toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' }).toUpperCase(), GU: "" } : { EN: day, GU: "" };
+
+                    const taskData = {
+                        ID: taskId,
+                        type,
+                        isUserCreated: true,
+                        CARD_TITLE: { EN: title, GU: "" },
+                        FOCUS_DETAIL: { EN: details, GU: "" },
+                        SUBJECT_TAG: { EN: subject.toUpperCase(), GU: "" },
+                        DAY: dayData,
+                        ...(date && { date }),
+                        ...(time && { TIME: time }),
+                        ...(q_ranges && { Q_RANGES: q_ranges }),
+                    };
+
+                    await pool.query(
+                        `INSERT INTO schedule_items (user_id, item_id_str, item_data) VALUES (?, ?, ?)
+                         ON DUPLICATE KEY UPDATE item_data = ?`,
+                        [req.userId, taskId, JSON.stringify(taskData), JSON.stringify(taskData)]
+                    );
+                    toolResult = { success: true, message: `${isUpdate ? 'Updated' : 'Created'} task ${taskId}` };
+                } else if (fc.name === 'deleteTasks') {
+                    const { taskIds } = fc.args;
+                    if (taskIds && taskIds.length > 0) {
+                        const placeholders = taskIds.map(() => '?').join(',');
+                        await pool.query(`DELETE FROM schedule_items WHERE user_id = ? AND item_id_str IN (${placeholders})`, [req.userId, ...taskIds]);
+                        toolResult = { success: true, message: `Deleted ${taskIds.length} tasks.` };
+                    } else {
+                        toolResult = { success: false, message: "No task IDs provided to delete." };
                     }
-                    if(duplicates.length > 0) {
-                         await pool.query('DELETE FROM schedule_items WHERE id IN (?)', [duplicates]);
-                    }
-                    toolResult = `Deleted ${duplicates.length} duplicate tasks.`;
-                } else if (fc.name === 'importJsonData') {
-                    const dataToImport = JSON.parse(fc.args.jsonDataString);
-                    // This re-uses the API import logic for consistency
-                    await apiRouter.post({ body: dataToImport, userId: req.userId }, { json: () => {}, status: () => ({ json: () => {} }) });
-                    const count = (dataToImport.schedules?.length || 0) + (dataToImport.exams?.length || 0);
-                    toolResult = `Successfully imported ${count} items.`;
                 }
                 functionResponses.push({
                     id: fc.id,
                     name: fc.name,
-                    response: { result: toolResult }
+                    response: { result: JSON.stringify(toolResult) }
                 });
             }
             

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion } from '../types';
 import ScheduleList from './ScheduleList';
@@ -54,6 +53,8 @@ import MusicVisualizerWidget from './widgets/MusicVisualizerWidget';
 import GoogleAssistantGuideModal from './GoogleAssistantGuideModal';
 import DeepLinkConfirmationModal from './DeepLinkConfirmationModal';
 import AIGuideModal from './AIGuideModal';
+import { useAuth } from '../context/AuthContext';
+import FlashcardWidget from './widgets/FlashcardWidget';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -85,6 +86,7 @@ interface StudentDashboardProps {
 
 const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const { student, onSaveTask, onSaveBatchTasks, onDeleteTask, onToggleMistakeFixed, onUpdateConfig, onLogStudySession, onUpdateWeaknesses, onLogResult, onAddExam, onUpdateExam, onDeleteExam, onExportToIcs, onBatchImport, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, allDoubts, onPostDoubt, onPostSolution, deepLinkAction } = props;
+    const { refreshUser } = useAuth();
     const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
     const [scheduleView, setScheduleView] = useState<'upcoming' | 'past'>('upcoming');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -107,6 +109,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [isAssistantGuideOpen, setIsAssistantGuideOpen] = useState(false);
     const [isAiGuideModalOpen, setIsAiGuideModalOpen] = useState(false);
     const [deepLinkData, setDeepLinkData] = useState<any | null>(null);
+    
+    // Schedule management state
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
     
     // AI Chat State
     const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -393,6 +399,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 imageBase64,
             });
             setAiChatHistory([...newHistory, { role: 'model', parts: [{ text: result.response }] }]);
+            // Refresh user data in case the AI modified it
+            if (!result.response.toLowerCase().includes("sorry")) {
+                await refreshUser();
+            }
         } catch (error: any) {
             const errorMessage = error.error || error.message || "An unknown error occurred.";
             setAiChatHistory([...newHistory, { role: 'model', parts: [{ text: `Sorry, I encountered an error: ${errorMessage}` }] }]);
@@ -400,6 +410,39 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             setIsAiChatLoading(false);
         }
     };
+    
+    // --- Schedule Management Handlers ---
+    const handleToggleSelectMode = () => {
+        setIsSelectMode(prev => !prev);
+        setSelectedTaskIds([]); // Clear selection when toggling mode
+    };
+
+    const handleTaskSelect = (taskId: string) => {
+        setSelectedTaskIds(prev =>
+            prev.includes(taskId)
+                ? prev.filter(id => id !== taskId)
+                : [...prev, taskId]
+        );
+    };
+
+    const handleDeleteSelected = async () => {
+        if (selectedTaskIds.length === 0) return;
+        if (window.confirm(`Are you sure you want to delete ${selectedTaskIds.length} items?`)) {
+            await api.deleteBatchTasks(selectedTaskIds);
+            await refreshUser();
+            setIsSelectMode(false);
+            setSelectedTaskIds([]);
+        }
+    };
+    
+    const handleClearAllSchedule = async () => {
+        if (window.confirm("DANGER: This will permanently delete ALL schedule items. Are you absolutely sure?")) {
+            await api.clearAllSchedule();
+            await refreshUser();
+            setIsSettingsModalOpen(false); // Close settings after action
+        }
+    };
+
 
     // --- Result Handlers ---
     const handleEditResult = (result: ResultData) => {
@@ -509,6 +552,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                                 <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />
                                 <ScoreTrendWidget results={student.RESULTS} />
                             </div>
+                            <FlashcardWidget decks={student.CONFIG.flashcardDecks || []} onStartReview={handleStartReviewSession} />
                             <ReadingHoursWidget student={student} />
                         </div>
                         <div className="space-y-8">
@@ -535,6 +579,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                                 onCompleteTask={handleCompleteTask}
                                 view={scheduleView}
                                 onViewChange={setScheduleView}
+                                isSelectMode={isSelectMode}
+                                selectedTaskIds={selectedTaskIds}
+                                onTaskSelect={handleTaskSelect}
+                                onToggleSelectMode={handleToggleSelectMode}
+                                onDeleteSelected={handleDeleteSelected}
                             />
                         </div>
                         <div className="space-y-8">
@@ -613,7 +662,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} onPracticeTestReady={handleAiPracticeTest} onOpenGuide={() => setIsAiGuideModalOpen(true)} />}
             {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} aiPracticeTest={aiPracticeTest} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); setAiPracticeTest(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
-            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={() => setIsAssistantGuideOpen(true)} onOpenAiGuide={() => setIsAiGuideModalOpen(true)} />}
+            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={() => setIsAssistantGuideOpen(true)} onOpenAiGuide={() => setIsAiGuideModalOpen(true)} onClearAllSchedule={handleClearAllSchedule} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => {setIsLogResultModalOpen(false); setInitialScoreForModal(undefined); setInitialMistakesForModal(undefined);}} onSave={onLogResult} initialScore={initialScoreForModal} initialMistakes={initialMistakesForModal} />}
             {isEditResultModalOpen && editingResult && <EditResultModal result={editingResult} onClose={() => { setIsEditResultModalOpen(false); setEditingResult(null); }} onSave={onUpdateResult} />}

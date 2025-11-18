@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -349,17 +350,25 @@ const App: React.FC = () => {
         }
     };
 
+    const checkBackend = useCallback(async (isInitialCheck: boolean) => {
+        // FIX: Replaced NodeJS.Timeout with ReturnType<typeof setTimeout> for browser compatibility.
+        let statusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
+        if (isInitialCheck && !currentUser) {
+            statusCheckTimeout = setTimeout(() => {
+                setBackendStatus(prev => prev === 'checking' ? 'offline' : prev);
+            }, 5000);
+        }
 
-    const checkBackend = useCallback(async () => {
         try {
             const res = await fetch(`/api/status`, { signal: AbortSignal.timeout(5000) });
+            if (statusCheckTimeout) clearTimeout(statusCheckTimeout);
+
             if (res.ok) {
                  const data = await res.json().catch(() => ({}));
                  if(data.status === 'misconfigured') {
                     setBackendStatus('misconfigured');
                  } else {
                     setBackendStatus('online');
-                    // Fetch public config once we know backend is online
                     if (!googleClientId) {
                         api.getPublicConfig().then(config => setGoogleClientId(config.googleClientId)).catch(console.error);
                     }
@@ -368,15 +377,26 @@ const App: React.FC = () => {
                  setBackendStatus('offline');
             }
         } catch (error) {
+            if (statusCheckTimeout) clearTimeout(statusCheckTimeout);
             setBackendStatus('offline');
         }
-    }, [googleClientId]);
+    }, [googleClientId, currentUser]);
 
     useEffect(() => {
-        checkBackend();
-        const interval = setInterval(checkBackend, 30000);
+        checkBackend(true); // Initial check with delay logic
+        const interval = setInterval(() => checkBackend(false), 30000); // Subsequent checks
         return () => clearInterval(interval);
     }, [checkBackend]);
+
+    useEffect(() => {
+        if (currentUser) {
+            const heartbeat = setInterval(() => {
+                api.heartbeat().catch(err => console.debug("Heartbeat failed, user might be offline.", err));
+            }, 60000); // every 1 minute
+            return () => clearInterval(heartbeat);
+        }
+    }, [currentUser]);
+
 
     useEffect(() => {
         const loadExtraData = async () => {
@@ -402,28 +422,31 @@ const App: React.FC = () => {
     // Google API Init
     useEffect(() => {
         const initializeGoogleApis = () => {
-            if (googleClientId) {
+            if (googleClientId && window.gapi && window.google) {
                 auth.initClient(
                     googleClientId,
                     (isSignedIn) => {
                         setGoogleAuthStatus(isSignedIn ? 'signed_in' : 'signed_out');
                     },
                     (error) => {
-                        console.error("Google API Init Error", JSON.stringify(error, null, 2));
+                        console.error("GAPI Init Error:", error);
+                        // FIX: Use JSON.stringify for better error logging
+                        console.error("GAPI Init Error Object", JSON.stringify(error, null, 2));
                         setGoogleAuthStatus('unconfigured');
                     }
                 );
+            } else if (googleClientId) {
+                 // If client ID is present but gapi/google aren't, wait for them.
+                const checkScripts = setInterval(() => {
+                    if (window.gapi && window.google) {
+                        clearInterval(checkScripts);
+                        initializeGoogleApis();
+                    }
+                }, 100);
+                return () => clearInterval(checkScripts);
             }
         };
-
-        const checkScripts = setInterval(() => {
-            if (window.gapi && window.google) {
-                clearInterval(checkScripts);
-                initializeGoogleApis();
-            }
-        }, 100);
-
-        return () => clearInterval(checkScripts);
+        initializeGoogleApis();
     }, [googleClientId, backendStatus]);
 
 
@@ -433,7 +456,7 @@ const App: React.FC = () => {
         }
 
         if (backendStatus === 'misconfigured') {
-            return <ConfigurationErrorScreen onRetryConnection={checkBackend} backendStatus={backendStatus} />;
+            return <ConfigurationErrorScreen onRetryConnection={() => checkBackend(false)} backendStatus={backendStatus} />;
         }
         
         // If user is loaded (from cache or fetch), show their dashboard.
@@ -467,12 +490,12 @@ const App: React.FC = () => {
             );
         }
 
-        // If no user and offline, show the offline screen for first-time users.
+        // If no user and offline after the grace period, show the offline screen.
         if (backendStatus === 'offline' && !isDemoMode) {
-            return <BackendOfflineScreen onSelectDemoUser={enterDemoMode} onRetryConnection={checkBackend} backendStatus={backendStatus} />;
+            return <BackendOfflineScreen onSelectDemoUser={enterDemoMode} onRetryConnection={() => checkBackend(false)} backendStatus={backendStatus} />;
         }
 
-        // Otherwise, show the authentication screen.
+        // Otherwise, show the authentication screen (which might initially show buttons before switching to offline).
         return <AuthScreen backendStatus={backendStatus} googleClientId={googleClientId} resetToken={resetToken} />;
     };
 

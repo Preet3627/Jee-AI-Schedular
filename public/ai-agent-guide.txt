@@ -1,5 +1,5 @@
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 8.3.0 (Hybrid Output: Deep Link & JSON)
+# Version: 9.0.0 (Hybrid Output: Deep Link & JSON)
 # Purpose: To guide AI agents in generating structured data for the JEE Scheduler Pro platform and integrating with it.
 
 ## 1. Interaction Model: Deep Link vs. JSON Block
@@ -14,7 +14,7 @@ Your primary goal is to make it easy for the user to get data into the app. Choo
 - **Why:** This is convenient for the user.
 
 ### C. Use a **JSON CODE BLOCK** for **LARGE or COMPLEX** requests.
-- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed. This is also the required format for generating a **Practice Test** or a **Flashcard Deck**.
+- **When:** The total number of items is **35 or more**, or the user provides unstructured text, a timetable image, or a file to be parsed. This is also the required format for generating a **Practice Test**, a **Flashcard Deck**, or a **Full Homework Assignment**.
 - **Why:** Deep links can become too long for browsers. A JSON block is robust for large data and required for complex actions.
 
 ---
@@ -59,6 +59,7 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 - `metrics`: An array of results or weaknesses.
 - `practice_test`: An object for a practice test, or `null`.
 - `flashcard_deck`: An object for a new flashcard deck, or `null`.
+- `homework_assignment`: An object for a full homework assignment, or `null`.
 
 ### Detailed Schema: `schedules`
 | Key | Type | Description |
@@ -77,8 +78,6 @@ Your entire output must be a single JSON object with these keys. Provide empty a
 | `answers`| string | Stringified JSON of answers, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
 
 ### Detailed Schema: `flashcard_deck`
-Use this to generate a new deck of flashcards from a prompt.
-
 | Key | Type | Description |
 |---|---|---|
 | `name`| string | The name of the new deck (e.g., "Thermodynamics Formulas"). |
@@ -91,18 +90,27 @@ Use this to generate a new deck of flashcards from a prompt.
 | `front` | string | The question or term for the front of the card. |
 | `back` | string | The answer or definition for the back of the card. |
 
-### Detailed Schema: `practice_test`
-Use this to launch an interactive practice session immediately. The app will open a timer with these questions.
+### Detailed Schema: `practice_test` or `homework_assignment`
+Use this to generate an interactive practice session or a full homework assignment. The app will open a timer or a worksheet.
 
 | Key | Type | Description |
 |---|---|---|
 | `questions`| array | An array of question objects. |
 | `answers` | string | A stringified JSON object mapping question number to correct answer. |
+| `solutions`| string | **For `homework_assignment`**. Stringified JSON mapping question number to a detailed solution string. |
 
 **Question Object Schema (inside `questions` array):**
 | Key | Type | Description |
 |---|---|---|
 | `number` | integer | The question number, starting from 1. |
-| `text` | string | The full text of the question. |
-| `options` | array | An array of 4 strings for MCQ options. Must start with (A), (B), etc. |
+| `text` | string | The full text of the question, including any necessary context or diagrams described in text. |
+| `options` | array | **For `MCQ`**. An array of 4 strings for options. Must start with (A), (B), etc. For `NUM`, this is an empty array `[]`. |
 | `type` | string | `"MCQ"` for multiple choice, `"NUM"` for numerical. |
+
+**NCERT-Specific Requests:**
+If a user asks for homework from an NCERT textbook (e.g., "schedule NCERT Physics chapter 2, questions 1 to 5"), you must generate a `homework_assignment`.
+1.  **Look up the questions:** Use your knowledge to find the actual text of the specified NCERT questions.
+2.  **Generate `questions` array:** Populate the `text` field with the question's content. Determine the `type` (`MCQ` or `NUM`).
+3.  **Generate `answers` object:** Provide the correct answers.
+4.  **Generate `solutions` object:** Provide a step-by-step solution for each question.
+5.  **Create a `schedules` item:** Add a single `HOMEWORK` task to the `schedules` array pointing to this assignment. Set `q_ranges` to `"AI Generated Assignment"`.

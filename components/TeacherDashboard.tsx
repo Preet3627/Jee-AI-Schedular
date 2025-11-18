@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
@@ -8,6 +6,7 @@ import MessagingModal from './MessagingModal';
 import CreateEditTaskModal from './CreateEditTaskModal';
 import AIParserModal from './AIParserModal';
 import { api } from '../api/apiService';
+import { useAuth } from '../context/AuthContext';
 
 interface TeacherDashboardProps {
     students: StudentData[];
@@ -18,6 +17,7 @@ interface TeacherDashboardProps {
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleUnacademySub, onDeleteUser, onAddTeacher, onBroadcastTask }) => {
+    const { loginWithToken } = useAuth();
     const [activeTab, setActiveTab] = useState<'grid' | 'broadcast' | 'guide'>('grid');
     const [messagingStudent, setMessagingStudent] = useState<StudentData | null>(null);
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
@@ -120,6 +120,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
         }
     };
 
+    const handleImpersonate = async (sid: string) => {
+        if (window.confirm(`You are about to log in as ${sid}. You will be logged out of your admin account. Proceed?`)) {
+            try {
+                const { token } = await api.impersonateStudent(sid);
+                loginWithToken(token);
+            } catch (error: any) {
+                alert(`Failed to impersonate student: ${error.message}`);
+            }
+        }
+    };
+
 
     return (
         <main className="mt-8">
@@ -131,7 +142,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 </nav>
             </div>
             <div className="mt-6">
-                {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={setMessagingStudent} onClearData={handleClearData} />}
+                {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={setMessagingStudent} onClearData={handleClearData} onImpersonate={handleImpersonate} />}
                 {activeTab === 'broadcast' && <BroadcastManager onOpenModal={() => setIsBroadcastModalOpen(true)} onOpenAIModal={() => setIsAIBroadcastModalOpen(true)} />}
                 {activeTab === 'guide' && <AIGuide />}
             </div>
@@ -155,26 +166,41 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
     );
 };
 
-const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string) => void, onDeleteUser: (sid: string) => void, onStartMessage: (student: StudentData) => void, onClearData: (student: StudentData) => void }> = ({ students, onToggleSub, onDeleteUser, onStartMessage, onClearData }) => (
+const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string) => void, onDeleteUser: (sid: string) => void, onStartMessage: (student: StudentData) => void, onClearData: (student: StudentData) => void, onImpersonate: (sid: string) => void }> = ({ students, onToggleSub, onDeleteUser, onStartMessage, onClearData, onImpersonate }) => {
+    
+    const isOnline = (lastSeen?: string) => {
+        if (!lastSeen) return false;
+        const lastSeenDate = new Date(lastSeen);
+        const now = new Date();
+        // User is online if last seen within the last 5 minutes
+        return (now.getTime() - lastSeenDate.getTime()) < 5 * 60 * 1000;
+    };
+    
+    return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {students.map(student => (
             <div key={student.sid} className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
                  <div className="flex items-center gap-3 mb-3">
-                    <img src={student.profilePhoto} alt={student.fullName} className="w-12 h-12 rounded-full object-cover" />
+                    <div className="relative">
+                        <img src={student.profilePhoto} alt={student.fullName} className="w-12 h-12 rounded-full object-cover" />
+                        {isOnline(student.last_seen) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800" title="Online"></div>}
+                    </div>
                     <div>
                        <h3 className="font-bold text-white">{student.fullName}</h3>
                        <p className="text-sm text-gray-400">{student.sid}</p>
                     </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                     <button onClick={() => onStartMessage(student)} className="w-full flex items-center justify-center gap-2 bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="message" className="w-3.5 h-3.5"/> Message</button>
+                    <button onClick={() => onImpersonate(student.sid)} className="w-full flex items-center justify-center gap-2 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="login" className="w-3.5 h-3.5"/> Impersonate</button>
+                    <button onClick={() => onStartMessage(student)} className="w-full flex items-center justify-center gap-2 bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="message" className="w-3.5 h-3.5"/> Message</button>
                     <button onClick={() => onClearData(student)} className="w-full bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Clear Data</button>
-                    <button onClick={() => onDeleteUser(student.sid)} className="w-full col-span-2 bg-red-800 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Delete User</button>
+                    <button onClick={() => onDeleteUser(student.sid)} className="w-full bg-red-800 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Delete User</button>
                 </div>
             </div>
         ))}
     </div>
 );
+}
 
 const BroadcastManager: React.FC<{ onOpenModal: () => void, onOpenAIModal: () => void }> = ({ onOpenModal, onOpenAIModal }) => (
     <div className="bg-gray-800/70 p-6 rounded-lg border border-gray-700 max-w-2xl mx-auto text-center">
