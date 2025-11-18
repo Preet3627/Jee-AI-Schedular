@@ -17,8 +17,6 @@ export function renderMarkdown(text: string): string {
         .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-extrabold mt-4 border-b-2 border-gray-500 pb-2">$1</h1>')
         // Bold (**text** or __text__)
         .replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>')
-        // Italics (*text* or _text_) - careful not to conflict with subscript
-        .replace(/(?<!\w)\*(.*?)\*(?!\w)|(?<!\w)_(.*?)_(?!\w)/g, '<em>$1$2</em>')
         // Strikethrough (~~text~~)
         .replace(/~~(.*?)~~/g, '<del>$1</del>')
         // Font Size ([size=16]text[/size])
@@ -30,7 +28,9 @@ export function renderMarkdown(text: string): string {
         .replace(/\^([\w\d\+\-]+)/g, '<sup>$1</sup>')
         // Subscript (text_{...} or text_...)
         .replace(/_\{([^}]+)\}/g, '<sub>$1</sub>')
-        .replace(/_(\d+)/g, '<sub>$1</sub>')
+        .replace(/_([\w\d]+)/g, '<sub>$1</sub>') // FIX: Handles H_2O and other multi-character subscripts
+        // Italics (*text* or _text_) - Processed after subscripts to avoid conflict
+        .replace(/(?<!\w)\*(.*?)\*(?!\w)|(?<!\w)_([^_]+)_(?!\w)/g, '<em>$1$2</em>')
         // Logarithm (log_b(x) or log_{10}(x))
         .replace(/log_\{([^}]+)\}\((.*?)\)/g, 'log<sub>$1</sub>($2)')
         .replace(/log_(\w+)\((.*?)\)/g, 'log<sub>$1</sub>($2)')

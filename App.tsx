@@ -51,6 +51,12 @@ const App: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // --- Deep Link & Voice Action Integration ---
+    // This effect is the entry point for deep links, which are the web equivalent of native "App Actions".
+    // When Google Assistant (or Gemini) processes a voice command, it opens a URL with `action` and `data`
+    // query parameters (e.g., `.../?action=new_schedule&data=...`). This code parses that URL,
+    // validates the data, and triggers the appropriate UI action, such as opening a pre-filled modal.
+    // This is how the PWA integrates with voice commands without needing native code.
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('reset-token');

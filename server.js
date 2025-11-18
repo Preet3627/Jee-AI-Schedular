@@ -1000,7 +1000,6 @@ apiRouter.post('/user-data/full-sync', authMiddleware, async (req, res) => {
     }
 });
 
-// New endpoint for API-based import
 apiRouter.post('/import', apiTokenAuthMiddleware, async (req, res) => {
     try {
         const data = req.body;
@@ -1069,6 +1068,61 @@ apiRouter.post('/import', apiTokenAuthMiddleware, async (req, res) => {
     } catch (error) {
         console.error("API Import Error:", error);
         res.status(500).json({ error: 'Failed to import data.' });
+    }
+});
+
+
+// --- RESULT MANAGEMENT ---
+apiRouter.put('/results', authMiddleware, async (req, res) => {
+    const { result } = req.body;
+    if (!result || !result.ID) {
+        return res.status(400).json({ error: 'Result data with an ID is required.' });
+    }
+    try {
+        const [[userConfigRow]] = await pool.query('SELECT config FROM user_configs WHERE user_id = ?', [req.userId]);
+        if (!userConfigRow) return res.status(404).json({ error: 'User config not found.' });
+        
+        const config = JSON.parse(decrypt(userConfigRow.config));
+        const resultIndex = (config.RESULTS || []).findIndex(r => r.ID === result.ID);
+        
+        if (resultIndex === -1) return res.status(404).json({ error: 'Result not found.' });
+
+        config.RESULTS[resultIndex] = result;
+        
+        const encryptedConfig = encrypt(JSON.stringify(config));
+        await pool.query('UPDATE user_configs SET config = ? WHERE user_id = ?', [encryptedConfig, req.userId]);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Update result error:", error);
+        res.status(500).json({ error: 'Failed to update result.' });
+    }
+});
+
+apiRouter.delete('/results', authMiddleware, async (req, res) => {
+    const { resultId } = req.body;
+    if (!resultId) {
+        return res.status(400).json({ error: 'Result ID is required.' });
+    }
+    try {
+        const [[userConfigRow]] = await pool.query('SELECT config FROM user_configs WHERE user_id = ?', [req.userId]);
+        if (!userConfigRow) return res.status(404).json({ error: 'User config not found.' });
+
+        const config = JSON.parse(decrypt(userConfigRow.config));
+        const initialCount = (config.RESULTS || []).length;
+        config.RESULTS = (config.RESULTS || []).filter(r => r.ID !== resultId);
+
+        if (config.RESULTS.length === initialCount) {
+            return res.status(404).json({ error: 'Result not found.' });
+        }
+
+        const encryptedConfig = encrypt(JSON.stringify(config));
+        await pool.query('UPDATE user_configs SET config = ? WHERE user_id = ?', [encryptedConfig, req.userId]);
+
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("Delete result error:", error);
+        res.status(500).json({ error: 'Failed to delete result.' });
     }
 });
 

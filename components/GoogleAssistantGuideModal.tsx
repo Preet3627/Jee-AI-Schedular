@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import Icon from './Icon';
 
@@ -66,8 +67,16 @@ const GoogleAssistantGuideModal: React.FC<GoogleAssistantGuideModalProps> = ({ o
             <p className="text-xs text-gray-500 mt-2">Gemini will understand and pass the request to Google Assistant to complete the action.</p>
           </Section>
 
-          <Section title="5. How It Works (The Tech Stuff)">
-            <p>When you speak, your command is sent to our secure AI server. We use Google's Gemini API with a feature called "Function Calling" to instantly and accurately translate your request into structured data. Our server then creates a special link (a 'deep link') that opens the app and pre-fills the correct form for you. It's fast, accurate, and secure!</p>
+          <Section title="5. How It Works: The Web 'App Action'">
+            <p>Our voice integration works using a powerful web-based equivalent of native Android App Actions.</p>
+            <ol className="list-decimal list-inside space-y-2 mt-2 pl-2">
+              <li>When you speak, Google Assistant/Gemini sends the text to our secure AI backend.</li>
+              <li>Our backend uses the Gemini API to understand your intent (e.g., 'create a schedule') and extracts the details (topic, date, time).</li>
+              <li>The AI then constructs a special URL, called a 'deep link', like: <br/> <code className="text-xs bg-gray-800 p-1 rounded">/action=new_schedule&data=...</code></li>
+              <li>Google Assistant opens this link, which launches our PWA and passes the data directly to it.</li>
+              <li>The app reads the 'action' and 'data' from the URL and automatically opens the correct screen with all the information pre-filled for you.</li>
+            </ol>
+             <p className="text-xs text-gray-500 mt-2">So, while native Android apps define voice capabilities in an XML file, our PWA declares its capabilities through this secure, URL-based deep linking system.</p>
           </Section>
 
         </main>
