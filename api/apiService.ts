@@ -1,4 +1,3 @@
-
 import { StudentData, ScheduleItem, Config, ResultData, ExamData } from '../types';
 
 const API_URL = '/api';
@@ -130,7 +129,7 @@ export const api = {
     // Admin
     getStudents: () => authFetch('/admin/students'),
     impersonateStudent: (sid: string) => authFetch(`/admin/impersonate/${sid}`, { method: 'POST' }),
-    broadcastTask: (task: ScheduleItem) => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task }) }),
+    broadcastTask: (task: ScheduleItem, examType: 'JEE' | 'NEET' | 'ALL') => authFetch('/admin/broadcast-task', { method: 'POST', body: JSON.stringify({ task, examType }) }),
     deleteStudent: (sid: string) => authFetch(`/admin/students/${sid}`, { method: 'DELETE' }),
     clearStudentData: (sid: string) => authFetch(`/admin/students/${sid}/clear-data`, { method: 'POST' }),
     

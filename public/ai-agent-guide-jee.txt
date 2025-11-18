@@ -1,5 +1,5 @@
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 12.0.0 (Flashcard Generation)
+# Version: 13.0.0 (Rich Text & Homework Rule)
 
 ## 1. Core Concept: The Internal Knowledge Base
 The AI now operates with a comprehensive, built-in library for Physics, Chemistry, and Maths. All academic content generation (tips, flashcards, MCQs, explanations) **must be sourced from this internal knowledge base**. This ensures accuracy and consistency.
@@ -16,6 +16,9 @@ To ensure formulas and chemical equations are rendered correctly, use the follow
 
 | Notation | Format | Example Input | Renders As |
 |---|---|---|---|
+| **Bold** | `**text**` | `**Important Formula**` | **Important Formula** |
+| **Italics** | `*text*` | `*definition*` | *definition* |
+| **Font Size** | `[size=16]text[/size]` | `[size=18]Main Point[/size]` | Main Point (larger) |
 | **Subscript** | `_{...}` or `_` | `H_2O`, `C_6H_{12}O_6` | H₂O, C₆H₁₂O₆ |
 | **Superscript**| `^{...}` or `^` | `x^2`, `Fe^{2+}` | x², Fe²⁺ |
 | **Logarithm** | `log_{b}(x)` | `log_{10}(100)` | log₁₀(100) |
@@ -23,27 +26,7 @@ To ensure formulas and chemical equations are rendered correctly, use the follow
 
 ---
 ## 3. Output Formats: Deep Link vs. JSON Block
-
-### A. Deep Links (for Quick, Single Actions)
-- **Use Case:** Creating a *single* task, logging a *single* score.
-- **URL Structure:** `https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}`
-  - `{ACTION_TYPE}`: `new_schedule`, `log_score`, `create_homework`.
-  - `{URL_ENCODED_JSON}`: A URL-encoded JSON object for one task (see schema below).
-
-**Deep Link `data` object schema:**
-| Key | Type | Description |
-|---|---|---|
-| `subject` | string | `Physics`, `Chemistry`, `Math`. |
-| `topic` | string | Specific chapter or concept. |
-| `date` | string | `YYYY-MM-DD`. |
-| `time` | string | **For `new_schedule`**. `HH:MM` format. |
-| `details`| string | Notes for the task. |
-| `score` | number | **For `log_score`**. |
-| `max_score`| number | **For `log_score`**. |
-
-### B. JSON Code Block (for Large, Complex, or Specific Generation)
-- **Use Case:** Batch imports (schedules, exams), or generating a **Practice Test**, **Flashcard Deck**, or **Full Homework Assignment**.
-- **Format:** Your entire response **MUST** be a single, raw JSON object inside a markdown code block.
+Your response should be a single JSON object. For quick actions via chat, this can be wrapped in a deep link. For large data imports, provide it as a raw JSON code block.
 
 ---
 ## 4. Full JSON Schema (for Code Blocks)
@@ -59,7 +42,7 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | Key | Type | Description |
 |---|---|---|
 | `id` | string | Unique ID (e.g., "A101"). |
-| `type` | string | `"ACTION"` or `"HOMEWORK"`. |
+| `type` | string | `"ACTION"` or `"HOMEWORK"`. **Rule:** If the user requests 'PYQs', 'questions', or 'problems', you **MUST** use `HOMEWORK`. |
 | `day` | string | Full day name, e.g., `"MONDAY"`. |
 | `title` | string | Task title. Use advanced formatting. |
 | `detail`| string | Description. Use advanced formatting. |

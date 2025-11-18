@@ -13,7 +13,7 @@ interface TeacherDashboardProps {
     onToggleUnacademySub: (sid: string) => void;
     onDeleteUser: (sid: string) => void;
     onAddTeacher?: (teacherData: any) => void;
-    onBroadcastTask: (task: ScheduleItem) => void;
+    onBroadcastTask: (task: ScheduleItem, examType: 'JEE' | 'NEET' | 'ALL') => void;
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleUnacademySub, onDeleteUser, onAddTeacher, onBroadcastTask }) => {
@@ -22,6 +22,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
     const [messagingStudent, setMessagingStudent] = useState<StudentData | null>(null);
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
     const [isAIBroadcastModalOpen, setIsAIBroadcastModalOpen] = useState(false);
+    const [broadcastTarget, setBroadcastTarget] = useState<'ALL' | 'JEE' | 'NEET'>('ALL');
 
     const TabButton: React.FC<{ tabId: string; children: React.ReactNode; }> = ({ tabId, children }) => (
         <button
@@ -34,8 +35,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
 
     const handleBroadcastSave = (task: ScheduleItem) => {
         const taskWithUniqueId = { ...task, ID: `${task.type.charAt(0)}${Date.now()}` };
-        if (window.confirm(`Are you sure you want to send this task to all ${students.length} students?`)) {
-            onBroadcastTask(taskWithUniqueId);
+        if (window.confirm(`Are you sure you want to send this task to all ${broadcastTarget} students?`)) {
+            onBroadcastTask(taskWithUniqueId, broadcastTarget);
+            setIsBroadcastModalOpen(false);
         }
     };
     
@@ -50,7 +52,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
             const schedules = Array.isArray(data.schedules) ? data.schedules : [];
 
             const tasksToBroadcast: ScheduleItem[] = schedules.map((s: any): ScheduleItem | null => {
-                // Basic validation for a schedule item
                 if (!s || !s.id || !s.type || !s.day || !s.title || !s.detail || !s.subject) {
                     console.warn("Skipping invalid schedule item from AI:", s);
                     return null;
@@ -97,8 +98,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 return;
             }
 
-            if(window.confirm(`This will broadcast ${tasksToBroadcast.length} tasks to all students. Continue?`)) {
-                tasksToBroadcast.forEach(onBroadcastTask);
+            if(window.confirm(`This will broadcast ${tasksToBroadcast.length} tasks to all ${broadcastTarget} students. Continue?`)) {
+                tasksToBroadcast.forEach(task => onBroadcastTask(task, broadcastTarget));
                 setIsAIBroadcastModalOpen(false);
             }
         } catch (error: any) {
@@ -143,7 +144,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
             </div>
             <div className="mt-6">
                 {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={setMessagingStudent} onClearData={handleClearData} onImpersonate={handleImpersonate} />}
-                {activeTab === 'broadcast' && <BroadcastManager onOpenModal={() => setIsBroadcastModalOpen(true)} onOpenAIModal={() => setIsAIBroadcastModalOpen(true)} />}
+                {activeTab === 'broadcast' && <BroadcastManager onOpenModal={() => setIsBroadcastModalOpen(true)} onOpenAIModal={() => setIsAIBroadcastModalOpen(true)} target={broadcastTarget} setTarget={setBroadcastTarget} />}
                 {activeTab === 'guide' && <AIGuide />}
             </div>
 
@@ -207,11 +208,27 @@ const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string
 );
 }
 
-const BroadcastManager: React.FC<{ onOpenModal: () => void, onOpenAIModal: () => void }> = ({ onOpenModal, onOpenAIModal }) => (
+const BroadcastManager: React.FC<{ onOpenModal: () => void, onOpenAIModal: () => void, target: 'ALL' | 'JEE' | 'NEET', setTarget: (target: 'ALL' | 'JEE' | 'NEET') => void }> = ({ onOpenModal, onOpenAIModal, target, setTarget }) => (
     <div className="bg-gray-800/70 p-6 rounded-lg border border-gray-700 max-w-2xl mx-auto text-center">
         <Icon name="send" className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
         <h3 className="font-bold text-white text-lg mb-2">Broadcast a Task</h3>
-        <p className="text-sm text-gray-400 mb-4">Create a task and send it to every student. It will appear in their schedule and sync to their Google Calendar. Use the AI Parser for batch broadcasting.</p>
+        <p className="text-sm text-gray-400 mb-4">Create a task and send it to a specific group of students. It will appear in their schedule and sync to their Google Calendar.</p>
+        
+        <div className="mb-4">
+            <label className="text-sm font-bold text-gray-400 mb-2 block">Target Audience</label>
+            <div className="flex justify-center gap-2 p-1 rounded-full bg-gray-900/50 max-w-xs mx-auto">
+                {(['ALL', 'JEE', 'NEET'] as const).map(type => (
+                    <button 
+                        key={type}
+                        onClick={() => setTarget(type)}
+                        className={`flex-1 text-center text-xs font-semibold py-1.5 rounded-full transition-colors ${target === type ? 'bg-cyan-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                    >
+                        {type} Students
+                    </button>
+                ))}
+            </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={onOpenModal} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-100 shadow-lg bg-gray-700 hover:bg-gray-600">
                 <Icon name="plus" /> Create Manually

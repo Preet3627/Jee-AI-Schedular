@@ -30,6 +30,8 @@ const GuideRenderer: React.FC<{ content: string }> = ({ content }) => {
     let processedLine = line
       .replace(/`([^`]+)`/g, '<code class="bg-gray-700/50 text-cyan-300 text-xs rounded px-1.5 py-0.5 font-mono">$1</code>')
       .replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>')
+      .replace(/(?<!\w)\*(.*?)\*(?!\w)|(?<!\w)_(.*?)_(?!\w)/g, '<em>$1$2</em>')
+      .replace(/\[size=(\d+)\](.*?)\[\/size\]/g, '<span style="font-size: $1px;">$2</span>')
       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline">$1</a>');
 
     return <p key={index} className="my-1" dangerouslySetInnerHTML={{ __html: processedLine }}></p>;
@@ -100,7 +102,7 @@ const AIGuide: React.FC<AIGuideProps> = ({ examType = 'JEE' }) => {
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        const guideFile = examType === 'NEET' ? '/ai-agent-guide-neet.txt' : '/ai-agent-guide-jee.txt';
+        const guideFile = examType === 'NEET' ? '/ai-agent-guide-neet.txt' : '/ai-agent-guide.txt';
         setIsLoading(true);
         fetch(guideFile)
             .then(response => {

@@ -1,4 +1,3 @@
-
 export function renderMarkdown(text: string): string {
     if (!text) return '';
 
@@ -12,10 +11,6 @@ export function renderMarkdown(text: string): string {
     });
 
     let html = text
-        // Escape HTML to prevent injection from non-code parts
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
         // Headers
         .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-2">$1</h3>')
         .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mt-3 border-b border-gray-600 pb-1">$1</h2>')
@@ -26,6 +21,8 @@ export function renderMarkdown(text: string): string {
         .replace(/(?<!\w)\*(.*?)\*(?!\w)|(?<!\w)_(.*?)_(?!\w)/g, '<em>$1$2</em>')
         // Strikethrough (~~text~~)
         .replace(/~~(.*?)~~/g, '<del>$1</del>')
+        // Font Size ([size=16]text[/size])
+        .replace(/\[size=(\d+)\](.*?)\[\/size\]/g, '<span style="font-size: $1px;">$2</span>')
         // Inline code (`code`)
         .replace(/`([^`]+)`/g, '<code class="bg-gray-700/50 text-cyan-300 text-xs rounded px-1.5 py-0.5 font-mono">$1</code>')
         // Superscript (text^{...} or text^...)

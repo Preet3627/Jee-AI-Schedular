@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion } from '../types';
 import ScheduleList from './ScheduleList';
@@ -270,33 +268,40 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         try {
             const createLocalizedString = (text: string) => ({ EN: text || '', GU: '' });
             
-            const schedules: ScheduleItem[] = (structuredData.schedules || []).map((s: any) => {
-                if (s.type === 'HOMEWORK') {
-                    let parsedAnswers = s.answers;
-                    if (typeof parsedAnswers === 'string' && parsedAnswers.trim().startsWith('{')) {
-                        try {
-                            parsedAnswers = JSON.parse(parsedAnswers);
-                        } catch (e) {
-                            console.warn("Could not parse homework answers string, treating as empty.");
+            const schedules: ScheduleItem[] = (structuredData.schedules || [])
+                .map((s: any): ScheduleItem | null => {
+                    if (s.type === 'HOMEWORK') {
+                        let parsedAnswers = s.answers;
+                        if (typeof parsedAnswers === 'string' && parsedAnswers.trim().startsWith('{')) {
+                            try {
+                                parsedAnswers = JSON.parse(parsedAnswers);
+                            } catch (e) {
+                                console.warn("Could not parse homework answers string, treating as empty.");
+                                parsedAnswers = {};
+                            }
+                        } else if (typeof parsedAnswers !== 'object') {
                             parsedAnswers = {};
                         }
-                    } else if (typeof parsedAnswers !== 'object') {
-                        parsedAnswers = {};
-                    }
 
-                    return {
-                        ID: s.id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
-                        CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
-                        SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined,
-                        answers: parsedAnswers,
-                    } as HomeworkData;
-                }
-                return {
-                    ID: s.id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
-                    DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
-                    FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
-                } as ScheduleItem;
-            });
+                        return {
+                            ID: s.id, type: 'HOMEWORK', isUserCreated: true, DAY: createLocalizedString(s.day),
+                            CARD_TITLE: createLocalizedString(s.title), FOCUS_DETAIL: createLocalizedString(s.detail),
+                            SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase()), Q_RANGES: s.q_ranges || '', TIME: s.time || undefined,
+                            answers: parsedAnswers,
+                        } as HomeworkData;
+                    }
+                    if (s.type === 'ACTION') {
+                        return {
+                            ID: s.id, type: 'ACTION', SUB_TYPE: s.sub_type || 'DEEP_DIVE', isUserCreated: true,
+                            DAY: createLocalizedString(s.day), TIME: s.time, CARD_TITLE: createLocalizedString(s.title),
+                            FOCUS_DETAIL: createLocalizedString(s.detail), SUBJECT_TAG: createLocalizedString(s.subject?.toUpperCase())
+                        } as ScheduleCardData;
+                    }
+                    console.warn("Skipping unknown schedule type from AI parser:", s.type);
+                    return null;
+                })
+                .filter((item): item is ScheduleItem => item !== null);
+
 
             const exams: ExamData[] = (structuredData.exams || []).map((e: any) => ({
                 ID: e.id, subject: e.subject.toUpperCase(), title: e.title, date: e.date,

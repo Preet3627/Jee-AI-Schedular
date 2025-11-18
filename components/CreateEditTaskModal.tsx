@@ -2,6 +2,9 @@
 
 
 
+
+
+
 import React, { useState, useEffect } from 'react';
 import { ScheduleItem, ScheduleCardData, HomeworkData, FlashcardDeck } from '../types';
 import Icon from './Icon';
@@ -88,7 +91,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
     let finalTask: ScheduleItem;
     
     // If a specific date is set, it overrides the repeating day of the week.
-    const dayData = formData.date ? { EN: new Date(formData.date).toLocaleString('en-us', {weekday: 'long'}).toUpperCase(), GU: "" } : { EN: formData.day, GU: "" };
+    const dayData = formData.date ? { EN: new Date(`${formData.date}T12:00:00Z`).toLocaleString('en-us', {weekday: 'long', timeZone: 'UTC'}).toUpperCase(), GU: "" } : { EN: formData.day, GU: "" };
     const dateData = formData.date ? { date: formData.date } : {};
 
     if (taskType === 'HOMEWORK') {
@@ -103,7 +106,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
             TIME: formData.time || undefined,
-            // FIX: Cast formData.category to the specific union type required by HomeworkData.
+            // FIX: The 'category' property from form data is a generic string, but the 'HomeworkData' type expects a specific literal union. Added a type assertion to ensure type compatibility and resolve the assignment error.
             category: formData.category as 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ' | 'Custom',
             answers: parseAnswers(formData.answers),
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
