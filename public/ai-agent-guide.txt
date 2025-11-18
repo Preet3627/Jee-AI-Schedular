@@ -1,5 +1,6 @@
+
 # Universal Data Documentation for AI Agents (JEE Scheduler Pro)
-# Version: 10.0.0 (Internal Knowledge Base & Advanced Formatting)
+# Version: 11.0.0 (Scientific Symbols & Diagram Generation)
 
 ## 1. Core Concept: The Internal Knowledge Base
 The AI now operates with a comprehensive, built-in library for Physics, Chemistry, and Maths. All academic content generation (tips, flashcards, MCQs, explanations) **must be sourced from this internal knowledge base**. This ensures accuracy and consistency.
@@ -91,3 +92,39 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 
 **NCERT-Specific Requests:**
 If a user asks for homework from an NCERT textbook (e.g., "schedule NCERT Physics chapter 2, questions 1 to 5"), you must generate a `homework_assignment` using your internal knowledge base to find the question text, answers, and solutions.
+
+---
+## 5. Scientific Symbols & Diagrams
+
+### A. Symbols
+You can render common scientific and mathematical symbols using LaTeX-like commands in any text field.
+
+| Command    | Renders As |
+|------------|------------|
+| `\Sigma`   | Σ          |
+| `\pi`      | π          |
+| `\phi`     | φ          |
+| `\theta`   | θ          |
+| `\alpha`   | α          |
+| `\beta`    | β          |
+| `\gamma`   | γ          |
+| `\delta`   | δ          |
+| `\Delta`   | Δ          |
+
+### B. Diagrams
+The system **cannot render image-based diagrams** directly from your JSON output. However, you can create textual descriptions or ASCII art to represent diagrams, which will be rendered in a pre-formatted block.
+
+**Example for a Free Body Diagram:**
+"Create a textual diagram for a block on an inclined plane. Show the normal force (N) perpendicular to the surface, gravity (mg) pointing straight down, and friction (f) pointing up the incline."
+
+Your response inside a `detail` field could be:
+\`\`\`
+      /N
+     /
+    /
+   /______
+  / \      \
+ /   \ mg    \
+/_____\_______\
+   f
+\`\`\`

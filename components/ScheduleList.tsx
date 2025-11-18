@@ -24,6 +24,7 @@ interface ScheduleListProps {
     onTaskSelect: (taskId: string) => void;
     onToggleSelectMode: () => void;
     onDeleteSelected: () => void;
+    onMoveSelected: () => void;
 }
 
 const ScheduleList: React.FC<ScheduleListProps> = (props) => {
@@ -31,7 +32,7 @@ const ScheduleList: React.FC<ScheduleListProps> = (props) => {
         items, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, 
         onStartReviewSession, onMarkDoubt, onCompleteTask, isSubscribed, 
         view, onViewChange, isSelectMode, selectedTaskIds, onTaskSelect, 
-        onToggleSelectMode, onDeleteSelected 
+        onToggleSelectMode, onDeleteSelected, onMoveSelected
     } = props;
     const { t } = useLocalization();
 
@@ -122,6 +123,9 @@ const ScheduleList: React.FC<ScheduleListProps> = (props) => {
                 <div className="sticky bottom-4 mt-4 w-full flex justify-center">
                     <div className="bg-gray-900/80 border border-gray-700 backdrop-blur-lg rounded-full shadow-lg p-2 flex items-center gap-2 animate-scaleIn">
                         <span className="text-sm font-semibold text-white px-3">{selectedTaskIds.length} selected</span>
+                        <button onClick={onMoveSelected} disabled={selectedTaskIds.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full bg-cyan-600 text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <Icon name="calendar" className="w-4 h-4" /> Move
+                        </button>
                         <button onClick={onDeleteSelected} disabled={selectedTaskIds.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full bg-red-600 text-white hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
                             <Icon name="trash" className="w-4 h-4" /> Delete
                         </button>

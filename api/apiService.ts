@@ -1,3 +1,4 @@
+
 import { StudentData, ScheduleItem, Config, ResultData, ExamData } from '../types';
 
 const API_URL = '/api';
@@ -88,6 +89,7 @@ export const api = {
     deleteTask: (taskId: string) => authFetch(`/schedule-items/${taskId}`, { method: 'DELETE' }),
     deleteBatchTasks: (taskIds: string[]) => authFetch('/schedule-items/batch-delete', { method: 'POST', body: JSON.stringify({ taskIds }) }),
     clearAllSchedule: () => authFetch('/schedule-items/clear-all', { method: 'POST' }),
+    moveBatchTasks: (taskIds: string[], newDate: string) => authFetch('/schedule-items/batch-move', { method: 'POST', body: JSON.stringify({ taskIds, newDate }) }),
     updateConfig: (updates: Partial<Config>) => authFetch('/config', { method: 'POST', body: JSON.stringify(updates) }),
     fullSync: (userData: StudentData) => authFetch('/user-data/full-sync', { method: 'POST', body: JSON.stringify({ userData }) }),
     updateResult: (result: ResultData) => authFetch('/results', { method: 'PUT', body: JSON.stringify({ result }) }),

@@ -1,3 +1,4 @@
+
 export function renderMarkdown(text: string): string {
     if (!text) return '';
 
@@ -36,6 +37,16 @@ export function renderMarkdown(text: string): string {
         // Logarithm (log_b(x) or log_{10}(x))
         .replace(/log_\{([^}]+)\}\((.*?)\)/g, 'log<sub>$1</sub>($2)')
         .replace(/log_(\w+)\((.*?)\)/g, 'log<sub>$1</sub>($2)')
+        // Scientific symbols
+        .replace(/\\Sigma/g, 'Σ')
+        .replace(/\\pi/g, 'π')
+        .replace(/\\phi/g, 'φ')
+        .replace(/\\theta/g, 'θ')
+        .replace(/\\alpha/g, 'α')
+        .replace(/\\beta/g, 'β')
+        .replace(/\\gamma/g, 'γ')
+        .replace(/\\delta/g, 'δ')
+        .replace(/\\Delta/g, 'Δ')
         // Unordered lists
         .replace(/^\s*[-*+] (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
         // Newlines to <br> - careful with other elements

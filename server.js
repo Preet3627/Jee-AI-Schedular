@@ -823,6 +823,47 @@ apiRouter.post('/schedule-items/batch', authMiddleware, async (req, res) => {
     }
 });
 
+apiRouter.post('/schedule-items/batch-move', authMiddleware, async (req, res) => {
+    const { taskIds, newDate } = req.body;
+    if (!Array.isArray(taskIds) || taskIds.length === 0 || !newDate) {
+        return res.status(400).json({ error: 'An array of task IDs and a new date are required.' });
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const newDay = new Date(`${newDate}T12:00:00Z`).toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' }).toUpperCase();
+        const newDayData = { EN: newDay, GU: "" };
+        
+        const placeholders = taskIds.map(() => '?').join(',');
+        const [items] = await connection.query(`SELECT item_id_str, item_data FROM schedule_items WHERE user_id = ? AND item_id_str IN (${placeholders})`, [req.userId, ...taskIds]);
+
+        if (items.length !== taskIds.length) {
+             console.warn("Mismatch in tasks found for batch move.");
+        }
+        
+        for (const item of items) {
+            const taskData = typeof item.item_data === 'string' ? JSON.parse(item.item_data) : item.item_data;
+            taskData.date = newDate;
+            taskData.DAY = newDayData;
+            
+            await connection.query(
+                'UPDATE schedule_items SET item_data = ? WHERE user_id = ? AND item_id_str = ?',
+                [JSON.stringify(taskData), req.userId, item.item_id_str]
+            );
+        }
+
+        await connection.commit();
+        res.status(200).json({ message: `${items.length} items moved successfully.` });
+    } catch (error) {
+        await connection.rollback();
+        console.error("Error batch moving tasks:", error);
+        res.status(500).json({ error: 'Failed to move tasks.' });
+    } finally {
+        connection.release();
+    }
+});
+
 apiRouter.delete('/schedule-items/:id', authMiddleware, async (req, res) => {
     try {
         await pool.query('DELETE FROM schedule_items WHERE user_id = ? AND item_id_str = ?', [req.userId, req.params.id]);
@@ -1653,7 +1694,9 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
         
         const contents = [];
         if (history) {
-            contents.push(...history);
+            // FIX: Filter out any messages with empty or invalid parts to prevent API errors.
+            const validHistory = history.filter(msg => msg.parts && msg.parts[0] && typeof msg.parts[0].text === 'string' && msg.parts[0].text.trim() !== '');
+            contents.push(...validHistory);
         }
         
         const userParts = [{ text: prompt }];

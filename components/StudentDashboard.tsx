@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion } from '../types';
 import ScheduleList from './ScheduleList';
@@ -55,6 +56,7 @@ import DeepLinkConfirmationModal from './DeepLinkConfirmationModal';
 import AIGuideModal from './AIGuideModal';
 import { useAuth } from '../context/AuthContext';
 import FlashcardWidget from './widgets/FlashcardWidget';
+import MoveTasksModal from './MoveTasksModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -113,6 +115,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     // Schedule management state
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+    const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+
     
     // AI Chat State
     const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -434,6 +438,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             setSelectedTaskIds([]);
         }
     };
+
+    const handleMoveSelected = async (newDate: string) => {
+        if (selectedTaskIds.length === 0 || !newDate) return;
+        await api.moveBatchTasks(selectedTaskIds, newDate);
+        await refreshUser();
+        setIsMoveModalOpen(false);
+        setIsSelectMode(false);
+        setSelectedTaskIds([]);
+    };
     
     const handleClearAllSchedule = async () => {
         if (window.confirm("DANGER: This will permanently delete ALL schedule items. Are you absolutely sure?")) {
@@ -584,6 +597,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                                 onTaskSelect={handleTaskSelect}
                                 onToggleSelectMode={handleToggleSelectMode}
                                 onDeleteSelected={handleDeleteSelected}
+                                onMoveSelected={() => setIsMoveModalOpen(true)}
                             />
                         </div>
                         <div className="space-y-8">
@@ -671,6 +685,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isAiDoubtSolverOpen && <AIDoubtSolverModal onClose={() => setIsAiDoubtSolverOpen(false)} />}
             {isAiChatOpen && <AIChatPopup history={aiChatHistory} onSendMessage={handleAiChatMessage} onClose={() => setIsAiChatOpen(false)} isLoading={isAiChatLoading} />}
             {viewingReport && <TestReportModal result={viewingReport} onClose={() => setViewingReport(null)} onUpdateWeaknesses={onUpdateWeaknesses} student={student} onSaveDeck={handleSaveDeck} />}
+            {isMoveModalOpen && <MoveTasksModal onClose={() => setIsMoveModalOpen(false)} onConfirm={handleMoveSelected} selectedCount={selectedTaskIds.length} />}
             {deepLinkData && (
                 <DeepLinkConfirmationModal
                     data={deepLinkData}

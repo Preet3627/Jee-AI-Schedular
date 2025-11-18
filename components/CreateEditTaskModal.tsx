@@ -99,6 +99,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             FOCUS_DETAIL: { EN: formData.details, GU: "" },
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
+            TIME: formData.time || undefined,
             // FIX: Cast formData.category to the specific union type required by HomeworkData.
             category: formData.category as 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ' | 'Custom',
             answers: parseAnswers(formData.answers),
@@ -169,7 +170,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div>
                     <label className="text-sm font-bold text-gray-400">Time</label>
-                    <input type="time" required={taskType !== 'HOMEWORK'} value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={`${inputClass} disabled:opacity-50`} disabled={taskType === 'HOMEWORK'} />
+                    <input type="time" required={taskType !== 'HOMEWORK'} value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={inputClass} />
                 </div>
                  <div>
                     <label className="text-sm font-bold text-gray-400">Subject</label>
