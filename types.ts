@@ -59,6 +59,7 @@ export interface HomeworkData {
   isStarred?: boolean;
   googleEventId?: string;
   answers?: Record<string, string>; // e.g., { "1": "A", "2": "12.5" }
+  solutions?: Record<string, string>; // For AI-generated detailed solutions
   date?: string; // For one-off homework, format YYYY-MM-DD
   practiceHistory?: PracticeHistory[];
   flashcards?: { front: string; back: string }[]; // For AI-generated cards
@@ -205,7 +206,8 @@ export interface Config {
         creditSaver?: boolean; // Use faster, cheaper AI models
         examType?: 'JEE' | 'NEET';
         theme?: 'default' | 'liquid-glass' | 'midnight';
-        dashboardLayout?: 'default' | 'focus' | 'compact';
+        dashboardLayout?: string[]; // Array of widget keys/IDs
+        widgetSettings?: { [widgetId: string]: { translucent?: boolean } };
         dashboardFlashcardDeckIds?: string[];
         dashboardWidgets?: {
             [key: string]: boolean;

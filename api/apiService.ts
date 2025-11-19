@@ -125,6 +125,16 @@ export const api = {
         return res.blob();
     },
 
+    // Music
+    getMusicLibrary: () => authFetch('/music/proxy?action=albums'),
+    getMusicAlbum: (id: string) => authFetch(`/music/proxy?action=album&id=${id}`),
+    getMusicStreamUrl: (id: string) => {
+        // This doesn't need to be an authFetch, as the backend proxy handles auth.
+        // It returns a URL that the <audio> tag can use directly.
+        const token = localStorage.getItem('token'); // We can pass this for potential future server-side validation
+        return `${API_URL}/music/proxy?action=stream&id=${id}&jwt=${token}`;
+    },
+
 
     // Admin
     getStudents: () => authFetch('/admin/students'),

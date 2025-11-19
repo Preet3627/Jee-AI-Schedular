@@ -34,7 +34,24 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [calendarSync, setCalendarSync] = useState(isCalendarSyncEnabled || false);
   const [examType, setExamType] = useState(settings.examType || 'JEE');
   const [theme, setTheme] = useState(settings.theme || 'default');
-  const [dashboardLayout, setDashboardLayout] = useState(settings.dashboardLayout || 'default');
+  
+  // FIX: dashboardLayout is a string[] of widget keys. This section handles mapping UI presets to that array.
+  const WIDGET_KEYS = ['countdown', 'dailyInsight', 'quote', 'music', 'subjectAllocation', 'scoreTrend', 'flashcards', 'readingHours', 'todaysAgenda', 'upcomingExams', 'homework', 'visualizer'];
+  const LAYOUT_PRESETS: Record<'default' | 'focus' | 'compact', string[]> = {
+    default: WIDGET_KEYS,
+    focus: ['countdown', 'dailyInsight', 'todaysAgenda', 'upcomingExams', 'scoreTrend', 'homework'],
+    compact: ['todaysAgenda', 'scoreTrend', 'subjectAllocation', 'readingHours', 'flashcards', 'upcomingExams'],
+  };
+
+  const getPresetFromLayout = (layout: string[] | undefined): 'default' | 'focus' | 'compact' => {
+    if (!layout) return 'default';
+    const sortedLayout = [...layout].sort();
+    if (JSON.stringify(sortedLayout) === JSON.stringify([...LAYOUT_PRESETS.focus].sort())) return 'focus';
+    if (JSON.stringify(sortedLayout) === JSON.stringify([...LAYOUT_PRESETS.compact].sort())) return 'compact';
+    return 'default';
+  };
+
+  const [dashboardLayoutPreset, setDashboardLayoutPreset] = useState<'default' | 'focus' | 'compact'>(getPresetFromLayout(settings.dashboardLayout));
   const [dashboardFlashcardDeckIds, setDashboardFlashcardDeckIds] = useState(settings.dashboardFlashcardDeckIds || []);
   
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
@@ -68,7 +85,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         isCalendarSyncEnabled: calendarSync,
         examType: examType as 'JEE' | 'NEET',
         theme: theme as 'default' | 'liquid-glass' | 'midnight',
-        dashboardLayout: dashboardLayout as 'default' | 'focus' | 'compact',
+        dashboardLayout: LAYOUT_PRESETS[dashboardLayoutPreset],
         dashboardFlashcardDeckIds,
     };
     if (geminiApiKey.trim()) {
@@ -122,7 +139,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                   <label className="text-sm font-bold text-gray-400">Layout</label>
                   <div className="grid grid-cols-3 gap-2 mt-1">
                       {(['default', 'focus', 'compact'] as const).map(layout => (
-                          <button key={layout} type="button" onClick={() => setDashboardLayout(layout)} className={`p-2 rounded-lg border-2 ${dashboardLayout === layout ? 'border-cyan-500' : 'border-transparent'}`}>
+                          <button key={layout} type="button" onClick={() => setDashboardLayoutPreset(layout)} className={`p-2 rounded-lg border-2 ${dashboardLayoutPreset === layout ? 'border-cyan-500' : 'border-transparent'}`}>
                               <div className={`h-16 bg-gray-900/50 rounded-md p-1.5 flex gap-1.5 ${layout === 'focus' ? 'flex-col' : ''} ${layout === 'compact' ? 'flex-wrap' : ''}`}>
                                   <div className={`rounded-sm bg-cyan-500/50 ${layout === 'focus' ? 'w-full h-1/2' : 'w-1/2 h-full'}`}></div>
                                   <div className={`rounded-sm bg-purple-500/50 ${layout === 'focus' ? 'w-full h-1/2' : 'w-1/2 h-full'}`}></div>

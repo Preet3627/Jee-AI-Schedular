@@ -58,6 +58,9 @@ import MoveTasksModal from './MoveTasksModal';
 import TodayPlanner from './TodayPlanner';
 import CountdownWidget from './widgets/CountdownWidget';
 import InteractiveFlashcardWidget from './widgets/InteractiveFlashcardWidget';
+import MotivationalQuoteWidget from './widgets/MotivationalQuoteWidget';
+import MusicPlayerWidget from './widgets/MusicPlayerWidget';
+import MusicLibraryModal from './MusicLibraryModal';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -141,6 +144,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
     // Study Material State
     const [viewingFile, setViewingFile] = useState<StudyMaterialItem | null>(null);
+    const [isMusicLibraryOpen, setIsMusicLibraryOpen] = useState(false);
+
 
     // History management for tabs
     useEffect(() => {
@@ -614,60 +619,39 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
       </div>
     );
     
-    const layout = student.CONFIG.settings.dashboardLayout || 'default';
-
     const renderDashboardContent = () => {
-        const widgets = {
-            countdown: <CountdownWidget items={student.SCHEDULE_ITEMS} />,
-            dailyInsight: <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />,
-            subjectAllocation: <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />,
-            scoreTrend: <ScoreTrendWidget results={student.RESULTS} />,
-            flashcards: <InteractiveFlashcardWidget student={student} onUpdateConfig={onUpdateConfig} />,
-            readingHours: <ReadingHoursWidget student={student} />,
-            todaysAgenda: <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />,
-            upcomingExams: <UpcomingExamsWidget exams={student.EXAMS} />,
-            homework: <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />,
+        const widgetConfig = {
+            'countdown': <CountdownWidget items={student.SCHEDULE_ITEMS} />,
+            'dailyInsight': <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />,
+            'quote': <MotivationalQuoteWidget quote="The expert in anything was once a beginner." />,
+            'music': <MusicPlayerWidget onOpenLibrary={() => setIsMusicLibraryOpen(true)} />,
+            'subjectAllocation': <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />,
+            'scoreTrend': <ScoreTrendWidget results={student.RESULTS} />,
+            'flashcards': <InteractiveFlashcardWidget student={student} onUpdateConfig={onUpdateConfig} />,
+            'readingHours': <ReadingHoursWidget student={student} />,
+            'todaysAgenda': <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />,
+            'upcomingExams': <UpcomingExamsWidget exams={student.EXAMS} />,
+            'homework': <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />,
+            'visualizer': <MusicVisualizerWidget />,
         };
 
-        switch (layout) {
-            case 'focus':
-                return (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 space-y-8">{widgets.countdown} {widgets.dailyInsight}</div>
-                        <div className="space-y-8">{widgets.todaysAgenda} {widgets.upcomingExams}</div>
-                    </div>
-                );
-            case 'compact':
-                return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <div className="space-y-8">{widgets.countdown} {widgets.todaysAgenda}</div>
-                        <div className="space-y-8">{widgets.subjectAllocation} {widgets.scoreTrend}</div>
-                        <div className="space-y-8">{widgets.flashcards} {widgets.homework}</div>
-                        <div className="space-y-8">{widgets.readingHours} {widgets.upcomingExams}</div>
-                    </div>
-                );
-            default: // 'default'
-                return (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 space-y-8">
-                            <MusicVisualizerWidget />
-                            {widgets.countdown}
-                            {widgets.dailyInsight}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {widgets.subjectAllocation}
-                                {widgets.scoreTrend}
-                            </div>
-                            {widgets.flashcards}
-                            {widgets.readingHours}
+        const layout = student.CONFIG.settings.dashboardLayout || Object.keys(widgetConfig);
+        const widgetSettings = student.CONFIG.settings.widgetSettings || {};
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {layout.map(widgetId => {
+                    const widget = widgetConfig[widgetId as keyof typeof widgetConfig];
+                    if (!widget) return null;
+                    const isTranslucent = widgetSettings[widgetId]?.translucent;
+                    return (
+                        <div key={widgetId} className={` ${isTranslucent ? 'widget-translucent' : ''} ${widgetId === 'countdown' || widgetId === 'dailyInsight' || widgetId === 'quote' ? 'md:col-span-2' : ''}`}>
+                            {widget}
                         </div>
-                        <div className="space-y-8">
-                            {widgets.todaysAgenda}
-                            {widgets.upcomingExams}
-                            {widgets.homework}
-                        </div>
-                    </div>
-                );
-        }
+                    );
+                })}
+            </div>
+        );
     };
 
     const renderContent = () => {
@@ -787,6 +771,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isAiChatOpen && <AIChatPopup history={aiChatHistory} onSendMessage={handleAiChatMessage} onClose={() => setIsAiChatOpen(false)} isLoading={isAiChatLoading} />}
             {viewingReport && <TestReportModal result={viewingReport} onClose={() => setViewingReport(null)} onUpdateWeaknesses={onUpdateWeaknesses} student={student} onSaveDeck={handleSaveDeck} />}
             {isMoveModalOpen && <MoveTasksModal onClose={() => setIsMoveModalOpen(false)} onConfirm={handleMoveSelected} selectedCount={selectedTaskIds.length} />}
+            {isMusicLibraryOpen && <MusicLibraryModal onClose={() => setIsMusicLibraryOpen(false)} />}
             {deepLinkData && (
                 <DeepLinkConfirmationModal
                     data={deepLinkData}

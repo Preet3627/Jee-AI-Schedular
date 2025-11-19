@@ -38,10 +38,7 @@
         --main-bg: #02040a;
         --glass-bg: rgba(17, 24, 39, 0.5); /* bg-gray-900 with opacity */
         --glass-border: rgba(55, 65, 81, 0.4); /* bg-gray-700 with opacity */
-        --body-bg-image: radial-gradient(at 20% 20%, hsla(195, 80%, 30%, 0.2) 0px, transparent 50%),
-            radial-gradient(at 80% 10%, hsla(280, 70%, 40%, 0.15) 0px, transparent 50%),
-            radial-gradient(at 80% 80%, hsla(220, 80%, 35%, 0.15) 0px, transparent 50%),
-            radial-gradient(at 10% 90%, hsla(180, 75%, 30%, 0.2) 0px, transparent 50%);
+        --body-bg-image: radial-gradient(ellipse at top, #111827, #02040a 70%);
 
         /* Customizable Accent Color */
         --accent-color: var(--gradient-cyan);
@@ -71,6 +68,11 @@
         background-color: var(--main-bg);
         background-image: var(--body-bg-image);
         background-attachment: fixed;
+      }
+
+      .widget-translucent {
+        --glass-bg: rgba(17, 24, 39, 0.2);
+        --glass-border: rgba(55, 65, 81, 0.2);
       }
       
       .safe-padding-top { padding-top: var(--safe-area-inset-top); }
@@ -212,7 +214,7 @@
         }
       }
     </style>
-<script type="importmap">
+  <script type="importmap">
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",

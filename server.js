@@ -1210,6 +1210,49 @@ apiRouter.post('/messages', authMiddleware, adminMiddleware, async (req, res) =>
 });
 
 
+// --- MUSIC (AMPACE/NEXTCLOUD) PROXY ---
+apiRouter.get('/music/proxy', authMiddleware, async (req, res) => {
+    const ampacheUrl = process.env.NEXTCLOUD_AMPACHE_URL;
+    const ampacheUser = process.env.NEXTCLOUD_AMPACHE_USER;
+    const ampachePass = process.env.NEXTCLOUD_AMPACHE_PASS;
+
+    if (!ampacheUrl || !ampacheUser || !ampachePass) {
+        return res.status(503).json({ error: 'Music service is not configured.' });
+    }
+
+    try {
+        const timestamp = Math.floor(Date.now() / 1000);
+        const salt = crypto.randomBytes(10).toString('hex');
+        const key = crypto.createHash('md5').update(ampachePass).digest('hex');
+        const passphrase = crypto.createHash('sha256').update(key + timestamp).digest('hex');
+        
+        const action = req.query.action || 'ping';
+        
+        let targetUrl = `${ampacheUrl}/server/xml.server.php?action=${action}&auth=${passphrase}&time=${timestamp}&user=${ampacheUser}`;
+        
+        // Forward other query params if they exist
+        Object.keys(req.query).forEach(key => {
+            if (key !== 'action') {
+                targetUrl += `&${key}=${req.query[key]}`;
+            }
+        });
+        
+        const response = await fetch(targetUrl);
+        if (!response.ok) throw new Error(`Ampache server responded with ${response.status}`);
+        
+        const xmlData = await response.text();
+        const jsonData = await parseStringPromise(xmlData, { explicitArray: false, mergeAttrs: true, emptyTag: null });
+        
+        res.json(jsonData.root);
+
+    } catch (error) {
+        console.error("Ampache Proxy Error:", error);
+        res.status(500).json({ error: 'Failed to communicate with music service.' });
+    }
+});
+
+
+
 // --- STUDY MATERIAL (NEXTCLOUD) ENDPOINTS ---
 apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
     if (!isNextcloudConfigured) {
@@ -1620,7 +1663,8 @@ ${getKnowledgeBaseForUser(config)}`;
                     type: Type.ARRAY,
                     items: practiceQuestionSchema
                 },
-                answers: { type: Type.STRING, description: "A stringified JSON object mapping question numbers to answers." }
+                answers: { type: Type.STRING, description: "A stringified JSON object mapping question numbers to answers." },
+                solutions: { type: Type.STRING, description: "A stringified JSON object mapping question numbers to detailed solutions." }
             },
             required: ['questions', 'answers']
         };

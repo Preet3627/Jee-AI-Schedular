@@ -233,7 +233,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     };
 
     const navigate = (newIndex: number) => {
-        if (isNavigating && newIndex !== currentQuestionIndex + 1) return;
+        if (isNavigating) return;
         setIsNavigating(true);
 
         if (newIndex >= 0 && newIndex < totalQuestions) {
@@ -243,7 +243,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
             }
             
             setTimeout(() => {
-                setFeedback(null); // FIX: Reset feedback before showing the new question.
+                setFeedback(null);
                 questionStartTimeRef.current = Date.now();
                 setCurrentQuestionIndex(newIndex);
                 setIsPaletteOpen(false);
@@ -379,18 +379,23 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     }
     
     const getOptionClasses = (option: string) => {
+        // Always show the user's current selection for the question, even without feedback
+        if (answers[currentQuestionNumber] === option && !feedback) {
+            return 'bg-cyan-800/50 border-cyan-500 text-white';
+        }
+        
         if (!feedback) {
-            return `bg-gray-800 border-gray-700 hover:border-cyan-500 ${answers[currentQuestionNumber] === option ? 'bg-cyan-800/50 border-cyan-500 text-white' : ''}`;
+            return `bg-gray-800 border-gray-700 hover:border-cyan-500 focus:outline-none`;
         }
         
         const userAnswer = normalizeAnswer(answers[currentQuestionNumber]);
         const correctAnswer = normalizeAnswer(feedback.correctAnswer);
         const currentOption = normalizeAnswer(option);
 
-        if (currentOption === correctAnswer) return 'bg-green-800/50 border-green-500';
-        if (currentOption === userAnswer && userAnswer !== correctAnswer) return 'bg-red-800/50 border-red-500';
+        if (currentOption === correctAnswer) return 'bg-green-800/50 border-green-500 focus:outline-none';
+        if (currentOption === userAnswer && userAnswer !== correctAnswer) return 'bg-red-800/50 border-red-500 focus:outline-none';
 
-        return 'bg-gray-800 border-gray-700 opacity-60';
+        return 'bg-gray-800 border-gray-700 opacity-60 focus:outline-none';
     };
   
     return (
@@ -418,37 +423,40 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
 
             {/* Question Area */}
             <div className={`flex-grow flex flex-col items-center justify-center p-4 overflow-y-auto ${isNavigating ? 'question-exit' : 'question-enter'}`}>
-                {currentQuestion ? (
-                    <div className="text-left w-full space-y-4">
-                        <p className="text-base text-gray-300 whitespace-pre-wrap">{currentQuestion.text}</p>
-                        <div className="space-y-2">
-                            {currentQuestion.options.map((option, idx) => {
-                                const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D
-                                return (
-                                    <button key={idx} onClick={() => handleAnswerSelect(optionLetter)} disabled={isNavigating || !!feedback} className={`w-full text-left p-3 rounded-lg border-2 transition-colors flex items-start gap-3 disabled:cursor-default focus:outline-none ${getOptionClasses(optionLetter)}`}>
-                                        <span className="font-bold">{optionLetter}.</span> 
-                                        <span>{option.replace(/^\([A-D]\)\s*/, '')}</span>
-                                    </button>
-                                );
-                            })}
+                {/* Add key to force re-mount on navigation, fixing state preservation bugs */}
+                <div key={currentQuestionNumber} className="w-full">
+                    {currentQuestion ? (
+                        <div className="text-left w-full space-y-4">
+                            <p className="text-base text-gray-300 whitespace-pre-wrap">{currentQuestion.text}</p>
+                            <div className="space-y-2">
+                                {currentQuestion.options.map((option, idx) => {
+                                    const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D
+                                    return (
+                                        <button key={idx} onClick={() => handleAnswerSelect(optionLetter)} disabled={isNavigating || !!feedback} className={`w-full text-left p-3 rounded-lg border-2 transition-colors flex items-start gap-3 disabled:cursor-default focus:outline-none ${getOptionClasses(optionLetter)}`}>
+                                            <span className="font-bold">{optionLetter}.</span> 
+                                            <span>{option.replace(/^\([A-D]\)\s*/, '')}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    <>
-                         <h2 className="text-2xl font-bold mb-6">Question {currentQuestionNumber.toString().padStart(3,'0')}</h2>
-                         {currentQuestionType === 'MCQ' ? (
-                             <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
-                                 {(['A', 'B', 'C', 'D'] as const).map(option => (
-                                     <button key={option} onClick={() => handleAnswerSelect(option)} disabled={isNavigating || !!feedback} className={`py-3 px-6 rounded-lg font-semibold border-2 transition-colors disabled:cursor-default focus:outline-none ${getOptionClasses(option)}`}>
-                                         {option}
-                                     </button>
-                                 ))}
-                             </div>
-                         ) : (
-                             <input type="text" value={answers[currentQuestionNumber] || ''} onChange={(e) => handleAnswerSelect(e.target.value)} disabled={isNavigating || !!feedback} className="w-full max-w-xs text-center text-2xl font-mono bg-gray-900 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60" placeholder="Numerical Answer" />
-                         )}
-                    </>
-                )}
+                    ) : (
+                        <>
+                             <h2 className="text-2xl font-bold mb-6">Question {currentQuestionNumber.toString().padStart(3,'0')}</h2>
+                             {currentQuestionType === 'MCQ' ? (
+                                 <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
+                                     {(['A', 'B', 'C', 'D'] as const).map(option => (
+                                         <button key={option} onClick={() => handleAnswerSelect(option)} disabled={isNavigating || !!feedback} className={`py-3 px-6 rounded-lg font-semibold border-2 transition-colors disabled:cursor-default focus:outline-none ${getOptionClasses(option)}`}>
+                                             {option}
+                                         </button>
+                                     ))}
+                                 </div>
+                             ) : (
+                                 <input type="text" value={answers[currentQuestionNumber] || ''} onChange={(e) => handleAnswerSelect(e.target.value)} disabled={isNavigating || !!feedback} className="w-full max-w-xs text-center text-2xl font-mono bg-gray-900 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60" placeholder="Numerical Answer" />
+                             )}
+                        </>
+                    )}
+                </div>
             </div>
             
             {/* Navigation */}

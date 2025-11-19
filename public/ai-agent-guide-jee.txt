@@ -108,7 +108,7 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 |---|---|---|
 | `questions`| array | Array of question objects. |
 | `answers` | string | Stringified JSON of question number to correct answer. |
-| `solutions`| string | **For `homework_assignment`**. Stringified JSON of question number to detailed solution. |
+| `solutions`| string | **For `homework_assignment` (Optional)**. Stringified JSON of question number to detailed solution. |
 
 **Question Object Schema (inside `questions` array):**
 | Key | Type | Description |
