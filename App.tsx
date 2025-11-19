@@ -3,6 +3,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -22,9 +23,9 @@ import * as gcal from './utils/googleCalendar';
 import * as gdrive from './utils/googleDrive';
 import * as auth from './utils/googleAuth';
 import ExamTypeSelectionModal from './components/ExamTypeSelectionModal';
-import GlobalMusicVisualizer from './components/GlobalMusicVisualizer';
 import { useMusicPlayer } from './context/MusicPlayerContext';
 import FullScreenMusicPlayer from './components/FullScreenMusicPlayer';
+import PersistentMusicPlayer from './components/PersistentMusicPlayer';
 
 // FIX: Add global declarations for Google API objects to resolve TypeScript errors.
 declare global {
@@ -38,7 +39,7 @@ const API_URL = '/api';
 
 const App: React.FC = () => {
     const { currentUser, userRole, isLoading, isDemoMode, enterDemoMode, logout, refreshUser } = useAuth();
-    const { isFullScreenPlayerOpen } = useMusicPlayer();
+    const { isFullScreenPlayerOpen, currentTrack } = useMusicPlayer();
     
     const [allStudents, setAllStudents] = useState<StudentData[]>([]);
     const [allDoubts, setAllDoubts] = useState<DoubtData[]>([]);
@@ -511,9 +512,8 @@ const App: React.FC = () => {
 
             return (
                  <div style={{'--accent-color': dashboardUser.CONFIG.settings.accentColor} as React.CSSProperties} className={`${dashboardUser.CONFIG.settings.blurEnabled === false ? 'no-blur' : ''} safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom`}>
-                    <GlobalMusicVisualizer />
                     {isFullScreenPlayerOpen && <FullScreenMusicPlayer />}
-                    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${useToolbarLayout ? 'pb-24' : ''}`}>
+                    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${useToolbarLayout || currentTrack ? 'pb-24' : ''}`}>
                         <Header user={{ name: dashboardUser.fullName, id: dashboardUser.sid, profilePhoto: dashboardUser.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         {userRole === 'admin' ? (
                             <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={onDeleteUser} onBroadcastTask={api.broadcastTask} />
@@ -521,6 +521,7 @@ const App: React.FC = () => {
                             <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateConfig={handleUpdateConfig} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportCalendar(currentUser.SCHEDULE_ITEMS, currentUser.EXAMS, currentUser.fullName)} onBatchImport={handleBatchImport} googleAuthStatus={googleAuthStatus} onGoogleSignIn={auth.handleSignIn} onGoogleSignOut={handleGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} deepLinkAction={deepLinkAction} />
                         )}
                     </div>
+                    {currentTrack && <PersistentMusicPlayer />}
                 </div>
             );
         }
@@ -529,7 +530,6 @@ const App: React.FC = () => {
         if (isDemoMode && userRole === 'admin') {
              return (
                  <div style={{'--accent-color': '#0891b2'} as React.CSSProperties} className="safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom">
-                    <GlobalMusicVisualizer />
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                         <Header user={{ name: 'Admin', id: 'ADMIN_DEMO', profilePhoto: currentUser?.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={() => alert("Deletion disabled in demo mode")} onBroadcastTask={() => alert("Broadcast disabled in demo mode")} />

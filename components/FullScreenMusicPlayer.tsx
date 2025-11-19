@@ -14,7 +14,8 @@ const FullScreenMusicPlayer: React.FC = () => {
         analyser,
         seek,
         duration,
-        currentTime
+        currentTime,
+        playDjDrop
     } = useMusicPlayer();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationFrameId = useRef<number>();
@@ -120,7 +121,9 @@ const FullScreenMusicPlayer: React.FC = () => {
 
                 {/* Playback Controls */}
                 <div className="flex justify-around items-center mt-4">
-                    <button className="p-3 text-gray-300 hover:text-white"><Icon name="shuffle" className="w-6 h-6" /></button>
+                    <button onClick={playDjDrop} className="p-3 text-gray-300 hover:text-white" title="Play DJ Drop">
+                        <Icon name="sound-wave" className="w-6 h-6" />
+                    </button>
                     <button onClick={prevTrack} className="p-3 text-gray-300 hover:text-white"><Icon name="arrow-left" className="w-8 h-8" /></button>
                     <button onClick={isPlaying ? pause : play} className="p-5 bg-white text-black rounded-full shadow-lg">
                         <Icon name={isPlaying ? "pause" : "play"} className="w-8 h-8" />

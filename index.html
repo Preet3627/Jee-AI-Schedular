@@ -224,6 +224,18 @@
         filter: blur(20px) brightness(0.5);
         z-index: -1;
       }
+      
+      /* Persistent Music Player */
+      .persistent-music-player-progress::-webkit-progress-bar {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      .persistent-music-player-progress::-webkit-progress-value {
+        background-color: white;
+      }
+      .persistent-music-player-progress::-moz-progress-bar {
+        background-color: white;
+      }
+
 
       /* Fix for PWA fullscreen bottom space */
       @media (display-mode: fullscreen) {
@@ -236,7 +248,7 @@
         }
       }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",

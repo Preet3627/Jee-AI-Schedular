@@ -17,6 +17,7 @@ interface MusicPlayerContextType {
     seek: (time: number) => void;
     duration: number;
     currentTime: number;
+    playDjDrop: () => void;
 }
 
 const MusicPlayerContext = createContext<MusicPlayerContextType | undefined>(undefined);
@@ -157,7 +158,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     }, [nextTrack]);
 
 
-    const value = { audioElement: audioElementRef.current, analyser, isPlaying, currentTrack, isFullScreenPlayerOpen, playTrack, play, pause, nextTrack, prevTrack, toggleFullScreenPlayer, seek, duration, currentTime };
+    const value = { audioElement: audioElementRef.current, analyser, isPlaying, currentTrack, isFullScreenPlayerOpen, playTrack, play, pause, nextTrack, prevTrack, toggleFullScreenPlayer, seek, duration, currentTime, playDjDrop };
 
     return (
         <MusicPlayerContext.Provider value={value}>

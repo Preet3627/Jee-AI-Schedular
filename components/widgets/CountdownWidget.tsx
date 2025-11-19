@@ -97,9 +97,9 @@ const CountdownWidget: React.FC<{ items: ScheduleItem[] }> = ({ items }) => {
         : `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
     return (
-        <div className="relative aspect-square w-full max-w-sm mx-auto flex items-center justify-center group transition-transform duration-300 hover:scale-[1.03] active:scale-100 cursor-pointer" title={`Next: ${nextTask.CARD_TITLE.EN}`}>
+        <div className="relative aspect-square w-full max-w-[280px] mx-auto flex items-center justify-center group transition-transform duration-300 hover:scale-[1.03] active:scale-100 cursor-pointer" title={`Next: ${nextTask.CARD_TITLE.EN}`}>
             {/* Segments */}
-            <div className="absolute inset-[5%] animate-[spin_60s_linear_infinite]">
+            <div className="absolute inset-[5%]">
                 {Array.from({ length: 24 }).map((_, i) => (
                     <div
                         key={i}
@@ -107,31 +107,48 @@ const CountdownWidget: React.FC<{ items: ScheduleItem[] }> = ({ items }) => {
                         style={{ transform: `rotate(${i * 15}deg)` }}
                     >
                         <div
-                            className={`absolute top-0 left-1/2 -translate-x-1/2 w-3 h-6 rounded-sm transition-all duration-500 ${i < activeSegments ? 'segment-active' : 'segment-inactive'}`}
+                            className={`absolute top-0 left-1/2 -translate-x-1/2 w-[10px] h-[20px] rounded-sm transition-all duration-500 ${i < activeSegments ? 'segment-active' : 'segment-inactive'}`}
                         />
                     </div>
                 ))}
             </div>
 
             {/* Glass Ring */}
-            <div className="absolute inset-0 border-4 border-white/10 rounded-full backdrop-blur-sm shadow-inner flex items-center justify-center">
-                 <div className="w-11/12 h-11/12 bg-transparent rounded-full border-2 border-white/5"></div>
+            <div className="absolute inset-0 border-[3px] border-white/10 rounded-full backdrop-blur-sm shadow-inner flex items-center justify-center">
+                 <div className="w-[90%] h-[90%] bg-transparent rounded-full border border-white/5"></div>
             </div>
             
              {/* Steel Rivets */}
             {[45, 135, 225, 315].map(deg => (
-                <div key={deg} className="absolute w-2 h-2 bg-gray-400 rounded-full border border-gray-600 shadow-md"
+                <div key={deg} className="absolute w-1.5 h-1.5 bg-gray-400 rounded-full border border-gray-600 shadow-md"
                     style={{
                         top: '50%', left: '50%',
-                        transform: `translate(-50%, -50%) rotate(${deg}deg) translateY(-480%)` // Adjust percentage based on size
+                        transform: `translate(-50%, -50%) rotate(${deg}deg) translateY(-460%)`
                     }}
                 />
             ))}
 
             {/* Main Body */}
-            <div className="relative w-[78%] aspect-square bg-gradient-to-br from-gray-500 to-gray-800 rounded-full shadow-2xl flex items-center justify-center overflow-hidden">
+            <div className="relative w-[78%] aspect-square bg-gray-700 rounded-full shadow-2xl flex items-center justify-center overflow-hidden">
                 {/* Brushed metal effect */}
-                <div className="absolute inset-0 bg-gray-700" style={{ backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.05) 75%, transparent 75%, transparent)' }}></div>
+                <svg width="100%" height="100%" className="absolute inset-0">
+                    <defs>
+                        <filter id="brushed-metal">
+                            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/>
+                            <feDiffuseLighting in="SourceGraphic" result="light" lightingColor="white">
+                                <feDistantLight azimuth="45" elevation="60" />
+                            </feDiffuseLighting>
+                            <feComposite in="light" in2="SourceAlpha" operator="in" />
+                        </filter>
+                        <linearGradient id="metal-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#888" />
+                            <stop offset="50%" stopColor="#BBB" />
+                            <stop offset="100%" stopColor="#888" />
+                        </linearGradient>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#metal-gradient)" />
+                    <rect width="100%" height="100%" fill="black" opacity="0.4" filter="url(#brushed-metal)" />
+                </svg>
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.2)_0%,_rgba(0,0,0,0.4)_100%)]"></div>
                 
                 {/* Aperture lines SVG */}
@@ -160,14 +177,14 @@ const CountdownWidget: React.FC<{ items: ScheduleItem[] }> = ({ items }) => {
                 </svg>
 
                 {/* Digital Display */}
-                <div className="relative z-10 text-center bg-black/50 backdrop-blur-sm p-3 rounded-md border-2 border-white/5 shadow-inner">
+                <div className="relative z-10 text-center bg-black/50 backdrop-blur-sm p-2 rounded-md border-2 border-white/5 shadow-inner">
                     <div
-                        className="font-mono text-3xl md:text-4xl font-bold text-cyan-300 tracking-wider"
+                        className="font-mono text-2xl md:text-3xl font-bold text-cyan-300 tracking-wider"
                         style={{ textShadow: '0 0 5px #06b6d4, 0 0 10px #06b6d4' }}
                     >
                         {timeDisplay}
                     </div>
-                    <div className="text-xs text-gray-300 uppercase tracking-[0.2em] mt-1">
+                    <div className="text-[10px] text-gray-300 uppercase tracking-[0.2em] mt-1">
                         Next Schedule
                     </div>
                 </div>
