@@ -2011,171 +2011,135 @@ apiRouter.post('/ai/generate-flashcards', async (req, res) => {
         - Do not include any other text, explanations, or markdown formatting.
         ${getKnowledgeBaseForUser(config)}`;
 
-        const prompt = `Generate 5-10 flashcards for the topic: "${topic}".
-        ${syllabus ? `Focus on concepts relevant to this syllabus: "${syllabus}".` : ''}
-        The goal is a quick formula and concept review.`;
+        const prompt = `Generate 5-10 flashcards for the topic: "${topic}". ${syllabus ? `Syllabus: ${syllabus}` : ''}`;
         
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
-            config: { 
+            config: {
                 systemInstruction,
                 responseMimeType: 'application/json'
             },
         });
-
+        
         res.json(JSON.parse(response.text));
+
     } catch (error) {
-        console.error("Gemini API error (flashcards):", error);
-        res.status(500).json({ error: `Failed to generate flashcards with AI: ${error.message}` });
+        console.error("Gemini API error (generate flashcards):", error);
+        res.status(500).json({ error: `Failed to generate flashcards: ${error.message}` });
     }
 });
 
 apiRouter.post('/ai/generate-answer-key', authMiddleware, async (req, res) => {
     const { prompt } = req.body;
-    if (!prompt) return res.status(400).json({ error: "A prompt is required." });
-
-    const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
+    if (!prompt) return res.status(400).json({ error: "Prompt is required." });
+    
+    const { apiKey } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are an expert data extraction AI. Your task is to find an answer key for a specific test based on the user's prompt and format it as a single raw JSON object.
-        - The JSON object should map question numbers (as strings) to their correct answers (as strings).
-        - For MCQs, use "A", "B", "C", "D". For numerical questions, use the number as a string (e.g., "14.25").
-        - If the user provides a simple list of answers like "A C D B 12.5", assume they are for questions 1, 2, 3, 4, 5 and format the JSON accordingly.
-        - Your entire output MUST be a single, raw JSON object. Do not include explanations, conversational text, or markdown formatting like \`\`\`json.
-        Example output: { "1": "A", "2": "C", "3": "D", "4": "B", "5": "12.5" }`;
-        
-        const fullPrompt = `Find and format the answer key for: "${prompt}"`;
+        const systemInstruction = `You are an answer key retrieval bot. Find the official answer key for the specified test. Respond ONLY with a valid JSON object where keys are question numbers (as strings) and values are the correct answers (as strings). Example: {"1": "A", "2": "C", "3": "12.5"}. Do not include any other text or markdown.`;
         
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: fullPrompt,
-            config: { 
+            model: 'gemini-2.5-pro',
+            contents: `Find the answer key for: ${prompt}`,
+            config: {
                 systemInstruction,
                 responseMimeType: 'application/json'
             },
         });
 
-        // The response should be a JSON string. We send it as is for the client to parse.
         res.json({ answerKey: response.text });
     } catch (error) {
-        console.error("Gemini API error (generate answer key):", error);
+        console.error("Gemini API error (answer key):", error);
         res.status(500).json({ error: `Failed to generate answer key: ${error.message}` });
     }
 });
 
 apiRouter.post('/ai/generate-practice-test', authMiddleware, async (req, res) => {
     const { topic, numQuestions, difficulty } = req.body;
-    if (!topic || !numQuestions || !difficulty) {
-        return res.status(400).json({ error: "Topic, number of questions, and difficulty are required." });
-    }
-
+    if (!topic || !numQuestions || !difficulty) return res.status(400).json({ error: "Topic, number of questions, and difficulty are required." });
+    
     const { apiKey, config } = await getApiKeyAndConfigForUser(req.userId);
     if (!apiKey) return res.status(500).json({ error: "AI service is not configured." });
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const systemInstruction = `You are an expert test generator. Create a practice test based on user specifications, using the internal knowledge base.
-        **CRITICAL: Your entire output MUST be a single, valid JSON object and nothing else.**
-        The JSON object must have two top-level keys: "questions" and "answers".
-
-        1.  **"questions"**: An array of question objects, each with: "number", "text", "options" (array of 4 strings).
-        2.  **"answers"**: A JSON object mapping question number (string) to the correct option letter (A, B, C, or D).
+        const systemInstruction = `You are an expert question bank. Generate a practice test based on the user's request using the knowledge base.
+        - Your entire response MUST be a single, valid JSON object with "questions" (an array) and "answers" (a stringified JSON object).
+        - Each question object in the array must have "number", "text", "options" (array of 4 for MCQ, empty for NUM), and "type" (MCQ/NUM).
+        - Use the advanced text formatting (e.g., H_2O, x^2) where appropriate.
         ${getKnowledgeBaseForUser(config)}`;
-        
-        const fullPrompt = `Generate a ${difficulty} level practice test with ${numQuestions} questions on the topic of "${topic}".`;
-        
-        const model = config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-flash'; // Practice tests can be flash
+
+        const prompt = `Generate a ${difficulty} difficulty practice test with ${numQuestions} questions on the topic: "${topic}".`;
 
         const response = await ai.models.generateContent({
-            model: model,
-            contents: fullPrompt,
-            config: { 
+            model: config.settings?.creditSaver ? 'gemini-2.5-flash' : 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
                 systemInstruction,
                 responseMimeType: 'application/json'
             },
         });
         
-        // The AI should return a clean JSON string.
-        res.json(JSON.parse(response.text));
+        const parsedResponse = JSON.parse(response.text);
+        
+        // Ensure answers are correctly formatted as a stringified JSON
+        if (typeof parsedResponse.answers === 'object') {
+            parsedResponse.answers = JSON.stringify(parsedResponse.answers);
+        }
+
+        res.json(parsedResponse);
 
     } catch (error) {
-        console.error("Gemini API error (generate practice test):", error);
+        console.error("Gemini API error (practice test):", error);
         res.status(500).json({ error: `Failed to generate practice test: ${error.message}` });
     }
 });
 
-
 // --- ADMIN ENDPOINTS ---
 apiRouter.get('/admin/students', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const [students] = await pool.query("SELECT id, sid, email, full_name, role, profile_photo, last_seen FROM users WHERE role = 'student'");
-        const studentsWithData = await Promise.all(students.map(s => getUserData(s.id)));
-        res.json(studentsWithData);
+        const [students] = await pool.query(`
+            SELECT u.id, u.sid, u.email, u.full_name, u.profile_photo, u.is_verified, u.role, u.last_seen, c.config
+            FROM users u
+            LEFT JOIN user_configs c ON u.id = c.user_id
+            WHERE u.role = 'student'
+        `);
+        const studentData = students.map(s => {
+            let config = {};
+            if (s.config) {
+                try {
+                    config = JSON.parse(decrypt(s.config));
+                    delete config.geminiApiKey; // Never send sensitive keys
+                } catch (e) {
+                    console.error(`Could not parse config for student ${s.sid}`);
+                }
+            }
+            return {
+                id: s.id, sid: s.sid, email: s.email, fullName: s.full_name, profilePhoto: s.profile_photo,
+                isVerified: s.is_verified, role: s.role, last_seen: s.last_seen, CONFIG: config
+            };
+        });
+        res.json(studentData);
     } catch (error) {
+        console.error("Get students error:", error);
         res.status(500).json({ error: 'Failed to fetch students' });
-    }
-});
-
-apiRouter.put('/admin/doubts/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-    if (!['archived', 'deleted', 'active'].includes(status)) {
-        return res.status(400).json({ error: 'Invalid status provided.' });
-    }
-    try {
-        await pool.query('UPDATE doubts SET status = ? WHERE id = ?', [status, id]);
-        res.status(200).json({ message: `Doubt ${id} status updated to ${status}.` });
-    } catch (error) {
-        console.error(`Error updating doubt ${id}:`, error);
-        res.status(500).json({ error: 'Server error while updating doubt status.' });
-    }
-});
-
-apiRouter.post('/admin/impersonate/:sid', authMiddleware, adminMiddleware, async (req, res) => {
-    const { sid } = req.params;
-    try {
-        const [[student]] = await pool.query('SELECT id, sid FROM users WHERE sid = ? AND role = "student"', [sid]);
-        if (!student) {
-            return res.status(404).json({ error: 'Student not found.' });
-        }
-        // Generate a standard token for the student
-        const token = jwt.sign({ id: student.id, sid: student.sid }, JWT_SECRET, { expiresIn: '1h' }); // Shorter expiry for impersonation
-        res.json({ token });
-    } catch (error) {
-        console.error(`Error impersonating student ${sid}:`, error);
-        res.status(500).json({ error: 'Server error during impersonation.' });
-    }
-});
-
-apiRouter.post('/admin/broadcast-task', authMiddleware, adminMiddleware, async (req, res) => {
-    const { task, examType } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO broadcast_tasks (item_data, exam_type) VALUES (?, ?)',
-            [JSON.stringify(task), examType]
-        );
-        res.status(200).json({ success: true, message: `Task saved for broadcast to ${examType} students.` });
-    } catch (error) {
-        console.error("Broadcast error:", error);
-        res.status(500).json({ error: 'Broadcast failed' });
     }
 });
 
 apiRouter.delete('/admin/students/:sid', authMiddleware, adminMiddleware, async (req, res) => {
     const { sid } = req.params;
     try {
-        // The ON DELETE CASCADE constraint on foreign keys will handle related data.
         const [result] = await pool.query('DELETE FROM users WHERE sid = ? AND role = "student"', [sid]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Student not found or user is not a student.' });
         }
-        res.status(200).json({ message: `Student ${sid} deleted successfully.` });
+        res.status(200).json({ message: 'Student deleted successfully.' });
     } catch (error) {
-        console.error(`Error deleting student ${sid}:`, error);
-        res.status(500).json({ error: 'Server error while deleting student.' });
+        console.error("Delete student error:", error);
+        res.status(500).json({ error: 'Failed to delete student.' });
     }
 });
 
@@ -2183,72 +2147,95 @@ apiRouter.post('/admin/students/:sid/clear-data', authMiddleware, adminMiddlewar
     const { sid } = req.params;
     const connection = await pool.getConnection();
     try {
-        await connection.beginTransaction();
-
         const [[user]] = await connection.query('SELECT id FROM users WHERE sid = ?', [sid]);
         if (!user) {
-            await connection.rollback();
             return res.status(404).json({ error: 'Student not found' });
         }
-        const userId = user.id;
-
-        // 1. Delete schedule items
-        await connection.query('DELETE FROM schedule_items WHERE user_id = ?', [userId]);
-
-        // 2. Reset user_configs to default
-        const defaultConfig = { WAKE: '06:00', SCORE: '0/300', WEAK: [], UNACADEMY_SUB: false, settings: { accentColor: '#0891b2', blurEnabled: true, mobileLayout: 'standard', forceOfflineMode: false, perQuestionTime: 180 }, RESULTS: [], EXAMS: [], STUDY_SESSIONS: [], DOUBTS: [], flashcardDecks: [] };
-        const encryptedDefaultConfig = encrypt(JSON.stringify(defaultConfig));
-        await connection.query('UPDATE user_configs SET config = ? WHERE user_id = ?', [encryptedDefaultConfig, userId]);
-
+        await connection.beginTransaction();
+        await connection.query('DELETE FROM schedule_items WHERE user_id = ?', [user.id]);
+        await connection.query('DELETE FROM user_configs WHERE user_id = ?', [user.id]);
+        // Also clear doubts and solutions from this user
+        await connection.query('DELETE FROM doubts WHERE user_id = ?', [user.id]);
+        await connection.query('DELETE FROM solutions WHERE user_id = ?', [user.id]);
+        
         await connection.commit();
-        res.status(200).json({ message: `Data for student ${sid} has been cleared.` });
-
+        res.status(200).json({ message: 'Student data cleared.' });
     } catch (error) {
         await connection.rollback();
-        console.error(`Error clearing data for student ${sid}:`, error);
-        res.status(500).json({ error: 'Server error while clearing data.' });
+        console.error("Clear student data error:", error);
+        res.status(500).json({ error: 'Failed to clear student data.' });
     } finally {
         connection.release();
     }
 });
 
-// --- PUBLIC & API ROUTE SETUP ---
-// Mount the entire API router at the root. 
-// The '/api' prefix is handled by the proxy.
+
+apiRouter.post('/admin/broadcast-task', authMiddleware, adminMiddleware, async (req, res) => {
+    const { task, examType } = req.body;
+    try {
+        await pool.query('INSERT INTO broadcast_tasks (item_data, exam_type) VALUES (?, ?)', [JSON.stringify(task), examType]);
+        res.status(201).json({ message: 'Broadcast task created successfully. It will be synced to users on their next login.' });
+    } catch (error) {
+        console.error("Broadcast task error:", error);
+        res.status(500).json({ error: 'Failed to create broadcast task.' });
+    }
+});
+
+apiRouter.post('/admin/impersonate/:sid', authMiddleware, adminMiddleware, async (req, res) => {
+    const { sid } = req.params;
+    try {
+        const [[userToImpersonate]] = await pool.query('SELECT id FROM users WHERE sid = ? AND role = "student"', [sid]);
+        if (!userToImpersonate) {
+            return res.status(404).json({ error: 'Student not found.' });
+        }
+        const token = jwt.sign({ id: userToImpersonate.id, sid: sid }, JWT_SECRET, { expiresIn: '1h' });
+        res.json({ token });
+    } catch (error) {
+        console.error("Impersonation error:", error);
+        res.status(500).json({ error: 'Failed to impersonate student.' });
+    }
+});
+
+apiRouter.put('/admin/doubts/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
+    const { status } = req.body;
+    if (!['archived', 'deleted'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status." });
+    }
+    try {
+        await pool.query('UPDATE doubts SET status = ? WHERE id = ?', [status, req.params.id]);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("Update doubt status error:", error);
+        res.status(500).json({ error: "Failed to update doubt status." });
+    }
+});
+
+
+
 app.use('/api', apiRouter);
 
-// Serve frontend files from the root `dist` and `public` directories.
+// --- STATIC FILE SERVING (for production) ---
 app.use(express.static(path.join(__dirname, 'dist')));
-app.use(express.static(path.join(__dirname, 'public')));
-
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // --- SERVER START ---
-const startServer = async () => {
-    if (isConfigured) {
-        await initializeDatabaseSchema();
-        await ensureAdminUserExists();
-    }
-    if (isConfigured && mailer) {
-        try {
-            await mailer.verify();
-            console.log('SMTP mailer configured and verified.');
-        } catch (error) {
-            console.error("SMTP mailer verification failed:", error);
-        }
-    } else if (isConfigured) {
-        console.warn("SMTP mailer not configured. Email verification and password resets will be skipped/disabled.");
-    }
+const PORT = process.env.PORT || 3001;
+if (isConfigured) {
+    initializeDatabaseSchema().then(() => {
+        ensureAdminUserExists().then(() => {
+            app.listen(PORT, () => {
+                console.log(`Server listening on port ${PORT}`);
+            });
+        });
+    });
+} else {
+    // Start the server anyway to serve the misconfigured error message via the API status
+    app.listen(PORT, () => {
+        console.log(`Server started in a MISCONFIGURED state on port ${PORT}. Please check your .env file.`);
+    });
+}
 
-    if (!process.env.VERCEL) {
-        const PORT = process.env.PORT || 3001;
-        app.listen(PORT, () => console.log(`Server running on port ${PORT}. Configured: ${isConfigured}`));
-    }
-};
-
-startServer();
-
-// Export the app for Vercel's serverless environment
+// Export the app for Vercel
 export default app;

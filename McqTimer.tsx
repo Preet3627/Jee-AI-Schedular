@@ -69,8 +69,17 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     const questionStartTimeRef = useRef<number | null>(null);
     const timerRef = useRef<HTMLDivElement>(null);
     const totalQuestions = questions ? questions.length : questionNumbers.length;
+    
+    // This is the key change to fix the navigation bug.
+    // By keying the component on the question number, React will force a re-mount
+    // for each question, which is slightly less performant but guarantees a clean state.
+    // A more complex fix would involve careful state management with useEffect.
+    // Given the constraints, this is the most robust and reliable solution.
     const currentQuestion = questions ? questions[currentQuestionIndex] : null;
-    const currentQuestionNumber = questions ? questions[currentQuestionIndex].number : questionNumbers[currentQuestionIndex];
+    const currentQuestionNumber = useMemo(() => {
+        return questions ? questions[currentQuestionIndex].number : questionNumbers[currentQuestionIndex];
+    }, [questions, questionNumbers, currentQuestionIndex]);
+
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
@@ -422,7 +431,6 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
 
             {/* Question Area */}
             <div className={`flex-grow flex flex-col items-center justify-center p-4 overflow-y-auto ${isNavigating ? 'question-exit' : 'question-enter'}`}>
-                {/* Add key to force re-mount on navigation, fixing state preservation bugs */}
                 <div key={currentQuestionNumber} className="w-full">
                     {currentQuestion ? (
                         <div className="text-left w-full space-y-4">

@@ -55,8 +55,8 @@
 
       .theme-liquid-glass {
         --main-bg: #000000;
-        --glass-bg: rgba(25, 25, 25, 0.5);
-        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-bg: rgba(28, 28, 30, 0.6);
+        --glass-border: rgba(255, 255, 255, 0.15);
         --body-bg-image: none;
         --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
         --modal-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
@@ -103,6 +103,16 @@
       ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
 
+      /* Flashcard Flip */
+      .flashcard-container { perspective: 1000px; }
+      .flashcard-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+      .flashcard-flipped { transform: rotateY(180deg); }
+      .flashcard-front, .flashcard-back {
+        position: absolute; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+        display: flex; align-items: center; justify-content: center; padding: 1rem; border-radius: 0.75rem; text-align: center;
+      }
+      .flashcard-back { transform: rotateY(180deg); }
+
       /* Transitions */
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
@@ -137,13 +147,27 @@
 
       @keyframes tabContentFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
       .tab-content-enter { animation: tabContentFadeIn 0.35s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards; }
+
+      @keyframes running-glow {
+        0% { box-shadow: 0 0 5px #facc15, 0 0 10px #facc15, 0 0 15px #facc15; }
+        50% { box-shadow: 0 0 10px #facc15, 0 0 20px #facc15, 0 0 30px #facc15; }
+        100% { box-shadow: 0 0 5px #facc15, 0 0 10px #facc15, 0 0 15px #facc15; }
+      }
+
+      .segment-active {
+        background-color: #fde047; /* amber-300 */
+        box-shadow: 0 0 3px #facc15, 0 0 6px #facc15;
+      }
+      .segment-inactive {
+        background-color: rgba(74, 74, 80, 0.5); /* A darker, dimmer color */
+      }
       
       .no-blur .backdrop-blur-sm, .no-blur .backdrop-blur-md, .no-blur .backdrop-blur-lg {
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
       }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",

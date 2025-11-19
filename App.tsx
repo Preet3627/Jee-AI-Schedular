@@ -355,6 +355,7 @@ const App: React.FC = () => {
     };
 
     const checkBackend = useCallback(async (isInitialCheck: boolean) => {
+        // FIX: Replace NodeJS.Timeout with browser-compatible ReturnType
         let statusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
         if (isInitialCheck && !currentUser) {
             statusCheckTimeout = setTimeout(() => {

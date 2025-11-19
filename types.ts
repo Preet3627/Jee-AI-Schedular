@@ -158,12 +158,14 @@ export interface Track {
   artist: string;
   album: string;
   track: string; // track number
-  coverArt: string; // cover art ID from Ampache
+  coverArt: string; // cover art ID from Ampache/WebDAV
   duration: string; // in seconds
   size: string; // in bytes
   coverArtUrl?: string; // dynamically added by the player context
   isLocal?: boolean;
-  file?: File;
+  // FIX: Changed type from FileSystemFileHandle to File for compatibility with Blob-based APIs.
+  file?: File; // For local files using File System Access API
+  path?: string; // For Nextcloud files
 }
 
 export interface Flashcard {
@@ -199,7 +201,7 @@ export interface PracticeQuestion {
 export interface CustomWidget {
   id: string;
   title: string;
-  content: string;
+  content: string; // Markdown content
 }
 
 export interface LocalPlaylist {
@@ -209,6 +211,12 @@ export interface LocalPlaylist {
 }
 
 export type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
+
+export interface DashboardWidgetItem {
+    id: string; // Corresponds to a key in the widgetConfig map
+    wide?: boolean;
+    translucent?: boolean;
+}
 
 // Represents the structure of the encrypted JSON blob in the `user_configs` table
 export interface Config {
@@ -236,11 +244,11 @@ export interface Config {
         creditSaver?: boolean; // Use faster, cheaper AI models
         examType?: 'JEE' | 'NEET';
         theme?: 'default' | 'liquid-glass' | 'midnight';
-        // FIX: The layout is an array of widget ID strings, not complex objects.
-        dashboardLayout?: string[];
+        dashboardLayout?: DashboardWidgetItem[];
         dashboardFlashcardDeckIds?: string[];
         musicPlayerWidgetLayout?: 'minimal' | 'expanded';
-        widgetSettings?: Record<string, { translucent?: boolean; wide?: boolean; }>;
+        // FIX: Added widgetSettings to store per-widget configuration like translucency.
+        widgetSettings?: { [widgetId: string]: { translucent?: boolean; wide?: boolean } };
     };
 }
 

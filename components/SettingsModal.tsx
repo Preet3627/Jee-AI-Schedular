@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Config, FlashcardDeck } from '../types';
+import { Config, FlashcardDeck, DashboardWidgetItem } from '../types';
 import Icon from './Icon';
 
 interface SettingsModalProps {
@@ -42,12 +42,12 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
     compact: ['todaysAgenda', 'scoreTrend', 'subjectAllocation', 'readingHours', 'flashcards', 'upcomingExams'],
   };
 
-  // FIX: dashboardLayout is a string[] of widget keys. This section handles mapping UI presets to that array.
-  const getPresetFromLayout = (layout: string[] | undefined): 'default' | 'focus' | 'compact' => {
+  // FIX: dashboardLayout is a DashboardWidgetItem[] of widget objects. This section handles mapping UI presets to that array.
+  const getPresetFromLayout = (layout: DashboardWidgetItem[] | undefined): 'default' | 'focus' | 'compact' => {
     if (!layout) return 'default';
-    const sortedLayout = [...layout].sort();
-    if (JSON.stringify(sortedLayout) === JSON.stringify([...LAYOUT_PRESETS.focus].sort())) return 'focus';
-    if (JSON.stringify(sortedLayout) === JSON.stringify([...LAYOUT_PRESETS.compact].sort())) return 'compact';
+    const sortedLayoutIds = layout.map(item => item.id).sort();
+    if (JSON.stringify(sortedLayoutIds) === JSON.stringify([...LAYOUT_PRESETS.focus].sort())) return 'focus';
+    if (JSON.stringify(sortedLayoutIds) === JSON.stringify([...LAYOUT_PRESETS.compact].sort())) return 'compact';
     return 'default';
   };
 
@@ -86,8 +86,8 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         isCalendarSyncEnabled: calendarSync,
         examType: examType as 'JEE' | 'NEET',
         theme: theme as 'default' | 'liquid-glass' | 'midnight',
-        // FIX: The dashboardLayout property expects a string array of widget IDs.
-        dashboardLayout: LAYOUT_PRESETS[dashboardLayoutPreset],
+        // FIX: The dashboardLayout property expects a DashboardWidgetItem array. Map string IDs to objects.
+        dashboardLayout: LAYOUT_PRESETS[dashboardLayoutPreset].map(id => ({ id })),
         dashboardFlashcardDeckIds,
         musicPlayerWidgetLayout: musicPlayerLayout as 'minimal' | 'expanded',
     };
