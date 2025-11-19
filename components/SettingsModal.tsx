@@ -50,14 +50,14 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   // FIX: dashboardLayout is a DashboardWidgetItem[] of widget objects. This section handles mapping UI presets to that array.
   const getPresetFromLayout = (layout: DashboardWidgetItem[] | undefined): 'default' | 'focus' | 'compact' => {
     if (!layout) return 'default';
-    const sortedLayoutIds = layout.map(item => item.id).sort();
+    const layoutIds = layout.map(item => item.id).sort(); // Extract only IDs for comparison
     const sortedDefaultIds = LAYOUT_PRESETS.default.sort();
     const sortedFocusIds = LAYOUT_PRESETS.focus.sort();
     const sortedCompactIds = LAYOUT_PRESETS.compact.sort();
 
-    if (JSON.stringify(sortedLayoutIds) === JSON.stringify(sortedDefaultIds)) return 'default';
-    if (JSON.stringify(sortedLayoutIds) === JSON.stringify(sortedFocusIds)) return 'focus';
-    if (JSON.stringify(sortedLayoutIds) === JSON.stringify(sortedCompactIds)) return 'compact';
+    if (JSON.stringify(layoutIds) === JSON.stringify(sortedDefaultIds)) return 'default';
+    if (JSON.stringify(layoutIds) === JSON.stringify(sortedFocusIds)) return 'focus';
+    if (JSON.stringify(layoutIds) === JSON.stringify(sortedCompactIds)) return 'compact';
     return 'default'; // Fallback if no exact preset match
   };
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +8,7 @@ interface AIChatPopupProps {
   onSendMessage: (prompt: string, imageBase64?: string) => void;
   onClose: () => void;
   isLoading: boolean;
+  animationOrigin?: { x: string, y: string };
 }
 
 const ChatMessage: React.FC<{ message: { role: string, parts: { text: string }[] } }> = ({ message }) => {
@@ -29,7 +29,7 @@ const ChatMessage: React.FC<{ message: { role: string, parts: { text: string }[]
     );
 };
 
-const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClose, isLoading }) => {
+const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClose, isLoading, animationOrigin }) => {
   const [prompt, setPrompt] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -83,6 +83,7 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ history, onSendMessage, onClo
   return (
     <div 
       className={`fixed bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl flex flex-col z-50 transition-all duration-300 ${isFullScreen ? fullScreenClasses : popupClasses}`}
+      style={{ '--clip-origin-x': animationOrigin?.x, '--clip-origin-y': animationOrigin?.y } as React.CSSProperties}
     >
       <header
         className="p-3 border-b border-[var(--glass-border)] flex-shrink-0 flex justify-between items-center"

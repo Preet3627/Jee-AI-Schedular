@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, SetStateAction } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion, ActiveTab, DashboardWidgetItem, CustomWidget as CustomWidgetType } from '../types';
 import ScheduleList from './ScheduleList';
 import Icon, { IconName } from './Icon';
@@ -52,6 +52,8 @@ import MusicPlayerWidget from './widgets/MusicPlayerWidget';
 import MusicLibraryModal from './MusicLibraryModal';
 import CustomWidgetComponent from './widgets/CustomWidget';
 import { motivationalQuotes } from '../data/motivationalQuotes';
+// FIX: Import useMusicPlayer
+import { useMusicPlayer } from '../context/MusicPlayerContext';
 
 
 interface StudentDashboardProps {
@@ -145,7 +147,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
 
 
     // FIX: Simplified handleModalOpenWithAnimation, to accept a generic setter.
-    const handleModalOpenWithAnimation = useCallback(<T,>(setter: React.Dispatch<React.SetStateAction<T | null | boolean>>, event: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>, data?: T) => {
+    const handleModalOpenWithAnimation = useCallback(<T,>(setter: React.Dispatch<SetStateAction<T | null | boolean>>, event: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>, data?: T) => {
         const rect = event.currentTarget.getBoundingClientRect();
         setAnimationOrigin({
             x: `${rect.left + rect.width / 2}px`,
@@ -293,7 +295,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const taskItems = student.SCHEDULE_ITEMS.filter(item => item.type !== 'ACTIVITY');
     const activityItems = student.SCHEDULE_ITEMS.filter(item => item.type === 'ACTIVITY') as ActivityData[];
     
-    const handleEditClick = useCallback((item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    const handleEditClick = useCallback((item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>) => {
         setEditingTask(item);
         if (event) handleModalOpenWithAnimation(setIsCreateModalOpen, event);
         else setIsCreateModalOpen(true);
@@ -668,8 +670,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     
     const renderDashboardContent = () => {
         const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
-        // FIX: Explicitly typed `allAvailableWidgets` with `Record<string, JSX.Element>`
-        const allAvailableWidgets: Record<string, JSX.Element> = {
+        // FIX: Explicitly typed `allAvailableWidgets` with `Record<string, React.ReactNode>`
+        const allAvailableWidgets: Record<string, React.ReactNode> = {
             'countdown': <CountdownWidget items={student.SCHEDULE_ITEMS} onClick={(e) => handleModalOpenWithAnimation(setIsCreateModalOpen, e)} />,
             'dailyInsight': <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />,
             'quote': <MotivationalQuoteWidget quote={randomQuote} />,
@@ -771,7 +773,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 return <ExamsView 
                           exams={student.EXAMS} 
                           onAdd={(e) => { setEditingExam(null); handleModalOpenWithAnimation(setIsExamModalOpen, e); }}
-                          onEdit={(exam, e) => { setEditingExam(exam); handleModalOpenOpenWithAnimation(setIsExamModalOpen, e, exam); }}
+                          onEdit={(exam, e) => { setEditingExam(exam); handleModalOpenWithAnimation(setIsExamModalOpen, e, exam); }}
                           onDelete={onDeleteExam} 
                         />;
             case 'performance':
@@ -828,7 +830,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             <CreateEditTaskModal animationOrigin={animationOrigin} task={editingTask || viewingTask} viewOnly={!!viewingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); setViewingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />
             {isAiParserModalOpen && <AIParserModal animationOrigin={animationOrigin} onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} onPracticeTestReady={handleAiPracticeTest} onOpenGuide={(e) => handleModalOpenWithAnimation(setIsAiGuideModalOpen, e)} examType={student.CONFIG.settings.examType} />}
             {isPracticeModalOpen && <CustomPracticeModal animationOrigin={animationOrigin} initialTask={practiceTask} aiPracticeTest={aiPracticeTest} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); setAiPracticeTest(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
-            {isSettingsModalOpen && <SettingsModal animationOrigin={animationOrigin} settings={student.CONFIG.settings} decks={student.CONFIG.flashcardDecks || []} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={(e) => handleModalOpenWithAnimation(setIsAssistantGuideOpen, e)} onOpenAiGuide={(e) => handleModalOpenWithAnimation(setIsAiGuideModalOpen, e)} onClearAllSchedule={handleClearAllSchedule} studentCustomWidgets={student.CONFIG.customWidgets || []} onSaveCustomWidgets={handleSaveCustomWidget} />}
+            {isSettingsModalOpen && <SettingsModal animationOrigin={animationOrigin} settings={student.CONFIG.settings} decks={student.CONFIG.flashcardDecks || []} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={handleGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={(e) => handleModalOpenWithAnimation(setIsAssistantGuideOpen, e)} onOpenAiGuide={(e) => handleModalOpenWithAnimation(setIsAiGuideModalOpen, e)} onClearAllSchedule={handleClearAllSchedule} studentCustomWidgets={student.CONFIG.customWidgets || []} onSaveCustomWidgets={handleSaveCustomWidget} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal animationOrigin={animationOrigin} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} currentWeaknesses={student.CONFIG.WEAK} />}
             {isLogResultModalOpen && <LogResultModal animationOrigin={animationOrigin} onClose={() => {setIsLogResultModalOpen(false); setInitialScoreForModal(undefined); setInitialMistakesForModal(undefined);}} onSave={onLogResult} initialScore={initialScoreForModal} initialMistakes={initialMistakesForModal} />}
             {isEditResultModalOpen && editingResult && <EditResultModal animationOrigin={animationOrigin} result={editingResult} onClose={() => { setIsEditResultModalOpen(false); setEditingResult(null); }} onSave={onUpdateResult} />}

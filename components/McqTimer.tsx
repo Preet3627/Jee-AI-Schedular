@@ -73,9 +73,10 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     // This is the key change to fix the navigation bug.
     // By keying the component on the question number, React will force a re-mount
     // for each question, which is slightly less performant but guarantees a clean state.
+    // A more complex fix would involve careful state management with useEffect.
     // Given the constraints, this is the most robust and reliable solution.
     const currentQuestion = questions ? questions[currentQuestionIndex] : null;
-    const currentQuestionNumber = useMemo(() => { // FIX: Added useMemo for currentQuestionNumber
+    const currentQuestionNumber = useMemo(() => {
         return questions ? questions[currentQuestionIndex].number : questionNumbers[currentQuestionIndex];
     }, [questions, questionNumbers, currentQuestionIndex]);
 
@@ -345,7 +346,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
 
                 {(practiceMode === 'jeeMains' || (questions && onLogResult)) ? (
                     testResult && testResult.analysis ? (
-                        <TestAnalysisReport // FIX: Used TestAnalysisReport
+                        <TestAnalysisReport 
                           result={testResult} 
                           onAnalyzeMistake={(qNum) => setAnalyzingMistake(qNum)}
                         />

@@ -47,7 +47,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
             return cardData.date === today.toISOString().split('T')[0];
         }
         return cardData.DAY.EN.toUpperCase() === todayName;
-    }, [('date' in cardData && cardData.date), cardData.DAY.EN]); // FIX: Added type guard for cardData.date
+    }, [cardData.date, cardData.DAY.EN]);
 
     useEffect(() => {
         // FIX: Added type guard for 'TIME' property
@@ -84,7 +84,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
         const interval = setInterval(updateProgress, 60000); // Update every minute
         return () => clearInterval(interval);
 
-    }, [('TIME' in cardData && cardData.TIME), isToday]); // FIX: Added type guard for cardData.TIME
+    }, [cardData.TIME, isToday]);
 
 
     useEffect(() => {

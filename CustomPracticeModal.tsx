@@ -286,7 +286,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
                     <>
                       <div className="mt-4">
                         <label className="text-sm font-bold text-gray-400">Question Ranges (e.g., 1-15; 20-25)</label>
-                        <textarea value={qRanges} onChange={(e) => setQRanges(e.target.value)} className="w-full h-20 bg-gray-900/70 border border-[var(--glass-border)] rounded-lg p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 mt-1" placeholder="e.g., 1-25; 30-35;" />
+                        <textarea value={qRanges} onChange={(e) => setQRanges(e.target.value)} className="w-full h-20 bg-gray-900/70 border border-[var(--glass-border)] rounded-lg p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:focus:ring-cyan-500 mt-1" placeholder="e.g., 1-25; 30-35;" />
                       </div>
                        {!initialTask && (
                             <div className="mt-4">

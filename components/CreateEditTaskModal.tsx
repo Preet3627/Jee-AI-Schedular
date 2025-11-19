@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ScheduleItem, ScheduleCardData, HomeworkData, FlashcardDeck } from '../types';
 import Icon from './Icon';
 import AIGenerateAnswerKeyModal from './AIGenerateAnswerKeyModal';
+import { useAuth } from '../context/AuthContext';
 
 interface CreateEditTaskModalProps {
   task: ScheduleItem | null;
@@ -9,6 +10,7 @@ interface CreateEditTaskModalProps {
   onClose: () => void;
   onSave: (task: ScheduleItem) => void;
   decks: FlashcardDeck[];
+  animationOrigin?: { x: string, y: string };
 }
 
 type TaskType = 'ACTION' | 'HOMEWORK' | 'FLASHCARD_REVIEW';
@@ -47,7 +49,9 @@ const formatAnswers = (answers?: Record<string, string>): string => {
     return Object.entries(answers).map(([q, a]) => `${q}:${a}`).join('\n');
 };
 
-const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnly = false, onClose, onSave, decks }) => {
+const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnly = false, onClose, onSave, decks, animationOrigin }) => {
+  const { currentUser } = useAuth();
+  const theme = currentUser?.CONFIG.settings.theme;
     
   const getInitialTaskType = (): TaskType => {
       if (!task) return 'ACTION';
@@ -91,7 +95,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
 
   const handleClose = () => {
     setIsExiting(true);
-    setTimeout(onClose, 300); // Match animation duration
+    setTimeout(onClose, theme === 'liquid-glass' ? 500 : 300);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -116,6 +120,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
             TIME: formData.time || undefined,
+            // FIX: Cast formData.category to the specific union type required by HomeworkData
             category: formData.category as HomeworkData['category'],
             answers: parseAnswers(formData.answers),
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
@@ -141,8 +146,8 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
     handleClose();
   };
 
-  const animationClasses = isExiting ? 'modal-exit' : 'modal-enter';
-  const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
+  const animationClasses = theme === 'liquid-glass' ? (isExiting ? 'genie-out' : 'genie-in') : (isExiting ? 'modal-exit' : 'modal-enter');
+  const contentAnimationClasses = theme === 'liquid-glass' ? '' : (isExiting ? 'modal-content-exit' : 'modal-content-enter');
   const inputClass = "w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-800/50 disabled:cursor-not-allowed";
 
   const ViewField: React.FC<{ label: string, value?: string }> = ({ label, value }) => (
@@ -154,11 +159,37 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
     ) : null
   );
 
+  const ModalShell: React.FC<{ children: React.ReactNode, title: string, animationOrigin?: { x: string, y: string } }> = ({ children, title, animationOrigin }) => (
+    <div
+      className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`}
+      style={{ '--clip-origin-x': animationOrigin?.x, '--clip-origin-y': animationOrigin?.y } as React.CSSProperties}
+      onClick={handleClose}
+    >
+      <div
+        className={`w-full max-w-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-[var(--modal-border-radius)] shadow-[var(--modal-shadow)] ${contentAnimationClasses} max-h-[90vh] overflow-hidden flex flex-col`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {theme === 'liquid-glass' && (
+          <div className="flex-shrink-0 flex items-center p-3 border-b border-[var(--glass-border)]">
+            <div className="flex gap-2">
+              <button onClick={handleClose} className="w-3 h-3 rounded-full bg-red-500"></button>
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            </div>
+            <h2 className="text-sm font-semibold text-white text-center flex-grow -ml-12">{title}</h2>
+          </div>
+        )}
+        <div className={`p-6 ${theme === 'liquid-glass' ? 'overflow-y-auto' : ''}`}>
+          {theme !== 'liquid-glass' && <h2 className="text-2xl font-bold text-white mb-4">{title}</h2>}
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+
   if (viewOnly && task) {
     return (
-      <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
-        <div className={`w-full max-w-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses} max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-          <h2 className="text-2xl font-bold text-white mb-4">Task Details</h2>
+      <ModalShell title="Task Details" animationOrigin={animationOrigin}>
           <div className="space-y-4">
             <ViewField label="Title" value={task.CARD_TITLE.EN} />
             <ViewField label="Details" value={task.FOCUS_DETAIL.EN} />
@@ -174,18 +205,14 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
                 {task.type === 'HOMEWORK' && <button type="submit" className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90">Start Practice</button>}
             </div>
           </div>
-        </div>
-      </div>
+      </ModalShell>
     );
   }
 
   return (
     <>
-      <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
-        <div className={`w-full max-w-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses} max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-          <h2 className="text-2xl font-bold text-white mb-4">{task ? 'Edit Task' : 'Create New Task'}</h2>
+      <ModalShell title={task ? 'Edit Task' : 'Create New Task'} animationOrigin={animationOrigin}>
           <form onSubmit={handleSubmit} className="space-y-4">
-
             <div>
               <label className="text-sm font-bold text-gray-400">Task Type</label>
               <select value={taskType} onChange={e => setTaskType(e.target.value as TaskType)} className={inputClass}>
@@ -239,7 +266,6 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
                 </div>
                 <div>
                   <label className="text-sm font-bold text-gray-400">Category</label>
-                  {/* FIX: Cast the select's value to the correct literal type in the onChange handler. */}
                   <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as 'Custom' | 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ'})} className={inputClass}>
                       <option value="Custom">Custom</option>
                       <option value="Level-1">Level-1</option>
@@ -278,8 +304,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
               <button type="submit" className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90">Save Task</button>
             </div>
           </form>
-        </div>
-      </div>
+      </ModalShell>
       {isAiKeyModalOpen && (
           <AIGenerateAnswerKeyModal
               onClose={() => setIsAiKeyModalOpen(false)}

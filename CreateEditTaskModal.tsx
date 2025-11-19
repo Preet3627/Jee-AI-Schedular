@@ -159,7 +159,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
     ) : null
   );
 
-  const ModalShell: React.FC<{ children: React.ReactNode, title: string }> = ({ children, title }) => (
+  const ModalShell: React.FC<{ children: React.ReactNode, title: string, animationOrigin?: { x: string, y: string } }> = ({ children, title, animationOrigin }) => (
     <div
       className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`}
       style={{ '--clip-origin-x': animationOrigin?.x, '--clip-origin-y': animationOrigin?.y } as React.CSSProperties}
@@ -189,7 +189,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
 
   if (viewOnly && task) {
     return (
-      <ModalShell title="Task Details">
+      <ModalShell title="Task Details" animationOrigin={animationOrigin}>
           <div className="space-y-4">
             <ViewField label="Title" value={task.CARD_TITLE.EN} />
             <ViewField label="Details" value={task.FOCUS_DETAIL.EN} />
@@ -211,7 +211,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
 
   return (
     <>
-      <ModalShell title={task ? 'Edit Task' : 'Create New Task'}>
+      <ModalShell title={task ? 'Edit Task' : 'Create New Task'} animationOrigin={animationOrigin}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-sm font-bold text-gray-400">Task Type</label>

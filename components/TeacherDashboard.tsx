@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, SetStateAction } from 'react';
 import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
 import AIGuide from './AIGuide';
@@ -29,7 +29,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
     // FIX: Removed `animationOrigin` from local state, now passed as prop.
 
     // FIX: Simplified handleModalOpenWithAnimation, to accept a generic setter.
-    const handleModalOpenWithAnimation = useCallback(<T,>(setter: React.Dispatch<React.SetStateAction<T | null | boolean>>, event: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>, data?: T) => {
+    const handleModalOpenWithAnimation = useCallback(<T,>(setter: React.Dispatch<SetStateAction<T | null | boolean>>, event: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>, data?: T) => {
         const rect = event.currentTarget.getBoundingClientRect();
         setAnimationOrigin({
             x: `${rect.left + rect.width / 2}px`,

@@ -236,7 +236,7 @@ export interface Config {
         accentColor: string;
         blurEnabled: boolean;
         mobileLayout: 'standard' | 'toolbar';
-        forceOfflineMode: boolean;
+        forceOfflineMode: false;
         perQuestionTime: number; // Default time in seconds per MCQ
         hasGeminiKey?: boolean; // A safe flag for the frontend
         showAiChatAssistant?: boolean;
@@ -273,14 +273,17 @@ export interface StudentData {
     DOUBTS: DoubtData[];
 }
 
-// FIX: Added onClose to the interface and made animationOrigin optional
+export interface PlannerViewProps {
+  items: ScheduleItem[];
+  onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>) => void;
+}
+
 export interface ExamTypeSelectionModalProps {
   onSelect: (examType: 'JEE' | 'NEET') => void;
   onClose: () => void;
   animationOrigin?: { x: string, y: string };
 }
 
-// FIX: Added animationOrigin to various modal props
 export interface CreateEditTaskModalProps {
   task: ScheduleItem | null;
   viewOnly?: boolean;
@@ -294,7 +297,7 @@ export interface AIParserModalProps {
   onClose: () => void;
   onDataReady: (data: any) => void;
   onPracticeTestReady: (data: any) => void;
-  onOpenGuide: () => void;
+  onOpenGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   examType?: 'JEE' | 'NEET';
   animationOrigin?: { x: string, y: string };
 }
@@ -384,6 +387,7 @@ export interface TestAnalysisReportProps {
   onUpdateWeaknesses: (weaknesses: string[]) => void;
   onSaveDeck: (deck: FlashcardDeck) => void;
   animationOrigin?: { x: string, y: string };
+  onAnalyzeMistake: (questionNumber: number) => void;
 }
 
 export interface MoveTasksModalProps {
@@ -483,4 +487,74 @@ export interface SpecificMistakeAnalysisModalProps {
   onClose: () => void;
   onSaveWeakness: (weakness: string) => void;
   animationOrigin?: { x: string, y: string };
+}
+export interface GlobalMusicVisualizerProps {
+  // No explicit props needed if it pulls from context
+}
+
+export interface MusicPlayerWidgetProps {
+  onOpenLibrary: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  layout?: 'minimal' | 'expanded';
+}
+
+export interface PersistentMusicPlayerProps {
+  // No explicit props needed if it pulls from context
+}
+
+export interface FullScreenMusicPlayerProps {
+  // No explicit props needed if it pulls from context
+}
+
+export interface ReloadPromptProps {
+  // No explicit props needed
+}
+
+export interface TodayPlannerProps {
+  items: ScheduleItem[];
+  onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+}
+
+export interface CustomWidgetComponentProps {
+  title: string;
+  content: string;
+}
+
+export interface CountdownWidgetProps {
+  items: ScheduleItem[];
+  onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+}
+
+export interface MotivationalQuoteWidgetProps {
+  quote: string;
+}
+
+export interface HomeworkWidgetProps {
+  items: ScheduleItem[];
+  onStartPractice: (homework: HomeworkData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+}
+
+export interface SubjectAllocationWidgetProps {
+  items: ScheduleItem[];
+}
+
+export interface ScoreTrendWidgetProps {
+  results: ResultData[];
+}
+
+export interface ReadingHoursWidgetProps {
+  student: StudentData;
+}
+
+export interface DailyInsightWidgetProps {
+  weaknesses: string[];
+  exams: ExamData[];
+}
+
+export interface AchievementsWidgetProps {
+  student: StudentData;
+  allDoubts: DoubtData[];
+}
+
+export interface ActivityTrackerProps {
+  activities: ActivityData[];
 }

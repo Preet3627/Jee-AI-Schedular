@@ -31,7 +31,8 @@ const PersistentMusicPlayer: React.FC = () => {
             <progress value={progress} max="100" className="absolute top-0 left-0 w-full h-0.5 appearance-none persistent-music-player-progress"></progress>
             <div className="flex items-center h-full px-2 gap-3">
                 <button onClick={toggleFullScreenPlayer} className="flex-shrink-0">
-                    <img src={currentTrack.coverArtUrl} alt={currentTrack.title} className="w-14 h-14 rounded-md object-cover" />
+                    {/* // FIX: currentTrack?.coverArtUrl can be undefined, fallback to a default image or icon */}
+                    <img src={currentTrack?.coverArtUrl || 'https://ponsrischool.in/wp-content/uploads/2025/11/Gemini_Generated_Image_ujvnj5ujvnj5ujvn.png'} alt={currentTrack.title} className="w-14 h-14 rounded-md object-cover" />
                 </button>
                 <div onClick={toggleFullScreenPlayer} className="flex-grow min-w-0 cursor-pointer">
                     <p className="font-semibold text-white truncate text-sm">{currentTrack.title}</p>

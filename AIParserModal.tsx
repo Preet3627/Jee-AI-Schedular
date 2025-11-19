@@ -7,7 +7,7 @@ interface AIParserModalProps {
   onClose: () => void;
   onDataReady: (data: any) => void;
   onPracticeTestReady: (data: any) => void;
-  onOpenGuide: () => void;
+  onOpenGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   examType?: 'JEE' | 'NEET';
   animationOrigin?: { x: string, y: string };
 }

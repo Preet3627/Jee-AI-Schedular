@@ -20,7 +20,7 @@ const MusicVisualizerWidget: React.FC = () => {
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
-        const draw = () => {
+        const draw = (timestamp: DOMHighResTimeStamp) => {
             // FIX: `requestAnimationFrame` requires a callback argument. Passed the `draw` function to create the animation loop.
             animationFrameId.current = requestAnimationFrame(draw);
             analyser.getByteFrequencyData(dataArray);
@@ -45,7 +45,7 @@ const MusicVisualizerWidget: React.FC = () => {
             }
         };
 
-        draw();
+        draw(0); // Start the animation frame with a dummy timestamp
 
         return () => {
             if (animationFrameId.current) {

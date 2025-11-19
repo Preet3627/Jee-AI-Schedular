@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
-import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
-import { studentDatabase } from './data/mockData';
+import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData, FlashcardDeck, ActiveTab } from './types';
 import { api } from './api/apiService';
 
 import Header from './components/Header';
@@ -18,7 +17,7 @@ import ExamTypeSelectionModal from './components/ExamTypeSelectionModal';
 import { useMusicPlayer } from './context/MusicPlayerContext';
 import FullScreenMusicPlayer from './components/FullScreenMusicPlayer';
 import PersistentMusicPlayer from './components/PersistentMusicPlayer';
-import GlobalMusicVisualizer from './components/GlobalMusicVisualizer'; // FIX: Added GlobalMusicVisualizer
+import GlobalMusicVisualizer from './components/GlobalMusicVisualizer';
 
 declare global {
   interface Window {
@@ -33,9 +32,7 @@ const App: React.FC = () => {
     const { currentUser, userRole, isLoading, isDemoMode, enterDemoMode, logout, refreshUser } = useAuth();
     const { isFullScreenPlayerOpen, currentTrack } = useMusicPlayer();
     
-    const [allStudents, setAllStudents] = useState<StudentData[]>([]
-// FIX: Added animationOrigin state for modal transitions
-);
+    const [allStudents, setAllStudents] = useState<StudentData[]>([]);
     const [allDoubts, setAllDoubts] = useState<DoubtData[]>([]);
     const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline' | 'misconfigured'>('checking');
     const [isSyncing, setIsSyncing] = useState(false);

@@ -5,7 +5,7 @@ import Icon from './Icon';
 
 interface PlannerViewProps {
     items: ScheduleItem[];
-    onEdit: (item: ScheduleItem) => void;
+    onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>) => void;
 }
 
 type ViewMode = 'weekly' | 'monthly' | 'list' | 'today';
@@ -17,7 +17,6 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
     
     const renderWeeklyView = () => {
         const scheduleByDay: { [key: string]: ScheduleItem[] } = daysOfWeek.reduce((acc, day) => {
-            // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
             acc[day] = items.filter(item => !('date' in item && item.date) && item.DAY.EN.toUpperCase() === day);
             return acc;
         }, {} as { [key: string]: ScheduleItem[] });
@@ -34,7 +33,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
                                         <p className="font-bold text-white">{t(item.CARD_TITLE)}</p>
                                         {'TIME' in item && item.TIME && <p className="text-xs text-gray-400">{item.TIME}</p>}
                                         {(item.type === 'ACTION' || item.type === 'HOMEWORK') && (
-                                            <button onClick={() => onEdit(item)} className="absolute top-1 right-1 p-1 text-gray-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={(e) => onEdit(item, e)} className="absolute top-1 right-1 p-1 text-gray-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Icon name="edit" className="w-4 h-4"/>
                                             </button>
                                         )}
@@ -61,9 +60,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
             const dateString = date.toISOString().split('T')[0];
             const dayName = date.toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
             
-            // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
             const repeatingTasks = items.filter(item => !('date' in item && item.date) && item.DAY.EN.toUpperCase() === dayName);
-            // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
             const datedTasks = items.filter(item => 'date' in item && item.date === dateString);
 
             const tasksForDay = [...repeatingTasks, ...datedTasks].sort((a, b) => 
@@ -88,7 +85,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
                                      <p className="font-bold text-white">{t(item.CARD_TITLE)}</p>
                                      {'TIME' in item && item.TIME && <p className="text-xs text-gray-400">{item.TIME}</p>}
                                       {(item.type === 'ACTION' || item.type === 'HOMEWORK') && (
-                                        <button onClick={() => onEdit(item)} className="absolute top-1 right-1 p-1 text-gray-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={(e) => onEdit(item, e)} className="absolute top-1 right-1 p-1 text-gray-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Icon name="edit" className="w-4 h-4"/>
                                         </button>
                                     )}
@@ -105,7 +102,6 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
     const renderListView = () => {
         const scheduleByDay = daysOfWeek.reduce((acc, day) => {
             const dayItems = items
-                // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
                 .filter(item => !('date' in item && item.date) && item.DAY.EN.toUpperCase() === day)
                 .sort((a,b) => ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59'));
             if(dayItems.length > 0) {
@@ -125,7 +121,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
                                     {'TIME' in item && item.TIME && <span className="font-mono text-sm text-gray-400 bg-gray-800 px-2 py-1 rounded-md">{item.TIME}</span>}
                                     <span className="flex-grow font-semibold text-white">{t(item.CARD_TITLE)}</span>
                                      {(item.type === 'ACTION' || item.type === 'HOMEWORK') && (
-                                        <button onClick={() => onEdit(item)} className="p-1 text-gray-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={(e) => onEdit(item, e)} className="p-1 text-gray-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Icon name="edit" className="w-4 h-4"/>
                                         </button>
                                     )}
@@ -145,7 +141,6 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
         const todayDateString = today.toISOString().split('T')[0];
 
         const todaysItems = items
-            // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
             .filter(item => ('date' in item && item.date === todayDateString) || (!('date' in item && item.date) && item.DAY.EN.toUpperCase() === todayName))
             .sort((a,b) => ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59'));
 
@@ -158,7 +153,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
                             {'TIME' in item && item.TIME && <span className="font-mono text-sm text-gray-400 bg-gray-800 px-2 py-1 rounded-md">{item.TIME}</span>}
                             <span className="flex-grow font-semibold text-white">{t(item.CARD_TITLE)}</span>
                             {(item.type === 'ACTION' || item.type === 'HOMEWORK') && (
-                                <button onClick={() => onEdit(item)} className="p-1 text-gray-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={(e) => onEdit(item, e)} className="p-1 text-gray-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Icon name="edit" className="w-4 h-4"/>
                                 </button>
                             )}
