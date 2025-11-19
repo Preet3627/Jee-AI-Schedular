@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import Icon from './Icon';
 
@@ -11,9 +12,10 @@ interface DeepLinkConfirmationModalProps {
   };
   onClose: () => void;
   onConfirm: () => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const DeepLinkConfirmationModal: React.FC<DeepLinkConfirmationModalProps> = ({ data, onClose, onConfirm }) => {
+const DeepLinkConfirmationModal: React.FC<DeepLinkConfirmationModalProps> = ({ data, onClose, onConfirm, animationOrigin }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   const handleClose = () => {

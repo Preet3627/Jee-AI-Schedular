@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { ResultData, StudentData, FlashcardDeck } from '../types';
-import TestAnalysisReport from './TestAnalysisReport';
+import TestAnalysisReportComponent from './TestAnalysisReport'; // FIX: Renamed import
 import SpecificMistakeAnalysisModal from './SpecificMistakeAnalysisModal';
 import Icon from './Icon';
 
@@ -10,9 +11,10 @@ interface TestReportModalProps {
   student: StudentData;
   onUpdateWeaknesses: (weaknesses: string[]) => void;
   onSaveDeck: (deck: FlashcardDeck) => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const TestReportModal: React.FC<TestReportModalProps> = ({ result, onClose, student, onUpdateWeaknesses, onSaveDeck }) => {
+const TestReportModal: React.FC<TestReportModalProps> = ({ result, onClose, student, onUpdateWeaknesses, onSaveDeck, animationOrigin }) => {
   const [isExiting, setIsExiting] = useState(false);
   const [analyzingMistake, setAnalyzingMistake] = useState<number | null>(null);
 
@@ -44,7 +46,7 @@ const TestReportModal: React.FC<TestReportModalProps> = ({ result, onClose, stud
       <div className={`w-full max-w-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses} max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-4">Test Analysis Report</h2>
         
-        <TestAnalysisReport 
+        <TestAnalysisReportComponent // FIX: Used TestAnalysisReportComponent
             result={result}
             onAnalyzeMistake={setAnalyzingMistake}
         />

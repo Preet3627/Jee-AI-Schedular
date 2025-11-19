@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
 import Icon from './Icon';
@@ -39,19 +40,18 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
     const showActionsFooter = canCopyCommand || canStartPractice || isFlashcardReview || isDeepDive;
     const isSynced = 'googleEventId' in cardData && !!cardData.googleEventId;
 
-    // FIX: Import `useMemo` from React to resolve the 'Cannot find name' error.
-    // FIX: Changed dependency to `cardData` object to safely access optional `date` property.
     const isToday = useMemo(() => {
         const today = new Date();
         const todayName = today.toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
+        // FIX: Added type guard for 'date' property
         if ('date' in cardData && cardData.date) {
             return cardData.date === today.toISOString().split('T')[0];
         }
         return cardData.DAY.EN.toUpperCase() === todayName;
-    }, [cardData]);
+    }, [cardData.date, cardData.DAY.EN]);
 
-    // FIX: Changed dependency to `cardData` object to safely access optional `TIME` property.
     useEffect(() => {
+        // FIX: Added type guard for 'TIME' property
         if (!isToday || !('TIME' in cardData) || !cardData.TIME) {
             setCountdownProgress(100);
             return;
@@ -85,7 +85,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
         const interval = setInterval(updateProgress, 60000); // Update every minute
         return () => clearInterval(interval);
 
-    }, [cardData, isToday]);
+    }, [cardData.TIME, isToday]);
 
 
     useEffect(() => {
@@ -100,18 +100,18 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
         };
     }, []);
 
-    const handleCopy = (text?: string) => {
+    const handleCopy = useCallback((text?: string) => {
       if (!text) return;
       navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    };
+    }, []);
 
-    const handleCardClick = () => {
+    const handleCardClick = useCallback(() => {
         if (isSelectMode) {
             onSelect(cardData.ID);
         }
-    };
+    }, [isSelectMode, onSelect, cardData.ID]);
 
   return (
     <div 

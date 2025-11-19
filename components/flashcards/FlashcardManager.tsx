@@ -1,15 +1,16 @@
+
 import React from 'react';
 import { FlashcardDeck } from '../../types';
 import Icon from '../Icon';
 
 interface FlashcardManagerProps {
   decks: FlashcardDeck[];
-  onAddDeck: () => void;
-  onEditDeck: (deck: FlashcardDeck) => void;
+  onAddDeck: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onEditDeck: (deck: FlashcardDeck, event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
   onDeleteDeck: (deckId: string) => void;
-  onViewDeck: (deck: FlashcardDeck) => void;
-  onStartReview: (deckId: string) => void;
-  onGenerateWithAI: () => void;
+  onViewDeck: (deck: FlashcardDeck, event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void; // FIX: Added event parameter, changed event type
+  onStartReview: (deckId: string, event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onGenerateWithAI: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
 }
 
 const FlashcardManager: React.FC<FlashcardManagerProps> = ({ decks, onAddDeck, onEditDeck, onDeleteDeck, onViewDeck, onStartReview, onGenerateWithAI }) => {
@@ -75,15 +76,15 @@ const FlashcardManager: React.FC<FlashcardManagerProps> = ({ decks, onAddDeck, o
                                         </h3>
                                         <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={handleLockToggle} className="p-1 text-gray-400 hover:text-yellow-400" title={deck.isLocked ? 'Unlock Deck' : 'Lock Deck'}><Icon name={deck.isLocked ? 'lock-closed' : 'lock-open'} className="w-4 h-4" /></button>
-                                            <button onClick={() => onEditDeck(deck)} disabled={deck.isLocked} className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"><Icon name="edit" className="w-4 h-4" /></button>
+                                            <button onClick={(e) => onEditDeck(deck, e)} disabled={deck.isLocked} className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"><Icon name="edit" className="w-4 h-4" /></button>
                                             <button onClick={handleDelete} className="p-1 text-gray-400 hover:text-red-400"><Icon name="trash" className="w-4 h-4" /></button>
                                         </div>
                                     </div>
                                     <p className="text-sm text-gray-400 mt-2">{deck.cards.length} card(s)</p>
                                   </div>
                                   <div className="flex gap-2 mt-4">
-                                    <button onClick={() => onViewDeck(deck)} className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Manage</button>
-                                    <button onClick={() => onStartReview(deck.id)} disabled={deck.cards.length === 0} className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-md bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed">Review</button>
+                                    <button onClick={(e) => onViewDeck(deck, e as React.MouseEvent<HTMLDivElement, MouseEvent>)} className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Manage</button>
+                                    <button onClick={(e) => onStartReview(deck.id, e)} disabled={deck.cards.length === 0} className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-md bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed">Review</button>
                                   </div>
                                 </div>
                                 );

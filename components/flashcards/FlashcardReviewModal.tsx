@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { FlashcardDeck, Flashcard } from '../../types';
 import Icon from '../Icon';
@@ -5,6 +6,7 @@ import Icon from '../Icon';
 interface FlashcardReviewModalProps {
   deck: FlashcardDeck;
   onClose: () => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
 const subjectColors: Record<string, string> = {
@@ -15,7 +17,7 @@ const subjectColors: Record<string, string> = {
 };
 
 
-const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClose }) => {
+const FlashcardReviewModal: React.FC<FlashcardReviewModalProps> = ({ deck, onClose, animationOrigin }) => {
   const [isExiting, setIsExiting] = useState(false);
   const [shuffledCards, setShuffledCards] = useState<Flashcard[]>([]);
   const [needsReview, setNeedsReview] = useState<Flashcard[]>([]);

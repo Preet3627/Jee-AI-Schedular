@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ResultData } from '../types';
 
@@ -5,9 +6,10 @@ interface EditResultModalProps {
   result: ResultData;
   onClose: () => void;
   onSave: (result: ResultData) => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const EditResultModal: React.FC<EditResultModalProps> = ({ result, onClose, onSave }) => {
+const EditResultModal: React.FC<EditResultModalProps> = ({ result, onClose, onSave, animationOrigin }) => {
   const [score, setScore] = useState(result.SCORE);
   const [mistakesText, setMistakesText] = useState(result.MISTAKES.join('\n'));
   const [isExiting, setIsExiting] = useState(false);

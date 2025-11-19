@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -355,7 +356,6 @@ const App: React.FC = () => {
     };
 
     const checkBackend = useCallback(async (isInitialCheck: boolean) => {
-        // FIX: Replace NodeJS.Timeout with browser-compatible ReturnType
         let statusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
         if (isInitialCheck && !currentUser) {
             statusCheckTimeout = setTimeout(() => {
@@ -402,28 +402,6 @@ const App: React.FC = () => {
     }, [currentUser]);
 
 
-    useEffect(() => {
-        const loadExtraData = async () => {
-            if (isDemoMode) {
-                if (userRole === 'admin') setAllStudents(studentDatabase);
-                return;
-            }
-            if (userRole === 'admin') {
-                const students = await api.getStudents();
-                setAllStudents(students);
-            }
-            if (currentUser || userRole === 'admin') {
-                const doubts = await api.getAllDoubts();
-                setAllDoubts(doubts);
-            }
-        };
-
-        if (backendStatus === 'online' && !isLoading) {
-            loadExtraData();
-        }
-    }, [backendStatus, isLoading, userRole, isDemoMode, currentUser]);
-    
-    // Google API Init
     useEffect(() => {
         const initializeGoogleApis = () => {
             if (googleClientId && window.gapi && window.google) {

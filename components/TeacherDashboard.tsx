@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
@@ -17,12 +18,24 @@ interface TeacherDashboardProps {
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleUnacademySub, onDeleteUser, onAddTeacher, onBroadcastTask }) => {
-    const { loginWithToken } = useAuth();
+    const { loginWithToken, currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState<'grid' | 'broadcast' | 'guide'>('grid');
     const [messagingStudent, setMessagingStudent] = useState<StudentData | null>(null);
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
     const [isAIBroadcastModalOpen, setIsAIBroadcastModalOpen] = useState(false);
     const [broadcastTarget, setBroadcastTarget] = useState<'ALL' | 'JEE' | 'NEET'>('ALL');
+    const [animationOrigin, setAnimationOrigin] = useState<{ x: string, y: string } | undefined>(undefined);
+
+    // FIX: Simplified handleModalOpenWithAnimation, removed `s` from signature, as it's not a setter.
+    const handleModalOpenWithAnimation = (setter: React.Dispatch<React.SetStateAction<boolean | StudentData>>, event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setAnimationOrigin({
+            x: `${rect.left + rect.width / 2}px`,
+            y: `${rect.top + rect.height / 2}px`
+        });
+        setter(true);
+    };
+
 
     const TabButton: React.FC<{ tabId: string; children: React.ReactNode; }> = ({ tabId, children }) => (
         <button
@@ -143,31 +156,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 </nav>
             </div>
             <div className="mt-6">
-                {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={setMessagingStudent} onClearData={handleClearData} onImpersonate={handleImpersonate} />}
-                {activeTab === 'broadcast' && <BroadcastManager onOpenModal={() => setIsBroadcastModalOpen(true)} onOpenAIModal={() => setIsAIBroadcastModalOpen(true)} target={broadcastTarget} setTarget={setBroadcastTarget} />}
-                {activeTab === 'guide' && <AIGuide />}
+                {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={(s, e) => handleModalOpenWithAnimation(setMessagingStudent, e)} onClearData={handleClearData} onImpersonate={handleImpersonate} />}
+                {activeTab === 'broadcast' && <BroadcastManager onOpenModal={(e) => handleModalOpenWithAnimation(setIsBroadcastModalOpen, e)} onOpenAIModal={(e) => handleModalOpenWithAnimation(setIsAIBroadcastModalOpen, e)} target={broadcastTarget} setTarget={setBroadcastTarget} />}
+                {activeTab === 'guide' && <AIGuide examType={currentUser?.CONFIG.settings.examType} />}
             </div>
 
             {messagingStudent && (
-                <MessagingModal student={messagingStudent} onClose={() => setMessagingStudent(null)} isDemoMode={false} />
+                <MessagingModal animationOrigin={animationOrigin} student={messagingStudent} onClose={() => setMessagingStudent(null)} isDemoMode={false} />
             )}
             {isBroadcastModalOpen && (
-                <CreateEditTaskModal task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} decks={[]} />
+                <CreateEditTaskModal animationOrigin={animationOrigin} task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} decks={[]} />
             )}
             {isAIBroadcastModalOpen && (
-                // FIX: Add dummy props for onPracticeTestReady and onOpenGuide, which are required but not used in the teacher broadcast context.
                 <AIParserModal
+                    animationOrigin={animationOrigin}
                     onClose={() => setIsAIBroadcastModalOpen(false)}
                     onDataReady={handleAIBroadcastSave}
                     onPracticeTestReady={() => {}}
                     onOpenGuide={() => {}}
+                    examType={currentUser?.CONFIG.settings.examType}
                 />
             )}
         </main>
     );
 };
 
-const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string) => void, onDeleteUser: (sid: string) => void, onStartMessage: (student: StudentData) => void, onClearData: (student: StudentData) => void, onImpersonate: (sid: string) => void }> = ({ students, onToggleSub, onDeleteUser, onStartMessage, onClearData, onImpersonate }) => {
+const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string) => void, onDeleteUser: (sid: string) => void, onStartMessage: (student: StudentData, event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void, onClearData: (student: StudentData) => void, onImpersonate: (sid: string) => void }> = ({ students, onToggleSub, onDeleteUser, onStartMessage, onClearData, onImpersonate }) => {
     
     const isOnline = (lastSeen?: string) => {
         if (!lastSeen) return false;
@@ -198,7 +212,7 @@ const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                     <button onClick={() => onImpersonate(student.sid)} className="w-full flex items-center justify-center gap-2 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="login" className="w-3.5 h-3.5"/> Impersonate</button>
-                    <button onClick={() => onStartMessage(student)} className="w-full flex items-center justify-center gap-2 bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="message" className="w-3.5 h-3.5"/> Message</button>
+                    <button onClick={(e) => onStartMessage(student, e)} className="w-full flex items-center justify-center gap-2 bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-semibold py-1.5 px-3 rounded"><Icon name="message" className="w-3.5 h-3.5"/> Message</button>
                     <button onClick={() => onClearData(student)} className="w-full bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Clear Data</button>
                     <button onClick={() => onDeleteUser(student.sid)} className="w-full bg-red-800 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded">Delete User</button>
                 </div>
@@ -208,7 +222,7 @@ const StudentGrid: React.FC<{ students: StudentData[], onToggleSub: (sid: string
 );
 }
 
-const BroadcastManager: React.FC<{ onOpenModal: () => void, onOpenAIModal: () => void, target: 'ALL' | 'JEE' | 'NEET', setTarget: (target: 'ALL' | 'JEE' | 'NEET') => void }> = ({ onOpenModal, onOpenAIModal, target, setTarget }) => (
+const BroadcastManager: React.FC<{ onOpenModal: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void, onOpenAIModal: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void, target: 'ALL' | 'JEE' | 'NEET', setTarget: (target: 'ALL' | 'JEE' | 'NEET') => void }> = ({ onOpenModal, onOpenAIModal, target, setTarget }) => (
     <div className="bg-gray-800/70 p-6 rounded-lg border border-gray-700 max-w-2xl mx-auto text-center">
         <Icon name="send" className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
         <h3 className="font-bold text-white text-lg mb-2">Broadcast a Task</h3>

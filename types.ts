@@ -1,3 +1,4 @@
+
 export type Language = 'EN' | 'GU';
 
 export interface LocalizedString {
@@ -163,7 +164,6 @@ export interface Track {
   size: string; // in bytes
   coverArtUrl?: string; // dynamically added by the player context
   isLocal?: boolean;
-  // FIX: Changed type from FileSystemFileHandle to File for compatibility with Blob-based APIs.
   file?: File; // For local files using File System Access API
   path?: string; // For Nextcloud files
 }
@@ -216,9 +216,10 @@ export interface DashboardWidgetItem {
     id: string; // Corresponds to a key in the widgetConfig map
     wide?: boolean;
     translucent?: boolean;
+    // Add any other specific widget settings here
 }
 
-// Represents the structure of the encrypted JSON blob in the `user_configs` table
+// The complete, normalized user data object used throughout the frontend
 export interface Config {
     WAKE: string;
     SCORE: string;
@@ -244,11 +245,11 @@ export interface Config {
         creditSaver?: boolean; // Use faster, cheaper AI models
         examType?: 'JEE' | 'NEET';
         theme?: 'default' | 'liquid-glass' | 'midnight';
-        dashboardLayout?: DashboardWidgetItem[];
+        dashboardLayout?: DashboardWidgetItem[]; // Array of widget objects for customized layout
         dashboardFlashcardDeckIds?: string[];
         musicPlayerWidgetLayout?: 'minimal' | 'expanded';
-        // FIX: Added widgetSettings to store per-widget configuration like translucency.
-        widgetSettings?: { [widgetId: string]: { translucent?: boolean; wide?: boolean } };
+        customDjDropUrl?: string; // URL for user-uploaded custom DJ drop
+        widgetSettings?: Record<string, any>; // FIX: Added for extensible widget configuration
     };
 }
 

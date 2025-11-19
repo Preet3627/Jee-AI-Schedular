@@ -1,6 +1,12 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ScheduleItem } from '../../types';
 import Icon from '../Icon';
+
+interface CountdownWidgetProps {
+    items: ScheduleItem[];
+    onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void; // FIX: Added onClick prop
+}
 
 const getNextTask = (items: ScheduleItem[]): (ScheduleItem & { scheduledTime: Date }) | null => {
     const now = new Date();
@@ -44,7 +50,7 @@ const getNextTask = (items: ScheduleItem[]): (ScheduleItem & { scheduledTime: Da
 };
 
 
-const CountdownWidget: React.FC<{ items: ScheduleItem[] }> = ({ items }) => {
+const CountdownWidget: React.FC<CountdownWidgetProps> = ({ items, onClick }) => {
     const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0 });
     const nextTask = useMemo(() => getNextTask(items), [items]);
 
@@ -97,7 +103,11 @@ const CountdownWidget: React.FC<{ items: ScheduleItem[] }> = ({ items }) => {
         : `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
     return (
-        <div className="relative aspect-square w-full max-w-[280px] mx-auto flex items-center justify-center group transition-transform duration-300 hover:scale-[1.03] active:scale-100 cursor-pointer" title={`Next: ${nextTask.CARD_TITLE.EN}`}>
+        <div 
+            className="relative aspect-square w-full max-w-[280px] mx-auto flex items-center justify-center group transition-transform duration-300 hover:scale-[1.03] active:scale-100 cursor-pointer" 
+            title={`Next: ${nextTask.CARD_TITLE.EN}`}
+            onClick={onClick} // FIX: Added onClick prop handler
+        >
             {/* Segments */}
             <div className="absolute inset-[5%]">
                 {Array.from({ length: 24 }).map((_, i) => (

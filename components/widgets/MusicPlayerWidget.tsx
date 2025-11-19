@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { useMusicPlayer } from '../../context/MusicPlayerContext';
 import Icon from '../Icon';
 
 interface MusicPlayerWidgetProps {
-  onOpenLibrary: () => void;
+  onOpenLibrary: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Updated prop type to accept optional event
   layout?: 'minimal' | 'expanded';
 }
 

@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { useLocalization } from '../context/LocalizationContext';
-// FIX: Corrected import path for mockData.
 import { uiTextData } from '../data/mockData';
 import Icon from './Icon';
 

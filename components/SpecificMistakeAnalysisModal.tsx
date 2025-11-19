@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
@@ -7,6 +8,7 @@ interface SpecificMistakeAnalysisModalProps {
   questionNumber: number;
   onClose: () => void;
   onSaveWeakness: (weakness: string) => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
 interface AnalysisResult {
@@ -14,7 +16,7 @@ interface AnalysisResult {
   explanation: string;
 }
 
-const SpecificMistakeAnalysisModal: React.FC<SpecificMistakeAnalysisModalProps> = ({ questionNumber, onClose, onSaveWeakness }) => {
+const SpecificMistakeAnalysisModal: React.FC<SpecificMistakeAnalysisModalProps> = ({ questionNumber, onClose, onSaveWeakness, animationOrigin }) => {
   const [description, setDescription] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);

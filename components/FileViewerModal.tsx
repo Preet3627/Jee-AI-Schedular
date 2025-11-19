@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { StudyMaterialItem } from '../types';
 import Icon from './Icon';
@@ -6,9 +7,10 @@ import { api } from '../api/apiService';
 interface FileViewerModalProps {
   file: StudyMaterialItem | null;
   onClose: () => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
+const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose, animationOrigin }) => {
   const [isExiting, setIsExiting] = useState(false);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);

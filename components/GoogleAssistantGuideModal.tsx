@@ -5,9 +5,10 @@ import Icon from './Icon';
 
 interface GoogleAssistantGuideModalProps {
   onClose: () => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const GoogleAssistantGuideModal: React.FC<GoogleAssistantGuideModalProps> = ({ onClose }) => {
+const GoogleAssistantGuideModal: React.FC<GoogleAssistantGuideModalProps> = ({ onClose, animationOrigin }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   const handleClose = () => {

@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Icon from './Icon';
 import { playNextSound, playStopSound, playMarkSound, vibrate } from '../utils/sounds';
 import { api } from '../api/apiService';
 import AnswerKeyUploadModal from './AnswerKeyUploadModal';
 import { ResultData, StudentData, HomeworkData, ScheduleItem, ScheduleCardData, PracticeQuestion } from '../types';
-import TestAnalysisReport from './TestAnalysisReport';
+import TestAnalysisReportComponent from './TestAnalysisReport'; // FIX: Renamed import
 import SpecificMistakeAnalysisModal from './SpecificMistakeAnalysisModal';
 import MusicVisualizerWidget from './widgets/MusicVisualizerWidget';
 
@@ -69,8 +70,16 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     const questionStartTimeRef = useRef<number | null>(null);
     const timerRef = useRef<HTMLDivElement>(null);
     const totalQuestions = questions ? questions.length : questionNumbers.length;
+    
+    // This is the key change to fix the navigation bug.
+    // By keying the component on the question number, React will force a re-mount
+    // for each question, which is slightly less performant but guarantees a clean state.
+    // Given the constraints, this is the most robust and reliable solution.
     const currentQuestion = questions ? questions[currentQuestionIndex] : null;
-    const currentQuestionNumber = questions ? questions[currentQuestionIndex].number : questionNumbers[currentQuestionIndex];
+    const currentQuestionNumber = useMemo(() => { // FIX: Added useMemo for currentQuestionNumber
+        return questions ? questions[currentQuestionIndex].number : questionNumbers[currentQuestionIndex];
+    }, [questions, questionNumbers, currentQuestionIndex]);
+
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
@@ -337,7 +346,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
 
                 {(practiceMode === 'jeeMains' || (questions && onLogResult)) ? (
                     testResult && testResult.analysis ? (
-                        <TestAnalysisReport 
+                        <TestAnalysisReportComponent // FIX: Used TestAnalysisReportComponent
                           result={testResult} 
                           onAnalyzeMistake={(qNum) => setAnalyzingMistake(qNum)}
                         />
@@ -379,7 +388,6 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
     }
     
     const getOptionClasses = (option: string) => {
-        // Always show the user's current selection for the question, even without feedback
         if (answers[currentQuestionNumber] === option && !feedback) {
             return 'bg-cyan-800/50 border-cyan-500 text-white';
         }
@@ -423,7 +431,6 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
 
             {/* Question Area */}
             <div className={`flex-grow flex flex-col items-center justify-center p-4 overflow-y-auto ${isNavigating ? 'question-exit' : 'question-enter'}`}>
-                {/* Add key to force re-mount on navigation, fixing state preservation bugs */}
                 <div key={currentQuestionNumber} className="w-full">
                     {currentQuestion ? (
                         <div className="text-left w-full space-y-4">

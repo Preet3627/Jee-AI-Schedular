@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import Icon from './Icon';
 
@@ -6,9 +7,10 @@ interface MoveTasksModalProps {
   onClose: () => void;
   onConfirm: (newDate: string) => void;
   selectedCount: number;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const MoveTasksModal: React.FC<MoveTasksModalProps> = ({ onClose, onConfirm, selectedCount }) => {
+const MoveTasksModal: React.FC<MoveTasksModalProps> = ({ onClose, onConfirm, selectedCount, animationOrigin }) => {
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [isExiting, setIsExiting] = useState(false);
 

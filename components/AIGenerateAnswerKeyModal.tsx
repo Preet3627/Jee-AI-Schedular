@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
@@ -5,9 +6,10 @@ import { api } from '../api/apiService';
 interface AIGenerateAnswerKeyModalProps {
   onClose: () => void;
   onKeyGenerated: (keyText: string) => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const AIGenerateAnswerKeyModal: React.FC<AIGenerateAnswerKeyModalProps> = ({ onClose, onKeyGenerated }) => {
+const AIGenerateAnswerKeyModal: React.FC<AIGenerateAnswerKeyModalProps> = ({ onClose, onKeyGenerated, animationOrigin }) => {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

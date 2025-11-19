@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ResultData } from '../types';
 import Icon from './Icon';
@@ -53,7 +54,7 @@ const TestAnalysisReport: React.FC<TestAnalysisReportProps> = ({ result, onAnaly
             {/* Chapter-wise Analysis */}
             <div>
                  <h4 className="font-bold text-lg text-white mb-2">Chapter-wise Performance</h4>
-                 <div className="bg-gray-900/50 p-4 rounded-lg max-h-60 overflow-y-auto">
+                 <div className="bg-900/50 p-4 rounded-lg max-h-60 overflow-y-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-gray-400 uppercase">
                             <tr>

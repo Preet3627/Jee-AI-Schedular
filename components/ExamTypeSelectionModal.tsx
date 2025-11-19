@@ -1,11 +1,13 @@
+
 import React, { useState } from 'react';
 import Icon from './Icon';
 
 interface ExamTypeSelectionModalProps {
   onSelect: (examType: 'JEE' | 'NEET') => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const ExamTypeSelectionModal: React.FC<ExamTypeSelectionModalProps> = ({ onSelect }) => {
+const ExamTypeSelectionModal: React.FC<ExamTypeSelectionModalProps> = ({ onSelect, animationOrigin }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   const handleSelect = (examType: 'JEE' | 'NEET') => {

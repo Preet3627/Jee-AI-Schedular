@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { FlashcardDeck, Flashcard, StudentData } from '../../types';
 import { api } from '../../api/apiService';
@@ -7,9 +8,10 @@ interface AIGenerateFlashcardsModalProps {
   student: StudentData;
   onClose: () => void;
   onSaveDeck: (deck: FlashcardDeck) => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const AIGenerateFlashcardsModal: React.FC<AIGenerateFlashcardsModalProps> = ({ student, onClose, onSaveDeck }) => {
+const AIGenerateFlashcardsModal: React.FC<AIGenerateFlashcardsModalProps> = ({ student, onClose, onSaveDeck, animationOrigin }) => {
   const [topic, setTopic] = useState('');
   const [examSyllabus, setExamSyllabus] = useState('');
   const [generatedCards, setGeneratedCards] = useState<Flashcard[] | null>(null);

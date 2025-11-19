@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Flashcard } from '../../types';
 
@@ -7,9 +8,10 @@ interface CreateEditFlashcardModalProps {
   deckId: string;
   onClose: () => void;
   onSave: (deckId: string, card: Flashcard) => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const CreateEditFlashcardModal: React.FC<CreateEditFlashcardModalProps> = ({ card, deckId, onClose, onSave }) => {
+const CreateEditFlashcardModal: React.FC<CreateEditFlashcardModalProps> = ({ card, deckId, onClose, onSave, animationOrigin }) => {
   const [front, setFront] = useState(card?.front || '');
   const [back, setBack] = useState(card?.back || '');
   const [isExiting, setIsExiting] = useState(false);

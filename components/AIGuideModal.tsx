@@ -1,12 +1,14 @@
+
 import React, { useState } from 'react';
 import AIGuide from './AIGuide';
 
 interface AIGuideModalProps {
   onClose: () => void;
   examType?: 'JEE' | 'NEET';
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const AIGuideModal: React.FC<AIGuideModalProps> = ({ onClose, examType }) => {
+const AIGuideModal: React.FC<AIGuideModalProps> = ({ onClose, examType, animationOrigin }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   const handleClose = () => {

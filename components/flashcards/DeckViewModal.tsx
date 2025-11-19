@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { FlashcardDeck, Flashcard } from '../../types';
 import Icon from '../Icon';
@@ -6,13 +7,14 @@ import Icon from '../Icon';
 interface DeckViewModalProps {
   deck: FlashcardDeck;
   onClose: () => void;
-  onAddCard: () => void;
-  onEditCard: (card: Flashcard) => void;
+  onAddCard: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onEditCard: (card: Flashcard, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
   onDeleteCard: (cardId: string) => void;
-  onStartReview: () => void;
+  onStartReview: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const DeckViewModal: React.FC<DeckViewModalProps> = ({ deck, onClose, onAddCard, onEditCard, onDeleteCard, onStartReview }) => {
+const DeckViewModal: React.FC<DeckViewModalProps> = ({ deck, onClose, onAddCard, onEditCard, onDeleteCard, onStartReview, animationOrigin }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   const handleClose = () => {
@@ -48,7 +50,7 @@ const DeckViewModal: React.FC<DeckViewModalProps> = ({ deck, onClose, onAddCard,
                         </div>
                         {!deck.isLocked && (
                             <div className="flex-shrink-0 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => onEditCard(card)} className="p-1 text-gray-400 hover:text-white"><Icon name="edit" className="w-4 h-4" /></button>
+                                <button onClick={(e) => onEditCard(card, e)} className="p-1 text-gray-400 hover:text-white"><Icon name="edit" className="w-4 h-4" /></button>
                                 <button onClick={() => onDeleteCard(card.id)} className="p-1 text-gray-400 hover:text-red-400"><Icon name="trash" className="w-4 h-4" /></button>
                             </div>
                         )}

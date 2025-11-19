@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { FlashcardDeck } from '../../types';
 
@@ -5,9 +6,10 @@ interface CreateEditDeckModalProps {
   deck: FlashcardDeck | null;
   onClose: () => void;
   onSave: (deck: FlashcardDeck) => void;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
-const CreateEditDeckModal: React.FC<CreateEditDeckModalProps> = ({ deck, onClose, onSave }) => {
+const CreateEditDeckModal: React.FC<CreateEditDeckModalProps> = ({ deck, onClose, onSave, animationOrigin }) => {
   const [name, setName] = useState(deck?.name || '');
   const [subject, setSubject] = useState(deck?.subject || 'PHYSICS');
   const [chapter, setChapter] = useState(deck?.chapter || '');

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { ActivityData } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
@@ -15,7 +16,7 @@ const ActivityTracker: React.FC<ActivityTrackerProps> = ({ activities }) => {
     }
 
     return (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl shadow-lg p-6 backdrop-blur-sm">
+        <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm">
             <h2 className="text-xl font-semibold text-cyan-400 tracking-widest uppercase mb-6">
                 {t({ EN: "Activity Progress", GU: "પ્રવૃત્તિની પ્રગતિ" })}
             </h2>
