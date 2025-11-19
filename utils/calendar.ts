@@ -49,11 +49,9 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
 
             const [hours, minutes] = timedItem.TIME.split(':').map(Number);
             let startDate: Date;
-            let recurrenceRule = 'RRULE:FREQ=WEEKLY';
 
             if (timedItem.date) {
                 startDate = new Date(`${timedItem.date}T00:00:00`);
-                recurrenceRule = '';
             } else {
                 startDate = getNextDateForDay(timedItem.DAY.EN);
             }
@@ -62,7 +60,8 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
             const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
 
             const summary = timedItem.CARD_TITLE.EN.replace(/,/g, '\\,').replace(/;/g, '\\;');
-            const description = timedItem.FOCUS_DETAIL.EN.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
+            const appLink = 'https://jee.ponsrischool.in/#/schedule';
+            const description = `Open in App: ${appLink}\\n\\n${timedItem.FOCUS_DETAIL.EN}`.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
 
             const eventParts = [
                 'BEGIN:VEVENT',
@@ -72,18 +71,13 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
                 `DTEND:${toICSDate(endDate)}`,
                 `SUMMARY:${summary}`,
                 `DESCRIPTION:${description}`,
-            ];
-            if (recurrenceRule) {
-                eventParts.push(recurrenceRule);
-            }
-            eventParts.push(
                 'BEGIN:VALARM',
                 'TRIGGER:-PT15M',
                 'ACTION:DISPLAY',
-                'DESCRIPTION:Reminder',
+                `DESCRIPTION:Reminder: ${summary}`,
                 'END:VALARM',
                 'END:VEVENT'
-            );
+            ];
             calendarParts.push(eventParts.join('\r\n') + '\r\n');
         });
     
@@ -95,7 +89,8 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
         const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000);
         
         const summary = exam.title.replace(/,/g, '\\,').replace(/;/g, '\\;');
-        const description = `Syllabus: ${exam.syllabus}`.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
+        const appLink = 'https://jee.ponsrischool.in/#/exams';
+        const description = `Open in App: ${appLink}\\n\\nSyllabus: ${exam.syllabus}`.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
 
         const eventParts = [
             'BEGIN:VEVENT',
@@ -108,7 +103,7 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
             'BEGIN:VALARM',
             'TRIGGER:-PT1H',
             'ACTION:DISPLAY',
-            'DESCRIPTION:Exam Reminder',
+            `DESCRIPTION:Exam Reminder: ${summary}`,
             'END:VALARM',
             'END:VEVENT'
         ];

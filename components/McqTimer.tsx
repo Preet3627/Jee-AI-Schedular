@@ -425,7 +425,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                             {currentQuestion.options.map((option, idx) => {
                                 const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D
                                 return (
-                                    <button key={idx} onClick={() => handleAnswerSelect(optionLetter)} disabled={isNavigating || !!feedback} className={`w-full text-left p-3 rounded-lg border-2 transition-colors flex items-start gap-3 disabled:cursor-default ${getOptionClasses(optionLetter)}`}>
+                                    <button key={idx} onClick={() => handleAnswerSelect(optionLetter)} disabled={isNavigating || !!feedback} className={`w-full text-left p-3 rounded-lg border-2 transition-colors flex items-start gap-3 disabled:cursor-default focus:outline-none ${getOptionClasses(optionLetter)}`}>
                                         <span className="font-bold">{optionLetter}.</span> 
                                         <span>{option.replace(/^\([A-D]\)\s*/, '')}</span>
                                     </button>
@@ -439,7 +439,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
                          {currentQuestionType === 'MCQ' ? (
                              <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
                                  {(['A', 'B', 'C', 'D'] as const).map(option => (
-                                     <button key={option} onClick={() => handleAnswerSelect(option)} disabled={isNavigating || !!feedback} className={`py-3 px-6 rounded-lg font-semibold border-2 transition-colors disabled:cursor-default ${getOptionClasses(option)}`}>
+                                     <button key={option} onClick={() => handleAnswerSelect(option)} disabled={isNavigating || !!feedback} className={`py-3 px-6 rounded-lg font-semibold border-2 transition-colors disabled:cursor-default focus:outline-none ${getOptionClasses(option)}`}>
                                          {option}
                                      </button>
                                  ))}

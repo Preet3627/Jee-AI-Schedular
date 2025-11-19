@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Config } from '../types';
 import Icon from './Icon';
@@ -34,6 +32,10 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [calendarSync, setCalendarSync] = useState(isCalendarSyncEnabled || false);
   const [examType, setExamType] = useState(settings.examType || 'JEE');
+  const [dashboardWidgets, setDashboardWidgets] = useState(settings.dashboardWidgets || {
+      countdown: true, dailyInsight: true, subjectAllocation: true, scoreTrend: true,
+      flashcards: true, readingHours: true, todaysAgenda: true, upcomingExams: true, homework: true,
+  });
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
@@ -47,8 +49,6 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
     const permission = await Notification.requestPermission();
     setNotificationPermission(permission);
     if (permission === 'granted') {
-        // Here you would typically schedule notifications.
-        // For now, we just show a confirmation.
         new Notification("Notifications Enabled!", {
             body: "You'll now receive reminders for your schedule.",
         });
@@ -66,6 +66,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         showAiChatAssistant: showAiChat,
         isCalendarSyncEnabled: calendarSync,
         examType: examType as 'JEE' | 'NEET',
+        dashboardWidgets,
     };
     if (geminiApiKey.trim()) {
         settingsToSave.geminiApiKey = geminiApiKey.trim();
@@ -112,14 +113,23 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         <h2 className="text-2xl font-bold text-white mb-6">Settings</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          <div>
-            <label className="text-base font-bold text-gray-300">Accent Color</label>
-            <div className="flex items-center gap-3 mt-2">
-                {colorPresets.map(c => <button key={c} type="button" onClick={() => setAccentColor(c)} className={`w-8 h-8 rounded-full ${accentColor === c ? 'ring-2 ring-white' : ''}`} style={{ backgroundColor: c }}></button>)}
-                <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-8 h-8 p-0 border-none rounded-full cursor-pointer bg-transparent" />
-            </div>
+          <div className="space-y-4">
+             <h3 className="text-base font-bold text-gray-300">Dashboard Customization</h3>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                 {Object.keys(dashboardWidgets).map(key => (
+                     <label key={key} className="flex items-center gap-2 text-sm text-gray-300">
+                         <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded text-cyan-600 bg-gray-700 border-gray-600 focus:ring-cyan-500"
+                            checked={dashboardWidgets[key]}
+                            onChange={e => setDashboardWidgets(prev => ({...prev, [key]: e.target.checked}))}
+                         />
+                         {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                     </label>
+                 ))}
+             </div>
           </div>
-          
+
           <div className="border-t border-gray-700/50"></div>
           
            <div>
@@ -201,6 +211,13 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
           <div>
              <h3 className="text-base font-bold text-gray-300">App Preferences</h3>
              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="text-base font-bold text-gray-300">Accent Color</label>
+                  <div className="flex items-center gap-3 mt-2">
+                      {colorPresets.map(c => <button key={c} type="button" onClick={() => setAccentColor(c)} className={`w-8 h-8 rounded-full ${accentColor === c ? 'ring-2 ring-white' : ''}`} style={{ backgroundColor: c }}></button>)}
+                      <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-8 h-8 p-0 border-none rounded-full cursor-pointer bg-transparent" />
+                  </div>
+                </div>
                 <div>
                     <label htmlFor="examType" className="text-base font-bold text-gray-300">Primary Exam</label>
                     <select id="examType" value={examType} onChange={(e) => setExamType(e.target.value as 'JEE' | 'NEET')} className={inputClass}>

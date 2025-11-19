@@ -204,6 +204,18 @@ export interface Config {
         showAiChatAssistant?: boolean;
         creditSaver?: boolean; // Use faster, cheaper AI models
         examType?: 'JEE' | 'NEET';
+        dashboardWidgets?: {
+            [key: string]: boolean;
+            countdown: boolean;
+            dailyInsight: boolean;
+            subjectAllocation: boolean;
+            scoreTrend: boolean;
+            flashcards: boolean;
+            readingHours: boolean;
+            todaysAgenda: boolean;
+            upcomingExams: boolean;
+            homework: boolean;
+        }
     };
 }
 

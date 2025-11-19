@@ -56,8 +56,10 @@ import AIGuideModal from './AIGuideModal';
 import { useAuth } from '../context/AuthContext';
 import FlashcardWidget from './widgets/FlashcardWidget';
 import MoveTasksModal from './MoveTasksModal';
+import TodayPlanner from './TodayPlanner';
+import CountdownWidget from './widgets/CountdownWidget';
 
-type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
+type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
 interface StudentDashboardProps {
     student: StudentData;
@@ -143,7 +145,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     useEffect(() => {
         const getTabFromHash = () => {
             const hash = window.location.hash.replace('#/', '');
-            const validTabs: ActiveTab[] = ['dashboard', 'schedule', 'planner', 'exams', 'performance', 'doubts', 'flashcards', 'material'];
+            const validTabs: ActiveTab[] = ['dashboard', 'schedule', 'today', 'planner', 'exams', 'performance', 'doubts', 'flashcards', 'material'];
             if (validTabs.includes(hash as ActiveTab)) {
                 return hash as ActiveTab;
             }
@@ -581,8 +583,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
       <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[var(--glass-border)] mb-6 gap-4">
         <div className="flex items-center flex-wrap">
           <TabButton tabId="dashboard" icon="dashboard">Dashboard</TabButton>
+          <TabButton tabId="today" icon="star">Today</TabButton>
           <TabButton tabId="schedule" icon="schedule">Schedule</TabButton>
-          <TabButton tabId="planner" icon="planner">Planner</TabButton>
           <TabButton tabId="material" icon="book-open">Study Material</TabButton>
           <TabButton tabId="flashcards" icon="cards">Flashcards</TabButton>
           <TabButton tabId="exams" icon="trophy">Exams</TabButton>
@@ -602,6 +604,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
       </div>
     );
     
+    const widgets = student.CONFIG.settings.dashboardWidgets || {};
+
     const renderContent = () => {
         switch (activeTab) {
             case 'dashboard':
@@ -609,21 +613,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
                             <MusicVisualizerWidget />
-                            <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />
+                            {(widgets.countdown ?? true) && <CountdownWidget items={student.SCHEDULE_ITEMS} />}
+                            {(widgets.dailyInsight ?? true) && <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />
-                                <ScoreTrendWidget results={student.RESULTS} />
+                                {(widgets.subjectAllocation ?? true) && <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />}
+                                {(widgets.scoreTrend ?? true) && <ScoreTrendWidget results={student.RESULTS} />}
                             </div>
-                            <FlashcardWidget decks={student.CONFIG.flashcardDecks || []} onStartReview={handleStartReviewSession} />
-                            <ReadingHoursWidget student={student} />
+                            {(widgets.flashcards ?? true) && <FlashcardWidget decks={student.CONFIG.flashcardDecks || []} onStartReview={handleStartReviewSession} />}
+                            {(widgets.readingHours ?? true) && <ReadingHoursWidget student={student} />}
                         </div>
                         <div className="space-y-8">
-                             <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />
-                             <UpcomingExamsWidget exams={student.EXAMS} />
-                             <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />
+                             {(widgets.todaysAgenda ?? true) && <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />}
+                             {(widgets.upcomingExams ?? true) && <UpcomingExamsWidget exams={student.EXAMS} />}
+                             {(widgets.homework ?? true) && <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />}
                         </div>
                     </div>
                 );
+            case 'today':
+                return <TodayPlanner items={taskItems} onEdit={handleEditClick} />;
             case 'schedule':
                  return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

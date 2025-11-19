@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ScheduleItem, ScheduleCardData, HomeworkData, FlashcardDeck } from '../types';
 import Icon from './Icon';
@@ -56,12 +55,28 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
       return 'ACTION';
   };
 
+  const getInitialTime = () => {
+    if (task && 'TIME' in task && task.TIME) {
+      return task.TIME;
+    }
+    // For existing tasks without time (must be homework)
+    if (task && task.type === 'HOMEWORK') {
+        return '';
+    }
+    // For new tasks, check the initial type before form state is set
+    const initialType = getInitialTaskType();
+    if (initialType === 'HOMEWORK') {
+        return ''; // Homework time is optional, so start empty.
+    }
+    return '20:00'; // Default for new ACTION/FLASHCARD_REVIEW
+  };
+
   const [taskType, setTaskType] = useState<TaskType>(getInitialTaskType());
   const [formData, setFormData] = useState({
     title: task ? task.CARD_TITLE.EN : '',
     details: task ? task.FOCUS_DETAIL.EN : '',
     subject: task ? task.SUBJECT_TAG.EN : 'PHYSICS',
-    time: task && 'TIME' in task && task.TIME ? task.TIME : '20:00',
+    time: getInitialTime(),
     day: task ? task.DAY.EN.toUpperCase() : new Date().toLocaleString('en-us', {weekday: 'long'}).toUpperCase(),
     date: task && 'date' in task ? task.date : '', // New date field
     qRanges: task?.type === 'HOMEWORK' ? task.Q_RANGES : '',
@@ -100,7 +115,6 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
             TIME: formData.time || undefined,
-            // FIX: The 'category' property from form data is a generic string, but the 'HomeworkData' type expects a specific literal union. Added a type assertion to ensure type compatibility and resolve the assignment error.
             category: formData.category as 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ' | 'Custom',
             answers: parseAnswers(formData.answers),
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,

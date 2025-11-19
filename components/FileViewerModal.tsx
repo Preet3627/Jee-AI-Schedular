@@ -1,6 +1,4 @@
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StudyMaterialItem } from '../types';
 import Icon from './Icon';
 import { api } from '../api/apiService';
@@ -15,11 +13,28 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const handleClose = () => {
     setIsExiting(true);
     setTimeout(onClose, 300);
   };
+  
+  const toggleFullscreen = () => {
+    if (!modalRef.current) return;
+    if (!document.fullscreenElement) {
+        modalRef.current.requestFullscreen().catch(err => alert(`Error enabling full-screen: ${err.message}`));
+    } else {
+        document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
 
   useEffect(() => {
     let url: string | null = null;
@@ -137,10 +152,15 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
 
   return (
     <div className={`fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-md ${animationClasses}`} onClick={handleClose}>
-      <div className={`w-full h-full max-w-4xl max-h-[90vh] bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl ${contentAnimationClasses} flex flex-col`} onClick={(e) => e.stopPropagation()}>
+      <div ref={modalRef} className={`w-full h-full max-w-4xl max-h-[90vh] bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl ${contentAnimationClasses} flex flex-col`} onClick={(e) => e.stopPropagation()}>
         <header className="flex-shrink-0 p-4 border-b border-[var(--glass-border)] flex justify-between items-center">
           <h2 className="text-lg font-bold text-white truncate pr-4">{file.name}</h2>
           <div className="flex items-center gap-4">
+            {isViewable && (
+                <button onClick={toggleFullscreen} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">
+                    <Icon name="expand" className="w-4 h-4" /> {isFullscreen ? 'Exit' : 'Fullscreen'}
+                </button>
+            )}
             <button onClick={handleDownload} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">
                 <Icon name="upload" className="w-4 h-4 transform rotate-180" /> Download
             </button>

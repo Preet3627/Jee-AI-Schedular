@@ -1,67 +1,60 @@
 export function renderMarkdown(text: string): string {
     if (!text) return '';
 
-    // Process code blocks first to prevent inner content from being parsed
-    const codeBlocks: string[] = [];
-    text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
-        const placeholder = `__CODEBLOCK_${codeBlocks.length}__`;
-        const escapedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        codeBlocks.push(`<pre><code class="block text-sm p-2 rounded-md bg-gray-900/70 border border-gray-700 overflow-x-auto">${escapedCode}</code></pre>`);
-        return placeholder;
-    });
+    const processInline = (line: string): string => {
+        return line
+            .replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>')
+            .replace(/~~(.*?)~~/g, '<del>$1</del>')
+            .replace(/\[size=(\d+)\](.*?)\[\/size\]/g, '<span style="font-size: $1px;">$2</span>')
+            .replace(/`([^`]+)`/g, '<code class="bg-gray-700/50 text-cyan-300 text-xs rounded px-1.5 py-0.5 font-mono">$1</code>')
+            .replace(/\^\{([^}]+)\}/g, '<sup>$1</sup>')
+            .replace(/\^([\w\d\+\-]+)/g, '<sup>$1</sup>')
+            .replace(/_\{([^}]+)\}/g, '<sub>$1</sub>')
+            .replace(/(?<=[A-Za-z])_(\d+)/g, '<sub>$1</sub>') // General subscript for numbers after letters (e.g., H_2, SO_4)
+            .replace(/(?<!\w)\*(.*?)\*(?!\w)|(?<!\w)_([^_]+)_(?!\w)/g, '<em>$1$2</em>')
+            .replace(/log_\{([^}]+)\}\((.*?)\)/g, 'log<sub>$1</sub>($2)')
+            .replace(/log_(\w+)\((.*?)\)/g, 'log<sub>$1</sub>($2)')
+            .replace(/\\Sigma/g, 'Σ').replace(/\\pi/g, 'π').replace(/\\phi/g, 'φ')
+            .replace(/\\theta/g, 'θ').replace(/\\alpha/g, 'α').replace(/\\beta/g, 'β')
+            .replace(/\\gamma/g, 'γ').replace(/\\delta/g, 'δ').replace(/\\Delta/g, 'Δ');
+    };
 
-    let html = text
+    const blocks = text.split(/(\n\n+|\n?```[\s\S]*?```\n?)/g);
+
+    const html = blocks.map(block => {
+        if (!block || block.trim() === '') return '';
+
+        // Code blocks
+        if (block.startsWith('```')) {
+            const code = block.replace(/```(\w*\n)?|```/g, '');
+            const escapedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return `<pre><code class="block text-sm p-2 rounded-md bg-gray-900/70 border border-gray-700 overflow-x-auto">${escapedCode}</code></pre>`;
+        }
+        
+        const lines = block.trim().split('\n');
+
         // Headers
-        .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-2">$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mt-3 border-b border-gray-600 pb-1">$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-extrabold mt-4 border-b-2 border-gray-500 pb-2">$1</h1>')
-        // Bold (**text** or __text__)
-        .replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>')
-        // Strikethrough (~~text~~)
-        .replace(/~~(.*?)~~/g, '<del>$1</del>')
-        // Font Size ([size=16]text[/size])
-        .replace(/\[size=(\d+)\](.*?)\[\/size\]/g, '<span style="font-size: $1px;">$2</span>')
-        // Inline code (`code`)
-        .replace(/`([^`]+)`/g, '<code class="bg-gray-700/50 text-cyan-300 text-xs rounded px-1.5 py-0.5 font-mono">$1</code>')
-        // Superscript (text^{...} or text^...)
-        .replace(/\^\{([^}]+)\}/g, '<sup>$1</sup>')
-        .replace(/\^([\w\d\+\-]+)/g, '<sup>$1</sup>')
-        // Subscript (text_{...} or text_...)
-        .replace(/_\{([^}]+)\}/g, '<sub>$1</sub>')
-        .replace(/_([\w\d]+)/g, '<sub>$1</sub>') // FIX: Handles H_2O and other multi-character subscripts
-        // Italics (*text* or _text_) - Processed after subscripts to avoid conflict
-        .replace(/(?<!\w)\*(.*?)\*(?!\w)|(?<!\w)_([^_]+)_(?!\w)/g, '<em>$1$2</em>')
-        // Logarithm (log_b(x) or log_{10}(x))
-        .replace(/log_\{([^}]+)\}\((.*?)\)/g, 'log<sub>$1</sub>($2)')
-        .replace(/log_(\w+)\((.*?)\)/g, 'log<sub>$1</sub>($2)')
-        // Scientific symbols
-        .replace(/\\Sigma/g, 'Σ')
-        .replace(/\\pi/g, 'π')
-        .replace(/\\phi/g, 'φ')
-        .replace(/\\theta/g, 'θ')
-        .replace(/\\alpha/g, 'α')
-        .replace(/\\beta/g, 'β')
-        .replace(/\\gamma/g, 'γ')
-        .replace(/\\delta/g, 'δ')
-        .replace(/\\Delta/g, 'Δ')
-        // Unordered lists
-        .replace(/^\s*[-*+] (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
-        // Newlines to <br> - careful with other elements
-        .replace(/\n/g, '<br />')
-        // Clean up <br> inside list items that were just created
-        .replace(/<li(.*?)><br \/>/g, '<li$1>')
-        // Wrap list items in <ul>
-        .replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>')
-        // Remove duplicate <ul> tags
-        .replace(/<\/ul>\s*<ul>/g, '');
+        if (lines[0].startsWith('#')) {
+            const headerMatch = lines[0].match(/^(#+)\s(.*)/);
+            if (headerMatch) {
+                const level = headerMatch[1].length;
+                const content = processInline(headerMatch[2]);
+                if (level <= 3) {
+                     const size = ['text-2xl font-extrabold mt-4 border-b-2 border-gray-500 pb-2', 'text-xl font-bold mt-3 border-b border-gray-600 pb-1', 'text-lg font-semibold mt-2'][level-1];
+                    return `<h${level} class="${size}">${content}</h${level}>`;
+                }
+            }
+        }
+        
+        // Unordered Lists
+        if (lines.every(line => /^\s*[-*+] /.test(line))) {
+            const listItems = lines.map(line => `<li>${processInline(line.replace(/^\s*[-*+] /, ''))}</li>`).join('');
+            return `<ul class="ml-4 list-disc space-y-1">${listItems}</ul>`;
+        }
 
-    // Restore code blocks
-    codeBlocks.forEach((block, index) => {
-        const placeholder = `__CODEBLOCK_${index}__`;
-        // Handle cases where the placeholder might be wrapped in paragraph tags or have <br>s
-        html = html.replace(new RegExp(`<br />\\s*${placeholder}\\s*<br />`, 'g'), block);
-        html = html.replace(placeholder, block);
-    });
+        // Default to paragraph
+        return `<p>${processInline(block)}</p>`;
+    }).join('');
 
-    return html;
+    return html.replace(/<p><\/p>/g, ''); // Clean up empty paragraphs
 }

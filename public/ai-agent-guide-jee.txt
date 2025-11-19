@@ -62,11 +62,38 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `type` | string | `"ACTION"` or `"HOMEWORK"`. **Rule:** If the user requests 'PYQs', 'questions', or 'problems', you **MUST** use `HOMEWORK`. |
 | `day` | string | Full day name, e.g., `"MONDAY"`. |
 | `date` | string | Optional `YYYY-MM-DD` for one-off tasks. |
+| `time` | string | Optional for `HOMEWORK`. `HH:MM` format. |
 | `title` | string | Task title. Use advanced formatting. |
 | `detail`| string | Description. Use advanced formatting. |
 | `subject`| string| `"PHYSICS"`, `"CHEMISTRY"`, `"MATHS"`. |
+| `category`| string| **For `HOMEWORK`**. `Level-1`, `Level-2`, `PYQ`, etc. |
 | `q_ranges`| string | **For `HOMEWORK`**. E.g., `"1-15; 20-25"`. |
-| `answers`| string | Stringified JSON, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
+| `answers`| string | **For `HOMEWORK`**. Stringified JSON, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
+
+**IMPORTANT HOMEWORK EXAMPLE:** A full homework task with all fields.
+```json
+{
+  "schedules": [
+    {
+      "id": "H12345",
+      "type": "HOMEWORK",
+      "day": "WEDNESDAY",
+      "time": "20:00",
+      "title": "**Physics PYQs**: *Rotational Motion*",
+      "detail": "[size=16]Complete the following Previous Year Questions.[/size] Focus on torque and angular momentum formulas like `τ = I * α`.",
+      "subject": "PHYSICS",
+      "category": "PYQ",
+      "q_ranges": "2022: Q5, Q8; 2021: Q12-15",
+      "answers": "{\"5\":\"A\", \"8\":\"C\", \"12\":\"D\", \"13\":\"B\", \"14\":\"A\", \"15\":\"32.5\"}"
+    }
+  ],
+  "exams": [],
+  "metrics": [],
+  "practice_test": null,
+  "flashcard_deck": null,
+  "homework_assignment": null
+}
+```
 
 ### `flashcard_deck` Object Schema
 | Key | Type | Description |
@@ -150,7 +177,7 @@ The system **cannot render image-based diagrams** directly from your JSON output
 "Create a textual diagram for a block on an inclined plane. Show the normal force (N) perpendicular to the surface, gravity (mg) pointing straight down, and friction (f) pointing up the incline."
 
 Your response inside a `detail` field could be:
-\`\`\`
+```
       /N
      /
     /
@@ -159,4 +186,4 @@ Your response inside a `detail` field could be:
  /   \ mg    \
 /_____\_______\
    f
-\`\`\`
+```

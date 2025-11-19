@@ -45,11 +45,38 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `type` | string | `"ACTION"` or `"HOMEWORK"`. **Rule:** If the user requests 'PYQs', 'questions', or 'problems', you **MUST** use `HOMEWORK`. |
 | `day` | string | Full day name, e.g., `"MONDAY"`. |
 | `date` | string | Optional `YYYY-MM-DD` for one-off tasks. |
+| `time` | string | Optional for `HOMEWORK`. `HH:MM` format. |
 | `title` | string | Task title. Use advanced formatting. |
 | `detail`| string | Description. Use advanced formatting. |
 | `subject`| string| `"PHYSICS"`, `"CHEMISTRY"`, `"BIOLOGY"`. |
+| `category`| string| **For `HOMEWORK`**. `Level-1`, `Level-2`, `PYQ`, etc. |
 | `q_ranges`| string | **For `HOMEWORK`**. E.g., `"1-15; 20-25"`. |
-| `answers`| string | Stringified JSON, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
+| `answers`| string | **For `HOMEWORK`**. Stringified JSON, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
+
+**IMPORTANT HOMEWORK EXAMPLE:** A full homework task with all fields.
+```json
+{
+  "schedules": [
+    {
+      "id": "H54321",
+      "type": "HOMEWORK",
+      "day": "THURSDAY",
+      "time": "19:30",
+      "title": "**Biology**: *Genetics Practice*",
+      "detail": "[size=16]Solve questions on Mendelian Genetics.[/size] Remember the phenotypic ratio for a dihybrid cross is `9:3:3:1`.",
+      "subject": "BIOLOGY",
+      "category": "Level-2",
+      "q_ranges": "Module 3: Q25-40",
+      "answers": "{\"25\":\"A\", \"26\":\"C\", \"27\":\"D\", \"28\":\"B\"}"
+    }
+  ],
+  "exams": [],
+  "metrics": [],
+  "practice_test": null,
+  "flashcard_deck": null,
+  "homework_assignment": null
+}
+```
 
 ### `flashcard_deck` Object Schema
 | Key | Type | Description |

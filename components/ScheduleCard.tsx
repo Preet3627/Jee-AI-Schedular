@@ -1,6 +1,4 @@
-
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
 import Icon from './Icon';
@@ -27,6 +25,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
     const { t } = useLocalization();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [countdownProgress, setCountdownProgress] = useState(100);
     const menuRef = useRef<HTMLDivElement>(null);
 
     const isManageable = cardData.type === 'ACTION' || cardData.type === 'HOMEWORK';
@@ -39,6 +38,52 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
     
     const showActionsFooter = canCopyCommand || canStartPractice || isFlashcardReview || isDeepDive;
     const isSynced = 'googleEventId' in cardData && !!cardData.googleEventId;
+
+    // FIX: Import `useMemo` from React to resolve the 'Cannot find name' error.
+    const isToday = useMemo(() => {
+        const today = new Date();
+        const todayName = today.toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
+        if ('date' in cardData && cardData.date) {
+            return cardData.date === today.toISOString().split('T')[0];
+        }
+        return cardData.DAY.EN.toUpperCase() === todayName;
+    }, [cardData.DAY.EN, cardData.date]);
+
+    useEffect(() => {
+        if (!isToday || !('TIME' in cardData) || !cardData.TIME) {
+            setCountdownProgress(100);
+            return;
+        }
+
+        const updateProgress = () => {
+            const now = new Date();
+            const [hours, minutes] = cardData.TIME.split(':').map(Number);
+            const startTime = new Date();
+            startTime.setHours(hours, minutes, 0, 0);
+            
+            // Countdown starts 8 hours before the task
+            const countdownStart = new Date(startTime.getTime() - 8 * 60 * 60 * 1000);
+
+            if (now > startTime) {
+                setCountdownProgress(0);
+                return;
+            }
+            if (now < countdownStart) {
+                setCountdownProgress(100);
+                return;
+            }
+
+            const totalDuration = startTime.getTime() - countdownStart.getTime();
+            const elapsed = now.getTime() - countdownStart.getTime();
+            const progress = 100 - (elapsed / totalDuration) * 100;
+            setCountdownProgress(Math.max(0, progress));
+        };
+
+        updateProgress();
+        const interval = setInterval(updateProgress, 60000); // Update every minute
+        return () => clearInterval(interval);
+
+    }, [cardData.TIME, isToday]);
 
 
     useEffect(() => {
@@ -68,9 +113,17 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
 
   return (
     <div 
-      className={`bg-gray-800/50 rounded-lg border border-gray-700/80 p-5 transition-all duration-300 hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/10 relative backdrop-blur-sm group ${isPast ? 'opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-cyan-500' : ''}`}
+      className={`bg-gray-800/50 rounded-lg border border-gray-700/80 p-5 transition-all duration-300 hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/10 relative backdrop-blur-sm group ${isPast ? 'opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-cyan-500' : ''} overflow-hidden`}
       onClick={handleCardClick}
     >
+      {isToday && countdownProgress < 100 && (
+          <div 
+              className="absolute top-0 left-0 h-full w-full border-2 border-[var(--accent-color)] rounded-lg pointer-events-none"
+              style={{
+                  clipPath: `inset(0 ${100 - countdownProgress}% 0 0)`
+              }}
+          ></div>
+      )}
       
       {isSynced && !isSelectMode && (
         <div className="absolute top-3 left-3" title="Synced with Google Calendar">
