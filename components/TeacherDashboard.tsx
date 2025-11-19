@@ -170,9 +170,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
             </div>
 
             {messagingStudent && (
+                // FIX: Passed animationOrigin to MessagingModal
                 <MessagingModal animationOrigin={animationOrigin} student={messagingStudent} onClose={() => setMessagingStudent(null)} isDemoMode={false} />
             )}
             {isBroadcastModalOpen && (
+                // FIX: Passed animationOrigin to CreateEditTaskModal
                 <CreateEditTaskModal animationOrigin={animationOrigin} task={null} onClose={() => setIsBroadcastModalOpen(false)} onSave={handleBroadcastSave} decks={[]} />
             )}
             {isAIBroadcastModalOpen && (
@@ -181,7 +183,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                     onClose={() => setIsAIBroadcastModalOpen(false)}
                     onDataReady={handleAIBroadcastSave}
                     onPracticeTestReady={() => {}}
-                    onOpenGuide={(e) => handleModalOpenWithAnimation(setIsAIBroadcastModalOpen, e, true)}
+                    // FIX: Passed an event object to onOpenGuide to match the prop type
+                    onOpenGuide={(e) => handleModalOpenWithAnimation(setIsAIBroadcastModalOpen, e, true)} 
                     examType={currentUser?.CONFIG.settings.examType}
                 />
             )}

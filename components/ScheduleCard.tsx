@@ -59,7 +59,9 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
 
         const updateProgress = () => {
             const now = new Date();
-            const [hours, minutes] = (cardData as ScheduleCardData | HomeworkData).TIME!.split(':').map(Number);
+            // FIX: Added type guard for 'TIME' property again before accessing
+            const taskTime = ('TIME' in cardData && cardData.TIME) ? cardData.TIME : '23:59';
+            const [hours, minutes] = taskTime.split(':').map(Number);
             const startTime = new Date();
             startTime.setHours(hours, minutes, 0, 0);
             

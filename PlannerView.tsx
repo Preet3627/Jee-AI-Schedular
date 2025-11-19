@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ScheduleItem } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
@@ -17,6 +18,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
     
     const renderWeeklyView = () => {
         const scheduleByDay: { [key: string]: ScheduleItem[] } = daysOfWeek.reduce((acc, day) => {
+            // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
             acc[day] = items.filter(item => !('date' in item && item.date) && item.DAY.EN.toUpperCase() === day);
             return acc;
         }, {} as { [key: string]: ScheduleItem[] });
@@ -28,7 +30,11 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
                         <h3 className="text-lg font-bold text-cyan-400 tracking-wider text-center mb-4">{t({ EN: day, GU: day })}</h3>
                         <div className="space-y-3">
                             {scheduleByDay[day] && scheduleByDay[day].length > 0 ? (
-                                scheduleByDay[day].sort((a,b) => ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59')).map(item => (
+                                scheduleByDay[day].sort((a,b) => {
+                                    const aTime = 'TIME' in a && a.TIME ? a.TIME : '23:59';
+                                    const bTime = 'TIME' in b && b.TIME ? b.TIME : '23:59';
+                                    return aTime.localeCompare(bTime);
+                                }).map(item => (
                                     <div key={item.ID} className="bg-gray-900/70 p-3 rounded-lg text-sm group relative">
                                         <p className="font-bold text-white">{t(item.CARD_TITLE)}</p>
                                         {'TIME' in item && item.TIME && <p className="text-xs text-gray-400">{item.TIME}</p>}
@@ -60,11 +66,17 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
             const dateString = date.toISOString().split('T')[0];
             const dayName = date.toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
             
+            // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
             const repeatingTasks = items.filter(item => !('date' in item && item.date) && item.DAY.EN.toUpperCase() === dayName);
+            // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
             const datedTasks = items.filter(item => 'date' in item && item.date === dateString);
 
             const tasksForDay = [...repeatingTasks, ...datedTasks].sort((a, b) => 
-                ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59')
+                {
+                    const aTime = 'TIME' in a && a.TIME ? a.TIME : '23:59';
+                    const bTime = 'TIME' in b && b.TIME ? b.TIME : '23:59';
+                    return aTime.localeCompare(bTime);
+                }
             );
             
             if (tasksForDay.length > 0) {
@@ -102,8 +114,13 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
     const renderListView = () => {
         const scheduleByDay = daysOfWeek.reduce((acc, day) => {
             const dayItems = items
+                // FIX: Add a type guard to safely check for the 'date' property on ScheduleItem union type.
                 .filter(item => !('date' in item && item.date) && item.DAY.EN.toUpperCase() === day)
-                .sort((a,b) => ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59'));
+                .sort((a,b) => {
+                    const aTime = 'TIME' in a && a.TIME ? a.TIME : '23:59';
+                    const bTime = 'TIME' in b && b.TIME ? b.TIME : '23:59';
+                    return aTime.localeCompare(bTime);
+                });
             if(dayItems.length > 0) {
                 acc[day] = dayItems;
             }
@@ -142,7 +159,11 @@ const PlannerView: React.FC<PlannerViewProps> = ({ items, onEdit }) => {
 
         const todaysItems = items
             .filter(item => ('date' in item && item.date === todayDateString) || (!('date' in item && item.date) && item.DAY.EN.toUpperCase() === todayName))
-            .sort((a,b) => ('TIME' in a && a.TIME ? a.TIME : '23:59').localeCompare('TIME' in b && b.TIME ? b.TIME : '23:59'));
+            .sort((a,b) => {
+                const aTime = 'TIME' in a && a.TIME ? a.TIME : '23:59';
+                const bTime = 'TIME' in b && b.TIME ? b.TIME : '23:59';
+                return aTime.localeCompare(bTime);
+            });
 
         return (
             <div>

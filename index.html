@@ -3,7 +3,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.googleapis.com https://accounts.google.com https://ponsrischool.in https://nc.ponsrischool.in; frame-src 'self' https://accounts.google.com https://content.googleapis.com blob:; media-src 'self' https://nc.ponsrischool.in blob:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.googleapis.com https://accounts.google.com https://ponsrischool.in https://nc.ponsrischool.in; font-src 'self' data:; frame-src 'self' https://accounts.google.com https://content.googleapis.com blob:; media-src 'self' https://nc.ponsrischool.in blob:;">
     <link rel="icon" type="image/png" href="https://ponsrischool.in/wp-content/uploads/2025/11/Gemini_Generated_Image_ujvnj5ujvnj5ujvn.png" crossorigin="anonymous" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -210,27 +210,27 @@
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "cors": "https://aistudiocdn.com/cors@^2.8.5",
-    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "workbox-precaching": "https://aistudiocdn.com/workbox-precaching@^7.4.0",
     "express": "https://aistudiocdn.com/express@^5.1.0",
-    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "mysql2/": "https://aistudiocdn.com/mysql2@^3.15.3/",
+    "cors": "https://aistudiocdn.com/cors@^2.8.5",
+    "bcryptjs": "https://aistudiocdn.com/bcryptjs@^3.0.3",
+    "jsonwebtoken": "https://aistudiocdn.com/jsonwebtoken@^9.0.2",
+    "google-auth-library": "https://aistudiocdn.com/google-auth-library@^10.5.0",
+    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10",
+    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
     "crypto": "https://aistudiocdn.com/crypto@^1.0.1",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "url": "https://aistudiocdn.com/url@^0.11.4",
-    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
+    "xml2js": "https://aistudiocdn.com/xml2js@^0.6.2",
+    "node-fetch": "https://aistudiocdn.com/node-fetch@^3.3.2",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
     "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0",
-    "node-fetch": "https://aistudiocdn.com/node-fetch@^3.3.2",
-    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10",
-    "workbox-precaching": "https://aistudiocdn.com/workbox-precaching@^7.4.0",
-    "bcryptjs": "https://aistudiocdn.com/bcryptjs@^3.0.3",
-    "google-auth-library": "https://aistudiocdn.com/google-auth-library@^10.5.0",
-    "jsonwebtoken": "https://aistudiocdn.com/jsonwebtoken@^9.0.2",
-    "mysql2/": "https://aistudiocdn.com/mysql2@^3.15.3/",
-    "xml2js": "https://aistudiocdn.com/xml2js@^0.6.2",
     "music-metadata-browser": "https://aistudiocdn.com/music-metadata-browser@^2.5.11"
   }
 }
@@ -242,4 +242,1645 @@
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
   </body>
-</html>
+</html>--- START OF FILE App.tsx ---
+
+
+import React, { useState, useEffect, useCallback, SetStateAction } from 'react';
+import { useAuth } from './context/AuthContext';
+import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData, FlashcardDeck, ActiveTab } from './types';
+import { api } from './api/apiService';
+
+import Header from './components/Header';
+import StudentDashboard from './components/StudentDashboard';
+import TeacherDashboard from './components/TeacherDashboard';
+import AuthScreen from './screens/AuthScreen';
+import BackendOfflineScreen from './components/BackendOfflineScreen';
+import ConfigurationErrorScreen from './components/ConfigurationErrorScreen';
+import { exportCalendar } from './utils/calendar';
+import * as gcal from './utils/googleCalendar';
+import * as gdrive from './utils/googleDrive';
+import * as auth from './utils/googleAuth';
+import ExamTypeSelectionModal from './components/ExamTypeSelectionModal';
+import { useMusicPlayer } from './context/MusicPlayerContext';
+import FullScreenMusicPlayer from './components/FullScreenMusicPlayer';
+import PersistentMusicPlayer from './components/PersistentMusicPlayer';
+import GlobalMusicVisualizer from './components/GlobalMusicVisualizer';
+
+declare global {
+  interface Window {
+    gapi: any;
+    google: any;
+  }
+}
+
+const API_URL = '/api';
+
+const App: React.FC = () => {
+    const { currentUser, userRole, isLoading, isDemoMode, enterDemoMode, logout, refreshUser } = useAuth();
+    const { isFullScreenPlayerOpen, currentTrack } = useMusicPlayer();
+    
+    const [allStudents, setAllStudents] = useState<StudentData[]>([]);
+    const [allDoubts, setAllDoubts] = useState<DoubtData[]>([]);
+    const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline' | 'misconfigured'>('checking');
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+    const [googleAuthStatus, setGoogleAuthStatus] = useState<'unconfigured' | 'loading' | 'signed_in' | 'signed_out'>('loading');
+    const [resetToken, setResetToken] = useState<string | null>(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [deepLinkAction, setDeepLinkAction] = useState<any>(null);
+    const [isExamTypeModalOpen, setIsExamTypeModalOpen] = useState(false);
+    const [animationOrigin, setAnimationOrigin] = useState<{ x: string, y: string } | undefined>(undefined);
+
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // --- Deep Link & Voice Action Integration ---
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('reset-token');
+        if (token) {
+            setResetToken(token);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        const action = params.get('action');
+        const dataStr = params.get('data');
+        const taskId = params.get('id'); // For new view_task action
+
+        if (action === 'view_task' && taskId) {
+            setDeepLinkAction({ action: 'view_task', data: { id: taskId } });
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (action && dataStr) {
+            const handleDeepLink = async (encodedData: string) => {
+                let decodedData = '';
+                try {
+                    decodedData = decodeURIComponent(encodedData);
+                    const data = JSON.parse(decodedData);
+                    setDeepLinkAction({ action, data });
+                } catch (e) {
+                    console.error("Failed to parse deep link data, attempting AI correction:", e);
+                    try {
+                        const correctionResult = await api.correctJson(decodedData);
+                        const correctedData = JSON.parse(correctionResult.correctedJson);
+                        setDeepLinkAction({ action, data: correctedData });
+                        console.log("AI correction successful!");
+                    } catch (correctionError) {
+                        console.error("AI correction failed:", correctionError);
+                        alert("The data from the link is malformed and could not be automatically corrected. Please check the source.");
+                    }
+                } finally {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            };
+            handleDeepLink(dataStr);
+        }
+    }, []);
+
+    useEffect(() => {
+        // Apply theme class to body
+        const theme = currentUser?.CONFIG.settings.theme || 'default';
+        document.body.className = `theme-${theme}`;
+
+        // If a user is logged in but hasn't selected an exam type, show the selection modal.
+        if (currentUser && userRole === 'student' && !isDemoMode && !currentUser.CONFIG.settings.examType) {
+            setIsExamTypeModalOpen(true);
+        }
+    }, [currentUser, userRole, isDemoMode]);
+    
+
+    const handleGoogleSignOut = useCallback(() => {
+        auth.handleSignOut(() => {
+            setGoogleAuthStatus('signed_out');
+        });
+    }, []);
+
+    const handleGapiError = (error: any, contextMessage?: string) => {
+        console.error("Google API Error:", error);
+        const status = error.status || error.code || (error.result && error.result.error && error.result.error.code);
+        if (status === 401 || status === 403) {
+            alert("Your Google session has expired or permissions have changed. Please sign in again to use Google services.");
+            handleGoogleSignOut();
+        } else {
+            alert(contextMessage || "An error occurred while communicating with Google services. Please check your connection and try again.");
+        }
+    };
+
+
+    const handleSaveTask = async (task: ScheduleItem) => {
+        let taskToSave = { ...task };
+        if (currentUser?.CONFIG.isCalendarSyncEnabled && googleAuthStatus === 'signed_in' && 'TIME' in task && task.TIME) {
+            setIsSyncing(true);
+            try {
+                let eventId;
+                if ('googleEventId' in task && task.googleEventId) {
+                    eventId = await gcal.updateEvent(task.googleEventId, task);
+                } else {
+                    eventId = await gcal.createEvent(task);
+                }
+                (taskToSave as any).googleEventId = eventId;
+            } catch (syncError) {
+                handleGapiError(syncError, "Failed to sync task with Google Calendar. Please check permissions and try again.");
+                setIsSyncing(false);
+                return; // Stop the save process if sync fails
+            } finally {
+                setIsSyncing(false);
+            }
+        }
+        await api.saveTask(taskToSave);
+        refreshUser();
+    };
+
+    const handleSaveBatchTasks = async (tasks: ScheduleItem[]) => {
+        await api.saveBatchTasks(tasks);
+        refreshUser();
+    };
+
+    const handleDeleteTask = async (taskId: string) => {
+        const taskToDelete = currentUser?.SCHEDULE_ITEMS.find(t => t.ID === taskId);
+        if (currentUser?.CONFIG.isCalendarSyncEnabled && googleAuthStatus === 'signed_in' && taskToDelete && 'googleEventId' in taskToDelete && taskToDelete.googleEventId) {
+            try {
+                setIsSyncing(true);
+                await gcal.deleteEvent(taskToDelete.googleEventId);
+            } catch (syncError) {
+                handleGapiError(syncError, "Failed to remove task from Google Calendar, but it will be deleted from the app. You may need to remove it manually from your calendar.");
+            } finally {
+                setIsSyncing(false);
+            }
+        }
+        await api.deleteTask(taskId);
+        refreshUser();
+    };
+    
+    const handleFullCalendarSync = useCallback(async () => {
+        if (!currentUser || googleAuthStatus !== 'signed_in') return;
+        setIsSyncing(true);
+        try {
+            const tasksToUpdate: ScheduleItem[] = [];
+            const allTasks = currentUser.SCHEDULE_ITEMS;
+            
+            for (const task of allTasks) {
+                if (!('googleEventId' in task && task.googleEventId) && 'TIME' in task && task.TIME) {
+                    try {
+                        const eventId = await gcal.createEvent(task);
+                        tasksToUpdate.push({ ...task, googleEventId: eventId });
+                    } catch (error) {
+                        console.warn(`Failed to sync task ${task.ID}:`, error);
+                    }
+                }
+            }
+
+            if (tasksToUpdate.length > 0) {
+                await handleSaveBatchTasks(tasksToUpdate);
+            }
+
+            await api.updateConfig({ isCalendarSyncEnabled: true, calendarLastSync: new Date().toISOString() });
+            await refreshUser();
+            alert(`Successfully synced ${tasksToUpdate.length} new tasks to Google Calendar.`);
+
+        } catch (error) {
+            handleGapiError(error, "An error occurred during the full calendar sync.");
+        } finally {
+            setIsSyncing(false);
+        }
+    }, [currentUser, googleAuthStatus, refreshUser, handleSaveBatchTasks]);
+
+
+    const handleUpdateConfig = async (configUpdate: Partial<Config>) => {
+        if (!currentUser) return;
+        
+        const wasSyncDisabled = !currentUser.CONFIG.isCalendarSyncEnabled;
+        const isSyncBeingEnabled = configUpdate.isCalendarSyncEnabled === true;
+
+        await api.updateConfig(configUpdate);
+        await refreshUser();
+
+        if (wasSyncDisabled && isSyncBeingEnabled) {
+             setTimeout(() => {
+                if (window.confirm("Enable Google Calendar Sync? This will add all your scheduled tasks (as repeating weekly events) to your primary Google Calendar.")) {
+                    handleFullCalendarSync();
+                }
+            }, 100);
+        }
+    };
+    
+    const onLogStudySession = async (session: Omit<StudySession, 'date'>) => {
+        if (!currentUser) return;
+        const newSession = { ...session, date: new Date().toISOString().split('T')[0] };
+        const updatedUser = {...currentUser, STUDY_SESSIONS: [...currentUser.STUDY_SESSIONS, newSession]};
+        await api.fullSync(updatedUser);
+        refreshUser();
+    };
+    
+    const onLogResult = async (result: ResultData) => {
+        if (!currentUser) return;
+        const updatedUser = { ...currentUser, RESULTS: [...currentUser.RESULTS, result], CONFIG: {...currentUser.CONFIG, SCORE: result.SCORE, WEAK: [...new Set([...currentUser.CONFIG.WEAK, ...result.MISTAKES])] } };
+        await api.fullSync(updatedUser);
+        refreshUser();
+    };
+
+    const onAddExam = async (exam: ExamData) => {
+        if (!currentUser) return;
+        const updatedUser = { ...currentUser, EXAMS: [...currentUser.EXAMS, exam] };
+        await api.fullSync(updatedUser);
+        refreshUser();
+    };
+
+    const onUpdateExam = async (exam: ExamData) => {
+         if (!currentUser) return;
+        const updatedUser = { ...currentUser, EXAMS: currentUser.EXAMS.map(e => e.ID === exam.ID ? exam : e) };
+        await api.fullSync(updatedUser);
+        refreshUser();
+    };
+
+    const onDeleteExam = async (examId: string) => {
+        if (!currentUser) return;
+        const updatedUser = { ...currentUser, EXAMS: currentUser.EXAMS.filter(e => e.ID !== examId) };
+        await api.fullSync(updatedUser);
+        refreshUser();
+    };
+    
+    const onUpdateWeaknesses = async (weaknesses: string[]) => {
+        if (!currentUser) return;
+        const updatedUser = { ...currentUser, CONFIG: { ...currentUser.CONFIG, WEAK: weaknesses } };
+        await api.fullSync(updatedUser);
+        refreshUser();
+    };
+
+    const handleBatchImport = async (data: { schedules: ScheduleItem[], exams: ExamData[], results: ResultData[], weaknesses: string[] }) => {
+        if (!currentUser) return;
+        
+        const updatedUser = JSON.parse(JSON.stringify(currentUser));
+
+        updatedUser.SCHEDULE_ITEMS.push(...data.schedules);
+        updatedUser.EXAMS.push(...data.exams);
+        updatedUser.RESULTS.push(...data.results);
+
+        const newWeaknesses = new Set([...updatedUser.CONFIG.WEAK, ...data.weaknesses]);
+        data.results.forEach(r => {
+            r.MISTAKES.forEach(m => newWeaknesses.add(m));
+        });
+        updatedUser.CONFIG.WEAK = Array.from(newWeaknesses);
+
+        if (data.results.length > 0) {
+            const sortedResults = [...updatedUser.RESULTS].sort((a, b) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime());
+            updatedUser.CONFIG.SCORE = sortedResults[0].SCORE;
+        }
+
+        await api.fullSync(updatedUser);
+        await refreshUser();
+
+        if (currentUser.CONFIG.isCalendarSyncEnabled) {
+            if (window.confirm("Batch import complete. Do you want to sync the newly added schedule items to your Google Calendar?")) {
+                handleFullCalendarSync();
+            }
+        }
+    };
+
+    const onPostDoubt = async (question: string, image?: string) => {
+        await api.postDoubt(question, image);
+        const doubtsData = await api.getAllDoubts();
+        setAllDoubts(doubtsData);
+    };
+
+    const onPostSolution = async (doubtId: string, solution: string, image?: string) => {
+        await api.postSolution(doubtId, solution, image);
+        const doubtsData = await api.getAllDoubts();
+        setAllDoubts(doubtsData);
+    };
+
+    const onBackupToDrive = async () => {
+        if (!currentUser || googleAuthStatus !== 'signed_in') return;
+        try {
+            const backupData = {
+                SCHEDULE_ITEMS: currentUser.SCHEDULE_ITEMS,
+                RESULTS: currentUser.RESULTS,
+                EXAMS: currentUser.EXAMS,
+                STUDY_SESSIONS: currentUser.STUDY_SESSIONS,
+                CONFIG: {
+                    WEAK: currentUser.CONFIG.WEAK,
+                    flashcardDecks: currentUser.CONFIG.flashcardDecks,
+                }
+            };
+            const fileId = await gdrive.uploadData(JSON.stringify(backupData), currentUser.CONFIG.googleDriveFileId);
+            const syncTime = new Date().toISOString();
+            await api.updateConfig({ googleDriveFileId: fileId, driveLastSync: syncTime });
+            refreshUser();
+            alert('Backup successful!');
+        } catch (error) {
+            handleGapiError(error, 'Backup failed. Please try again.');
+        }
+    };
+    
+    const onRestoreFromDrive = async () => {
+        if (!currentUser?.CONFIG.googleDriveFileId || googleAuthStatus !== 'signed_in') return;
+        if (!window.confirm("This will overwrite your current local schedule and results data. Are you sure?")) return;
+        try {
+            const dataStr = await gdrive.downloadData(currentUser.CONFIG.googleDriveFileId);
+            const restoredData = JSON.parse(dataStr);
+            const updatedUser = { ...currentUser, ...restoredData };
+            await api.fullSync(updatedUser);
+            refreshUser();
+            alert('Restore successful!');
+        } catch (error) {
+            handleGapiError(error, 'Restore failed. Please try again.');
+        }
+    };
+    
+    const onDeleteUser = async (sid: string) => {
+        if (window.confirm(`Are you SURE you want to permanently delete user ${sid}? All their data will be lost forever.`)) {
+            try {
+                await api.deleteStudent(sid);
+                setAllStudents(prev => prev.filter(s => s.sid !== sid));
+                alert(`Student ${sid} deleted.`);
+            } catch (error: any) {
+                alert(`Failed to delete student: ${error.message}`);
+            }
+        }
+    };
+
+    const checkBackend = useCallback(async (isInitialCheck: boolean) => {
+        let statusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
+        if (isInitialCheck && !currentUser) {
+            statusCheckTimeout = setTimeout(() => {
+                setBackendStatus(prev => prev === 'checking' ? 'offline' : prev);
+            }, 5000);
+        }
+
+        try {
+            const res = await fetch(`/api/status`, { signal: AbortSignal.timeout(5000) });
+            if (statusCheckTimeout) clearTimeout(statusCheckTimeout);
+
+            if (res.ok) {
+                 const data = await res.json().catch(() => ({}));
+                 if(data.status === 'misconfigured') {
+                    setBackendStatus('misconfigured');
+                 } else {
+                    setBackendStatus('online');
+                    if (!googleClientId) {
+                        api.getPublicConfig().then(config => setGoogleClientId(config.googleClientId)).catch(console.error);
+                    }
+                 }
+            } else {
+                 setBackendStatus('offline');
+            }
+        } catch (error) {
+            if (statusCheckTimeout) clearTimeout(statusCheckTimeout);
+            setBackendStatus('offline');
+        }
+    }, [googleClientId, currentUser]);
+
+    useEffect(() => {
+        checkBackend(true); // Initial check with delay logic
+        const interval = setInterval(() => checkBackend(false), 30000); // Subsequent checks
+        return () => clearInterval(interval);
+    }, [checkBackend]);
+
+    useEffect(() => {
+        if (currentUser) {
+            const heartbeat = setInterval(() => {
+                api.heartbeat().catch(err => console.debug("Heartbeat failed, user might be offline.", err));
+            }, 60000); // every 1 minute
+            return () => clearInterval(heartbeat);
+        }
+    }, [currentUser]);
+
+
+    useEffect(() => {
+        const initializeGoogleApis = () => {
+            if (googleClientId && window.gapi && window.google) {
+                auth.initClient(
+                    googleClientId,
+                    (isSignedIn) => {
+                        setGoogleAuthStatus(isSignedIn ? 'signed_in' : 'signed_out');
+                    },
+                    (error) => {
+                        console.error("GAPI Init Error:", error);
+                        console.error("GAPI Init Error Object", JSON.stringify(error, null, 2));
+                        setGoogleAuthStatus('unconfigured');
+                    }
+                );
+            } else if (googleClientId) {
+                const checkScripts = setInterval(() => {
+                    if (window.gapi && window.google) {
+                        clearInterval(checkScripts);
+                        initializeGoogleApis();
+                    }
+                }, 100);
+                return () => clearInterval(checkScripts);
+            }
+        };
+        initializeGoogleApis();
+    }, [googleClientId, backendStatus]);
+
+
+    const handleSelectExamType = async (examType: 'JEE' | 'NEET') => {
+        if (!currentUser) return;
+        const newSettings = JSON.parse(JSON.stringify(currentUser.CONFIG.settings));
+        newSettings.examType = examType;
+        await handleUpdateConfig({ settings: newSettings });
+        setIsExamTypeModalOpen(false);
+    };
+
+    const renderContent = () => {
+        if (isLoading) {
+            return <div className="flex items-center justify-center min-h-screen"><div className="text-xl animate-pulse">Initializing Interface...</div></div>;
+        }
+
+        if (isExamTypeModalOpen) {
+            return <ExamTypeSelectionModal onClose={() => { /* no-op */ }} onSelect={handleSelectExamType} animationOrigin={animationOrigin} />;
+        }
+
+        if (backendStatus === 'misconfigured') {
+            return <ConfigurationErrorScreen onRetryConnection={() => checkBackend(false)} backendStatus={backendStatus} />;
+        }
+        
+        if (currentUser) {
+            const dashboardUser = currentUser;
+            const useToolbarLayout = isMobile && dashboardUser.CONFIG.settings.mobileLayout === 'toolbar';
+
+            return (
+                 <div style={{'--accent-color': dashboardUser.CONFIG.settings.accentColor} as React.CSSProperties} className={`${dashboardUser.CONFIG.settings.blurEnabled === false ? 'no-blur' : ''} safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom`}>
+                    {isFullScreenPlayerOpen && <FullScreenMusicPlayer />}
+                    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${useToolbarLayout || currentTrack ? 'pb-24' : ''}`}>
+                        <Header user={{ name: dashboardUser.fullName, id: dashboardUser.sid, profilePhoto: dashboardUser.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
+                        {userRole === 'admin' ? (
+                            <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={onDeleteUser} onBroadcastTask={api.broadcastTask} animationOrigin={animationOrigin} setAnimationOrigin={setAnimationOrigin} />
+                        ) : (
+                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateConfig={handleUpdateConfig} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportCalendar(currentUser.SCHEDULE_ITEMS, currentUser.EXAMS, currentUser.fullName)} onBatchImport={handleBatchImport} googleAuthStatus={googleAuthStatus} onGoogleSignIn={auth.handleSignIn} onGoogleSignOut={handleGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} deepLinkAction={deepLinkAction} animationOrigin={animationOrigin} setAnimationOrigin={setAnimationOrigin} />
+                        )}
+                    </div>
+                    {currentTrack && <PersistentMusicPlayer />}
+                </div>
+            );
+        }
+        
+        if (isDemoMode && userRole === 'admin') {
+             return (
+                 <div style={{'--accent-color': '#0891b2'} as React.CSSProperties} className="safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                        <Header user={{ name: 'Admin', id: 'ADMIN_DEMO', profilePhoto: currentUser?.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
+                        <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={() => alert("Deletion disabled in demo mode")} onBroadcastTask={() => alert("Broadcast disabled in demo mode")} animationOrigin={animationOrigin} setAnimationOrigin={setAnimationOrigin} />
+                    </div>
+                </div>
+            );
+        }
+
+        if (backendStatus === 'offline' && !isDemoMode) {
+            return <BackendOfflineScreen onSelectDemoUser={enterDemoMode} onRetryConnection={() => checkBackend(false)} backendStatus={backendStatus} />;
+        }
+
+        return <AuthScreen backendStatus={backendStatus} googleClientId={googleClientId} resetToken={resetToken} />;
+    };
+
+    return <div className="min-h-screen bg-gray-950 text-gray-200 font-sans">{renderContent()}</div>;
+};
+
+export default App;--- START OF FILE types.ts ---
+
+
+export type Language = 'EN' | 'GU';
+
+export interface LocalizedString {
+  EN: string;
+  GU: string;
+}
+
+export interface UiText {
+  LANGUAGE: string;
+  APP_TITLE: LocalizedString;
+  CURRENT_STATUS_TITLE: LocalizedString;
+  CURRENT_SCORE: LocalizedString;
+  TARGET_SCORE: LocalizedString;
+  WEAKNESS_TITLE: LocalizedString;
+  SCHEDULE_TITLE: LocalizedString;
+  ACTION_BUTTONS: {
+    SET_ALARM: LocalizedString;
+    COPY_CMD: LocalizedString;
+  };
+}
+
+export interface ScheduleCardData {
+  ID: string;
+  DAY: LocalizedString;
+  TIME: string;
+  CARD_TITLE: LocalizedString;
+  FOCUS_DETAIL: LocalizedString;
+  SUBJECT_TAG: LocalizedString;
+  UNACADEMY_QUERY?: string;
+  ACTION_COMMAND?: string;
+  type: 'ACTION';
+  SUB_TYPE?: 'MORNING_DRILL' | 'DEEP_DIVE' | 'ANALYSIS' | 'FLASHCARD_REVIEW';
+  isUserCreated?: boolean;
+  isStarred?: boolean;
+  googleEventId?: string;
+  deckId?: string;
+  date?: string; // For one-off events, format YYYY-MM-DD
+}
+
+export interface PracticeHistory {
+  date: string; // ISO string
+  attempted: number[];
+  correct: number[];
+  incorrect: number[];
+  skipped: number[];
+}
+
+export interface HomeworkData {
+  ID: string;
+  DAY: LocalizedString;
+  CARD_TITLE: LocalizedString;
+  SUBJECT_TAG: LocalizedString;
+  FOCUS_DETAIL: LocalizedString;
+  Q_RANGES: string;
+  type: 'HOMEWORK';
+  category?: 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ' | 'Custom';
+  TIME?: string;
+  isUserCreated?: boolean;
+  isStarred?: boolean;
+  googleEventId?: string;
+  answers?: Record<string, string>; // e.g., { "1": "A", "2": "12.5" }
+  solutions?: Record<string, string>; // For AI-generated detailed solutions
+  date?: string; // For one-off homework, format YYYY-MM-DD
+  practiceHistory?: PracticeHistory[];
+  flashcards?: { front: string; back: string }[]; // For AI-generated cards
+}
+
+export interface ActivityData {
+  ID: string;
+  type: 'ACTIVITY';
+  CARD_TITLE: LocalizedString;
+  STATUS: number;
+  DAY: LocalizedString;
+  FOCUS_DETAIL: LocalizedString;
+  SUBJECT_TAG: LocalizedString;
+  isStarred?: boolean;
+}
+
+export type ScheduleItem = ScheduleCardData | HomeworkData | ActivityData;
+
+export interface ResultData {
+  ID: string;
+  DATE: string;
+  SCORE: string; // e.g., "185/300"
+  MISTAKES: string[]; // List of mistake topics or question numbers
+  FIXED_MISTAKES?: string[];
+  
+  // New detailed analysis fields
+  syllabus?: string;
+  timings?: Record<number, number>; // { qNum: seconds }
+  analysis?: {
+    subjectTimings: Record<'PHYSICS' | 'CHEMISTRY' | 'MATHS' | 'OTHER', number>;
+    chapterScores: Record<string, { correct: number; incorrect: number; accuracy: number }>;
+    aiSuggestions: string;
+    incorrectQuestionNumbers?: number[];
+    suggestedFlashcards?: { front: string; back: string; }[];
+  };
+  detailedMistakes?: {
+    qNumber: number;
+    analysis: {
+        topic: string;
+        explanation: string;
+    };
+  }[];
+}
+
+
+export interface ExamData {
+  ID: string;
+  subject: 'PHYSICS' | 'CHEMISTRY' | 'MATHS' | 'FULL';
+  title: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  syllabus: string; // Comma-separated list of topics
+}
+
+export interface SolutionData {
+  id: string;
+  doubt_id: string;
+  user_sid: string;
+  solution: string;
+  solution_image?: string; // Base64 image data
+  created_at: string;
+  solver_name: string;
+  solver_photo: string;
+}
+
+export interface DoubtData {
+  id: string;
+  user_sid: string;
+  question: string;
+  question_image?: string; // Base64 image data
+  created_at: string;
+  author_name: string;
+  author_photo: string;
+  solutions: SolutionData[];
+  status?: 'active' | 'archived' | 'deleted';
+}
+
+export interface MessageData {
+  id: number;
+  sender_sid: string;
+  recipient_sid: string;
+  content: string;
+  created_at: string;
+}
+
+export interface StudySession {
+  date: string; // YYYY-MM-DD
+  duration: number; // in seconds
+  questions_solved: number;
+  questions_skipped: number[];
+}
+
+export interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  track: string; // track number
+  coverArt: string; // cover art ID from Ampache/WebDAV
+  duration: string; // in seconds
+  size: string; // in bytes
+  coverArtUrl?: string; // dynamically added by the player context
+  isLocal?: boolean;
+  file?: File; // For local files using File System Access API
+  path?: string; // For Nextcloud files
+}
+
+export interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+}
+
+export interface FlashcardDeck {
+  id: string;
+  name: string;
+  subject: string;
+  cards: Flashcard[];
+  chapter?: string;
+  isLocked?: boolean;
+}
+
+export interface StudyMaterialItem {
+    name: string;
+    type: 'file' | 'folder';
+    path: string;
+    size: number;
+    modified: string;
+}
+
+export interface PracticeQuestion {
+  number: number;
+  text: string;
+  options: string[];
+  type: 'MCQ' | 'NUM';
+}
+
+export interface CustomWidget {
+  id: string;
+  title: string;
+  content: string; // Markdown content
+}
+
+export interface LocalPlaylist {
+  id: string;
+  name: string;
+  trackIds: string[]; // For local files, this could be the file name or a generated ID
+}
+
+export type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
+
+export interface DashboardWidgetItem {
+    id: string; // Corresponds to a key in the widgetConfig map
+    wide?: boolean;
+    translucent?: boolean;
+    // Add position if needed for drag-and-drop
+}
+
+// The complete, normalized user data object used throughout the frontend
+export interface Config {
+    WAKE: string;
+    SCORE: string;
+    WEAK: string[];
+    UNACADEMY_SUB: boolean;
+    googleDriveFileId?: string;
+    driveLastSync?: string;
+    isCalendarSyncEnabled?: boolean;
+    calendarLastSync?: string;
+    geminiApiKey?: string; // This is stored encrypted on the backend ONLY.
+    flashcardDecks?: FlashcardDeck[];
+    pinnedMaterials?: string[]; // Array of item paths
+    customWidgets?: CustomWidget[];
+    localPlaylists?: LocalPlaylist[];
+    settings: {
+        accentColor: string;
+        blurEnabled: boolean;
+        mobileLayout: 'standard' | 'toolbar';
+        forceOfflineMode: boolean; 
+        perQuestionTime: number; // Default time in seconds per MCQ
+        hasGeminiKey?: boolean; // A safe flag for the frontend
+        showAiChatAssistant?: boolean;
+        creditSaver?: boolean; // Use faster, cheaper AI models
+        examType?: 'JEE' | 'NEET';
+        theme?: 'default' | 'liquid-glass' | 'midnight';
+        dashboardLayout?: DashboardWidgetItem[]; // Array of widget objects for customized layout
+        dashboardFlashcardDeckIds?: string[];
+        musicPlayerWidgetLayout?: 'minimal' | 'expanded';
+        customDjDropUrl?: string; // URL for user-uploaded custom DJ drop
+        widgetSettings?: Record<string, any>; 
+    };
+}
+
+// The complete, normalized user data object used throughout the frontend
+export interface StudentData {
+    // Core user info from the `users` table
+    id: number;
+    sid: string;
+    email: string;
+    fullName: string;
+    profilePhoto: string;
+    isVerified: boolean;
+    role: 'student' | 'admin';
+    apiToken?: string; // Only sent once on generation
+    last_seen?: string; // ISO timestamp for online status
+
+    // Data from other tables, combined by the backend
+    CONFIG: Config;
+    SCHEDULE_ITEMS: ScheduleItem[];
+    RESULTS: ResultData[];
+    EXAMS: ExamData[];
+    STUDY_SESSIONS: StudySession[];
+    DOUBTS: DoubtData[];
+}
+
+export interface PlannerViewProps {
+  items: ScheduleItem[];
+  onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>) => void;
+}
+
+export interface ExamTypeSelectionModalProps {
+  onSelect: (examType: 'JEE' | 'NEET') => void;
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CreateEditTaskModalProps {
+  task: ScheduleItem | null;
+  viewOnly?: boolean;
+  onClose: () => void;
+  onSave: (task: ScheduleItem) => void;
+  decks: FlashcardDeck[];
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIParserModalProps {
+  onClose: () => void;
+  onDataReady: (data: any) => void;
+  onPracticeTestReady: (data: any) => void;
+  onOpenGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  examType?: 'JEE' | 'NEET';
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CustomPracticeModalProps {
+  onClose: () => void;
+  onSessionComplete: (duration: number, questions_solved: number, questions_skipped: number[]) => void;
+  initialTask?: HomeworkData | null;
+  aiPracticeTest?: { questions: PracticeQuestion[], answers: Record<string, string> } | null;
+  aiInitialTopic?: string | null;
+  defaultPerQuestionTime: number;
+  onLogResult: (result: ResultData) => void;
+  onUpdateWeaknesses: (weaknesses: string[]) => void; 
+  student: StudentData;
+  onSaveTask: (task: ScheduleItem) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface SettingsModalProps {
+  settings: Config['settings'];
+  decks: FlashcardDeck[];
+  driveLastSync?: string;
+  isCalendarSyncEnabled?: boolean;
+  calendarLastSync?: string;
+  onClose: () => void;
+  onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean; customDjDropFile?: File; }>, newCustomWidgets: CustomWidget[]) => void;
+  onExportToIcs: () => void;
+  googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
+  onGoogleSignIn: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; 
+  onGoogleSignOut: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; 
+  onBackupToDrive: () => void;
+  onRestoreFromDrive: () => void;
+  onApiKeySet: () => void;
+  onOpenAssistantGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; 
+  onOpenAiGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; 
+  onClearAllSchedule: () => void;
+  studentCustomWidgets: CustomWidget[];
+  onSaveCustomWidgets: (widget: CustomWidget) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface EditWeaknessesModalProps {
+  currentWeaknesses: string[];
+  onClose: () => void;
+  onSave: (weaknesses: string[]) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface LogResultModalProps {
+  onClose: () => void;
+  onSave: (result: ResultData) => void;
+  initialScore?: string;
+  initialMistakes?: string;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CreateEditExamModalProps {
+  exam: ExamData | null;
+  onClose: () => void;
+  onSave: (exam: ExamData) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIMistakeAnalysisModalProps {
+  onClose: () => void;
+  onSaveWeakness: (weakness: string) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIDoubtSolverModalProps {
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIChatPopupProps {
+  history: { role: string; parts: { text: string }[] }[];
+  onSendMessage: (prompt: string, imageBase64?: string) => void;
+  onClose: () => void;
+  isLoading: boolean;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface TestAnalysisReportProps {
+  result: ResultData;
+  onAnalyzeMistake: (questionNumber: number) => void;
+}
+
+export interface MoveTasksModalProps {
+  onClose: () => void;
+  onConfirm: (newDate: string) => void;
+  selectedCount: number;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface MusicLibraryModalProps {
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CreateEditDeckModalProps {
+  deck: FlashcardDeck | null;
+  onClose: () => void;
+  onSave: (deck: FlashcardDeck) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIGenerateFlashcardsModalProps {
+  student: StudentData;
+  onClose: () => void;
+  onSaveDeck: (deck: FlashcardDeck) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface DeckViewModalProps {
+  deck: FlashcardDeck;
+  onClose: () => void;
+  onAddCard: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onEditCard: (card: Flashcard, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onDeleteCard: (cardId: string) => void;
+  onStartReview: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CreateEditFlashcardModalProps {
+  card: Flashcard | null;
+  deckId: string;
+  onClose: () => void;
+  onSave: (deckId: string, card: Flashcard) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface FlashcardReviewModalProps {
+  deck: FlashcardDeck;
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface FileViewerModalProps {
+  file: StudyMaterialItem | null;
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface GoogleAssistantGuideModalProps {
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface DeepLinkConfirmationModalProps {
+  data: {
+    schedules?: any[];
+    exams?: any[];
+    results?: any[];
+    weaknesses?: string[];
+  };
+  onClose: () => void;
+  onConfirm: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIGuideModalProps {
+  onClose: () => void;
+  examType?: 'JEE' | 'NEET';
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface MessagingModalProps {
+  student: StudentData;
+  onClose: () => void;
+  isDemoMode: boolean;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIGenerateAnswerKeyModalProps {
+  onClose: () => void;
+  onKeyGenerated: (keyText: string) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface SpecificMistakeAnalysisModalProps {
+  questionNumber: number;
+  onClose: () => void;
+  onSaveWeakness: (weakness: string) => void;
+  animationOrigin?: { x: string, y: string };
+}
+export interface GlobalMusicVisualizerProps {
+  // No explicit props needed if it pulls from context
+}
+
+export interface MusicPlayerWidgetProps {
+  onOpenLibrary: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  layout?: 'minimal' | 'expanded';
+}
+
+export interface PersistentMusicPlayerProps {
+  // No explicit props needed if it pulls from context
+}
+
+export interface FullScreenMusicPlayerProps {
+  // No explicit props needed if it pulls from context
+}
+
+export interface ReloadPromptProps {
+  // No explicit props needed
+}
+
+export interface TodayPlannerProps {
+  items: ScheduleItem[];
+  onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+}
+
+export interface CustomWidgetComponentProps {
+  title: string;
+  content: string;
+}
+
+export interface CountdownWidgetProps {
+  items: ScheduleItem[];
+  onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+}
+
+export interface MotivationalQuoteWidgetProps {
+  quote: string;
+}
+
+export interface HomeworkWidgetProps {
+  items: ScheduleItem[];
+  onStartPractice: (homework: HomeworkData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+}
+
+export interface SubjectAllocationWidgetProps {
+  items: ScheduleItem[];
+}
+
+export interface ScoreTrendWidgetProps {
+  results: ResultData[];
+}
+
+export interface ReadingHoursWidgetProps {
+  student: StudentData;
+}
+
+export interface DailyInsightWidgetProps {
+  weaknesses: string[];
+  exams: ExamData[];
+}
+
+export interface AchievementsWidgetProps {
+  student: StudentData;
+  allDoubts: DoubtData[];
+}
+
+export interface ActivityTrackerProps {
+  activities: ActivityData[];
+}--- START OF FILE context/LocalizationContext.tsx ---
+
+
+import React, { createContext, useState, useContext, ReactNode } from 'react';
+import { Language, LocalizedString } from '../types';
+
+interface LocalizationContextType {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  t: (localizedString: LocalizedString) => string;
+}
+
+const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
+
+export const LocalizationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [language, setLanguage] = useState<Language>('EN');
+
+  const t = (localizedString: LocalizedString): string => {
+    return localizedString[language] || localizedString['EN'];
+  };
+
+  return (
+    <LocalizationContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LocalizationContext.Provider>
+  );
+};
+
+export const useLocalization = (): LocalizationContextType => {
+  const context = useContext(LocalizationContext);
+  if (!context) {
+    throw new Error('useLocalization must be used within a LocalizationProvider');
+  }
+  return context;
+};--- START OF FILE components/Header.tsx ---
+
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocalization } from '../context/LocalizationContext';
+import Icon from './Icon';
+import ProfileModal from './ProfileModal';
+import { useAuth } from '../context/AuthContext';
+
+interface HeaderProps {
+    user: { 
+        name: string; 
+        id: string; 
+        profilePhoto?: string;
+    };
+    onLogout: () => void;
+    backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
+    isSyncing: boolean;
+}
+
+const Header: React.FC<HeaderProps> = ({ user, onLogout, backendStatus, isSyncing }) => {
+    const { language, setLanguage, t } = useLocalization();
+    const { currentUser } = useAuth();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const appTitle = t({EN: "JEE Scheduler Pro", GU: "JEE શેડ્યૂલર પ્રો"});
+
+    const activeLangClasses = "bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/30";
+    const inactiveLangClasses = "bg-gray-700/50 text-gray-300 hover:bg-gray-600/50";
+
+    const statusIndicator = {
+        online: { class: 'bg-green-500', text: 'ONLINE', title: 'Connected to server' },
+        offline: { class: 'bg-yellow-500', text: 'OFFLINE', title: 'Using cached data. Changes will sync when online.' },
+        checking: { class: 'bg-gray-500 animate-pulse', text: '...', title: 'Checking connection' },
+        misconfigured: { class: 'bg-red-500 animate-pulse', text: 'ERROR', title: 'Server Misconfigured. Check .env' },
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+        <>
+            <header className="sticky top-4 z-50 flex flex-col sm:flex-row justify-between items-center p-4 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-lg mb-8 gap-4">
+                <div className="flex items-center gap-4">
+                    <h1 className="text-2xl md:text-3xl font-bold text-white tracking-wider">
+                        {appTitle}
+                    </h1>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5 p-1 rounded-full bg-gray-900/50">
+                        <button onClick={() => setLanguage('EN')} className={`px-3 py-1 text-xs font-bold rounded-full transition-all ${language === 'EN' ? activeLangClasses : inactiveLangClasses}`}>EN</button>
+                        <button onClick={() => setLanguage('GU')} className={`px-3 py-1 text-xs font-bold rounded-full transition-all ${language === 'GU' ? activeLangClasses : inactiveLangClasses}`}>GU</button>
+                    </div>
+                    <div className="h-6 w-px bg-gray-700"></div>
+
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-300" title={statusIndicator[backendStatus].title}>
+                        {isSyncing ? (
+                            <>
+                                <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse"></div>
+                                <span>SYNCING...</span>
+                            </>
+                        ) : (
+                            <>
+                                <div className={`w-2.5 h-2.5 rounded-full ${statusIndicator[backendStatus].class}`}></div>
+                                <span>{statusIndicator[backendStatus].text}</span>
+                            </>
+                        )}
+                    </div>
+                    
+                    <div className="relative" ref={menuRef}>
+                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center gap-2 hover:bg-gray-700/50 p-1.5 rounded-lg transition-colors">
+                            <img src={user.profilePhoto} alt={user.name} className="w-8 h-8 rounded-full object-cover border-2 border-cyan-500/50" />
+                            <div className="hidden md:block text-left">
+                                <p className="font-semibold text-sm text-white">{user.name}</p>
+                                <p className="text-xs text-gray-400">{user.id}</p>
+                            </div>
+                        </button>
+                        {isMenuOpen && (
+                            <div className={`popup-menu ${isMenuOpen ? 'popup-enter' : 'popup-exit'} absolute right-0 mt-2 w-48 bg-gray-900/80 border border-gray-700 rounded-lg shadow-lg backdrop-blur-xl z-20`}>
+                                <ul className="py-1">
+                                    <li>
+                                        <button onClick={() => { setIsProfileModalOpen(true); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50">
+                                            <Icon name="user-plus" className="w-4 h-4" /> My Profile
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button onClick={onLogout} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-gray-700/50">
+                                            <Icon name="logout" className="w-4 h-4" /> Logout
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </header>
+            {isProfileModalOpen && currentUser && (
+                <ProfileModal 
+                    user={currentUser} 
+                    onClose={() => setIsProfileModalOpen(false)} 
+                />
+            )}
+        </>
+    );
+};
+
+export default Header;--- START OF FILE components/PerformanceMetrics.tsx ---
+
+
+import React from 'react';
+import { useLocalization } from '../context/LocalizationContext';
+import { uiTextData } from '../data/mockData';
+import Icon from './Icon';
+
+interface PerformanceMetricsProps {
+    score: string;
+    weaknesses: string[];
+    onEditWeaknesses: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+}
+
+const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ score, weaknesses, onEditWeaknesses }) => {
+  const { t } = useLocalization();
+  const [currentScore, totalScore] = score.split('/');
+
+  return (
+    <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm h-full">
+      <h2 className="text-xl font-semibold text-cyan-400 tracking-widest uppercase mb-6">
+        {t(uiTextData.CURRENT_STATUS_TITLE)}
+      </h2>
+      
+      <div className="space-y-6">
+        <div className="bg-gray-900 p-4 rounded-lg border-l-4 border-cyan-500">
+          <p className="text-sm text-gray-400">{t(uiTextData.CURRENT_SCORE)}</p>
+          <p className="text-3xl font-bold text-white">{currentScore} <span className="text-lg text-gray-400">/ {totalScore}</span></p>
+        </div>
+
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-cyan-400 tracking-widest uppercase">
+              {t(uiTextData.WEAKNESS_TITLE)}
+            </h3>
+            <button onClick={onEditWeaknesses} className="p-1.5 rounded-md text-gray-400 hover:bg-gray-700 hover:text-white">
+                <Icon name="edit" className="w-4 h-4"/>
+            </button>
+          </div>
+          <ul className="space-y-2">
+            {weaknesses.length > 0 ? weaknesses.map((weakness, index) => (
+              <li key={index} className="flex items-center bg-gray-900 p-3 rounded-md">
+                <svg className="w-5 h-5 text-cyan-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span className="text-gray-300">{weakness}</span>
+              </li>
+            )) : <p className="text-sm text-gray-500 text-center py-4">No weaknesses logged. Add them manually or after a mock test.</p>}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PerformanceMetrics;--- START OF FILE components/ScheduleList.tsx ---
+
+
+import React from 'react';
+import { useLocalization } from '../context/LocalizationContext';
+import ScheduleCard from './ScheduleCard';
+import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
+import Icon from './Icon';
+
+interface ScheduleListProps {
+    items: ScheduleItem[];
+    onDelete: (id: string) => void;
+    onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>) => void; // FIX: Added event parameter
+    onMoveToNextDay: (id: string) => void;
+    onStar: (id: string) => void;
+    onStartPractice: (homework: HomeworkData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+    onStartReviewSession: (deckId: string, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+    onMarkDoubt?: (topic: string, q_id: string) => void; // Optional for now
+    onCompleteTask: (task: ScheduleCardData) => void;
+    isSubscribed: boolean;
+    view: 'upcoming' | 'past';
+    onViewChange: (view: 'upcoming' | 'past') => void;
+    isSelectMode: boolean;
+    selectedTaskIds: string[];
+    onTaskSelect: (taskId: string) => void;
+    onToggleSelectMode: () => void;
+    onDeleteSelected: () => void;
+    onMoveSelected: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+}
+
+const ScheduleList: React.FC<ScheduleListProps> = (props) => {
+    const { 
+        items, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, 
+        onStartReviewSession, onMarkDoubt, onCompleteTask, isSubscribed, 
+        view, onViewChange, isSelectMode, selectedTaskIds, onTaskSelect, 
+        onToggleSelectMode, onDeleteSelected, onMoveSelected
+    } = props;
+    const { t } = useLocalization();
+
+    const daysOfWeek = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+    const todayIndex = (new Date().getDay() + 6) % 7; // Monday is 0, Sunday is 6
+
+    const filteredItems = items.filter(item => {
+        const cardDayIndex = daysOfWeek.indexOf(item.DAY.EN.toUpperCase());
+        if (view === 'upcoming') {
+            return cardDayIndex >= todayIndex;
+        } else { // 'past'
+            return cardDayIndex < todayIndex;
+        }
+    });
+
+    const sortedItems = [...filteredItems].sort((a, b) => {
+        const aDayIndex = daysOfWeek.indexOf(a.DAY.EN.toUpperCase());
+        const bDayIndex = daysOfWeek.indexOf(b.DAY.EN.toUpperCase());
+
+        // Sort by day first
+        if (aDayIndex !== bDayIndex) {
+            return view === 'upcoming' 
+                ? aDayIndex - bDayIndex // Ascending for upcoming days
+                : bDayIndex - aDayIndex; // Descending for past days
+        }
+
+        // If on the same day, sort by time (always ascending)
+        const aTime = 'TIME' in a && a.TIME ? a.TIME : '23:59';
+        const bTime = 'TIME' in b && b.TIME ? b.TIME : '23:59';
+        return aTime.localeCompare(bTime);
+    });
+    
+    const TabButton: React.FC<{ tabId: 'upcoming' | 'past'; children: React.ReactNode; }> = ({ tabId, children }) => (
+        <button onClick={() => onViewChange(tabId)} className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${view === tabId ? 'bg-cyan-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+            {children}
+        </button>
+    );
+
+
+    return (
+        <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm relative">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-cyan-400 tracking-widest uppercase">
+                    {t({ EN: "Weekly Schedule", GU: "સાપ્તાહિક શેડ્યૂલ" })}
+                </h2>
+                <div className="flex items-center gap-2">
+                    <button onClick={onToggleSelectMode} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${isSelectMode ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                        {isSelectMode ? 'Cancel' : 'Select'}
+                    </button>
+                    <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-900/50">
+                        <TabButton tabId="upcoming">Upcoming</TabButton>
+                        <TabButton tabId="past">History</TabButton>
+                    </div>
+                </div>
+            </div>
+            <div className="space-y-4">
+                {sortedItems.length > 0 ? (
+                    sortedItems.map(card => {
+                        return (
+                            <ScheduleCard 
+                                key={card.ID} 
+                                cardData={card} 
+                                onDelete={onDelete}
+                                onEdit={onEdit}
+                                onMoveToNextDay={onMoveToNextDay}
+                                onStar={onStar}
+                                onStartPractice={onStartPractice}
+                                onStartReviewSession={onStartReviewSession}
+                                onMarkDoubt={onMarkDoubt}
+                                onCompleteTask={onCompleteTask}
+                                isSubscribed={isSubscribed}
+                                isPast={false}
+                                isSelectMode={isSelectMode}
+                                isSelected={selectedTaskIds.includes(card.ID)}
+                                onSelect={onTaskSelect}
+                             />
+                        )
+                    })
+                ) : (
+                    <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-700 rounded-lg">
+                        <p className="font-semibold">{view === 'upcoming' ? "No upcoming tasks for this week." : "No past tasks found."}</p>
+                        <p className="text-sm">{view === 'upcoming' ? 'Click "Create Task" to add a new study session.' : 'Completed tasks from previous days will appear here.'}</p>
+                    </div>
+                )}
+            </div>
+            
+            {isSelectMode && (
+                <div className="sticky bottom-4 mt-4 w-full flex justify-center">
+                    <div className="bg-gray-900/80 border border-gray-700 backdrop-blur-lg rounded-full shadow-lg p-2 flex items-center gap-2 animate-scaleIn">
+                        <span className="text-sm font-semibold text-white px-3">{selectedTaskIds.length} selected</span>
+                        <button onClick={onMoveSelected} disabled={selectedTaskIds.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full bg-cyan-600 text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <Icon name="calendar" className="w-4 h-4" /> Move
+                        </button>
+                        <button onClick={onDeleteSelected} disabled={selectedTaskIds.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full bg-red-600 text-white hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <Icon name="trash" className="w-4 h-4" /> Delete
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default ScheduleList;--- START OF FILE components/ScheduleCard.tsx ---
+
+
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
+import { useLocalization } from '../context/LocalizationContext';
+import Icon from './Icon';
+
+interface ScheduleCardProps {
+  cardData: ScheduleItem;
+  onDelete: (id: string) => void;
+  onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>) => void; // FIX: Added event parameter
+  onMoveToNextDay: (id: string) => void;
+  onStar: (id: string) => void;
+  onStartPractice: (homework: HomeworkData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onStartReviewSession: (deckId: string, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onCompleteTask: (task: ScheduleCardData) => void;
+  onMarkDoubt?: (topic: string, q_id: string) => void;
+  isSubscribed: boolean;
+  isPast: boolean;
+  isSelectMode: boolean;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+}
+
+const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
+    const { cardData, onDelete, onEdit, onMoveToNextDay, onStar, onStartPractice, onStartReviewSession, onCompleteTask, onMarkDoubt, isSubscribed, isPast, isSelectMode, isSelected, onSelect } = props;
+    const { t } = useLocalization();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [countdownProgress, setCountdownProgress] = useState(100);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    const isManageable = cardData.type === 'ACTION' || cardData.type === 'HOMEWORK';
+    const { CARD_TITLE, SUBJECT_TAG, FOCUS_DETAIL, type, isStarred } = cardData;
+
+    const canCopyCommand = cardData.type === 'ACTION' && 'ACTION_COMMAND' in cardData && !!cardData.ACTION_COMMAND;
+    const canStartPractice = cardData.type === 'HOMEWORK';
+    const isFlashcardReview = cardData.type === 'ACTION' && cardData.SUB_TYPE === 'FLASHCARD_REVIEW' && !!cardData.deckId;
+    const isDeepDive = cardData.type === 'ACTION' && cardData.SUB_TYPE === 'DEEP_DIVE';
+    
+    const showActionsFooter = canCopyCommand || canStartPractice || isFlashcardReview || isDeepDive;
+    const isSynced = 'googleEventId' in cardData && !!cardData.googleEventId;
+
+    const isToday = useMemo(() => {
+        const today = new Date();
+        const todayName = today.toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
+        // FIX: Added type guard for 'date' property
+        if ('date' in cardData && cardData.date) {
+            return cardData.date === today.toISOString().split('T')[0];
+        }
+        return cardData.DAY.EN.toUpperCase() === todayName;
+    }, [cardData.date, cardData.DAY.EN]);
+
+    useEffect(() => {
+        // FIX: Added type guard for 'TIME' property
+        if (!isToday || !('TIME' in cardData) || !cardData.TIME) {
+            setCountdownProgress(100);
+            return;
+        }
+
+        const updateProgress = () => {
+            const now = new Date();
+            const [hours, minutes] = (cardData as ScheduleCardData | HomeworkData).TIME!.split(':').map(Number);
+            const startTime = new Date();
+            startTime.setHours(hours, minutes, 0, 0);
+            
+            // Countdown starts 8 hours before the task
+            const countdownStart = new Date(startTime.getTime() - 8 * 60 * 60 * 1000);
+
+            if (now > startTime) {
+                setCountdownProgress(0);
+                return;
+            }
+            if (now < countdownStart) {
+                setCountdownProgress(100);
+                return;
+            }
+
+            const totalDuration = startTime.getTime() - countdownStart.getTime();
+            const elapsed = now.getTime() - countdownStart.getTime();
+            const progress = 100 - (elapsed / totalDuration) * 100;
+            setCountdownProgress(Math.max(0, progress));
+        };
+
+        updateProgress();
+        const interval = setInterval(updateProgress, 60000); // Update every minute
+        return () => clearInterval(interval);
+
+    }, [cardData.TIME, isToday]);
+
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const handleCopy = useCallback((text?: string) => {
+      if (!text) return;
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }, []);
+
+    const handleCardClick = useCallback(() => {
+        if (isSelectMode) {
+            onSelect(cardData.ID);
+        }
+    }, [isSelectMode, onSelect, cardData.ID]);
+
+  return (
+    <div 
+      className={`bg-gray-800/50 rounded-lg border border-gray-700/80 p-5 transition-all duration-300 hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/10 relative backdrop-blur-sm group ${isPast ? 'opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-cyan-500' : ''} overflow-hidden`}
+      onClick={handleCardClick}
+    >
+      {isToday && countdownProgress < 100 && (
+          <div 
+              className="absolute top-0 left-0 h-full w-full border-2 border-[var(--accent-color)] rounded-lg pointer-events-none"
+              style={{
+                  clipPath: `inset(0 ${100 - countdownProgress}% 0 0)`
+              }}
+          ></div>
+      )}
+      
+      {isSynced && !isSelectMode && (
+        <div className="absolute top-3 left-3" title="Synced with Google Calendar">
+          <Icon name="calendar" className="w-4 h-4 text-green-400" />
+        </div>
+      )}
+      
+      {isSelectMode && (
+          <div className="absolute top-3 left-3">
+              <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onSelect(cardData.ID)}
+                  className="w-5 h-5 rounded text-cyan-600 bg-gray-700 border-gray-600 focus:ring-cyan-500"
+              />
+          </div>
+      )}
+
+      {isManageable && !isSelectMode && (
+          <div className="absolute top-3 right-3 flex items-center gap-1">
+              <button onClick={(e) => { e.stopPropagation(); onStar(cardData.ID); }} title="Add to Today's Focus" className="text-gray-400 hover:text-yellow-400 p-1.5 rounded-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Icon name="star" className={`w-5 h-5 ${isStarred ? 'text-yellow-400 fill-current' : ''}`} />
+              </button>
+              <div ref={menuRef}>
+                  <button onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }} className="text-gray-400 hover:text-white p-1.5 rounded-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Icon name="ellipsis" className="w-5 h-5" />
+                  </button>
+                  {isMenuOpen && (
+                      <div className={`popup-menu ${isMenuOpen ? 'popup-enter' : 'popup-exit'} absolute right-0 mt-2 w-48 bg-gray-900/80 border border-gray-700 rounded-lg shadow-lg backdrop-blur-xl z-10`} onClick={e => e.stopPropagation()}>
+                          <ul className="py-1">
+                              <li>
+                                  <button onClick={(e) => { onEdit(cardData, e); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50">
+                                      <Icon name="edit" className="w-4 h-4" /> Edit Task
+                                  </button>
+                              </li>
+                              <li>
+                                  <button onClick={() => { onMoveToNextDay(cardData.ID); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50">
+                                      <Icon name="forward" className="w-4 h-4" /> Move to Next Day
+                                  </button>
+                              </li>
+                              <li>
+                                  <button onClick={() => { onDelete(cardData.ID); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-gray-700/50">
+                                      <Icon name="trash" className="w-4 h-4" /> Delete Task
+                                  </button>
+                              </li>
+                          </ul>
+                      </div>
+                  )}
+              </div>
+          </div>
+      )}
+
+      <div className="flex flex-col h-full">
+          <div className="flex-grow">
+              <div className="flex justify-between items-start">
+                  <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30`}>
+                      {t(SUBJECT_TAG)}
+                  </span>
+                  {'TIME' in cardData && cardData.TIME && <span className="text-sm font-mono text-gray-400">{cardData.TIME}</span>}
+              </div>
+              <h3 className="text-lg font-bold text-white my-3 flex items-center gap-2 flex-wrap">
+                <span>{t(CARD_TITLE)}</span>
+                {type === 'HOMEWORK' && cardData.category && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        {cardData.category}
+                    </span>
+                )}
+              </h3>
+              <p className="text-sm text-gray-400 mb-4">{t(FOCUS_DETAIL)}</p>
+               {type === 'HOMEWORK' && 'Q_RANGES' in cardData && (
+                <div className="text-xs font-mono text-cyan-300 space-y-1">
+                  <span className="font-semibold text-gray-400">Questions:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {cardData.Q_RANGES.split(';').map((range, idx) => (
+                      <span key={idx} className="bg-gray-900/50 px-2 py-1 rounded">
+                        {range.replace(/@p(\d+)/, ' (p. $1)')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+          </div>
+
+           {showActionsFooter && !isSelectMode && (
+             <div className="mt-4 pt-4 border-t border-gray-700/50">
+                <div className="flex gap-2">
+                  {isDeepDive && (
+                    <button onClick={() => onCompleteTask(cardData as ScheduleCardData)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-green-600/80 hover:bg-green-500/80 transition-colors">
+                      <Icon name="check" className="w-4 h-4" /> Mark as Complete
+                    </button>
+                  )}
+                  {isFlashcardReview && (
+                    <button onClick={(e) => onStartReviewSession((cardData as ScheduleCardData).deckId!, e)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-yellow-600/80 hover:bg-yellow-500/80 transition-colors">
+                      <Icon name="cards" className="w-4 h-4" /> Start Review
+                    </button>
+                  )}
+                  {canStartPractice && (
+                    <button onClick={(e) => onStartPractice(cardData as HomeworkData, e)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-purple-600/80 hover:bg-purple-500/80 transition-colors">
+                      <Icon name="stopwatch" className="w-4 h-4" /> Start Practice
+                    </button>
+                  )}
+                  {canCopyCommand && 'ACTION_COMMAND' in cardData && (
+                    <button onClick={() => handleCopy(cardData.ACTION_COMMAND)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-gray-700/60 hover:bg-gray-600/80 transition-colors">
+                        <Icon name={copied ? "check" : "copy"} className={`w-4 h-4 ${copied ? 'text-green-400' : ''}`} /> {copied ? 'Copied!' : 'Copy Cmd'}
+                    </button>
+                  )}
+                </div>
+             </div>
+           )}
+           
+      </div>
+    </div>
+  );
+};
+
+export default ScheduleCard;

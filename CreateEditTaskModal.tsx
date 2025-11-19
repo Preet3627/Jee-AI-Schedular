@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ScheduleItem, ScheduleCardData, HomeworkData, FlashcardDeck } from '../types';
 import Icon from './Icon';
@@ -307,6 +308,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
       </ModalShell>
       {isAiKeyModalOpen && (
           <AIGenerateAnswerKeyModal
+              animationOrigin={animationOrigin}
               onClose={() => setIsAiKeyModalOpen(false)}
               onKeyGenerated={(keyText) => {
                   setFormData(prev => ({ ...prev, answers: keyText }));
