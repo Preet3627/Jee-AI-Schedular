@@ -28,8 +28,8 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 // --- ENV & SETUP CHECK ---
 const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME && process.env.ENCRYPTION_KEY && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
-const isNextcloudMusicConfigured = process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_MUSIC_SHARE_TOKEN;
-const isNextcloudStudyConfigured = process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_SHARE_TOKEN;
+const isNextcloudMusicConfigured = !!(process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_MUSIC_SHARE_TOKEN);
+const isNextcloudStudyConfigured = !!(process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_SHARE_TOKEN);
 
 let pool = null;
 let mailer = null;
@@ -723,6 +723,25 @@ If the user's request is valid but lacks an optional field (like \`time\` or \`d
     } catch (error) {
         console.error("Google Assistant fulfillment error:", error);
         return res.status(500).json({ error: `Server error during AI processing: ${error.message}` });
+    }
+});
+
+// --- ASSET PROXY ---
+// This endpoint securely fetches the DJ drop without exposing the direct Nextcloud URL
+// or requiring client-side CORS configuration on Nextcloud.
+apiRouter.get('/assets/dj-drop', async (req, res) => {
+    try {
+        const djDropUrl = 'https://nc.ponsrischool.in/index.php/s/em85Zdf2EYEkz3j/download';
+        const response = await fetch(djDropUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch asset, status: ${response.status}`);
+        }
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'audio/mpeg');
+        res.setHeader('Content-Length', response.headers.get('content-length') || '0');
+        response.body.pipe(res);
+    } catch (error) {
+        console.error("Asset proxy error:", error);
+        res.status(502).json({ error: "Could not retrieve asset from source." });
     }
 });
 
