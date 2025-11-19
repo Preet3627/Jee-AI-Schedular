@@ -1222,18 +1222,17 @@ apiRouter.get('/music/proxy', authMiddleware, async (req, res) => {
 
     try {
         const timestamp = Math.floor(Date.now() / 1000);
-        const salt = crypto.randomBytes(10).toString('hex');
         const key = crypto.createHash('md5').update(ampachePass).digest('hex');
         const passphrase = crypto.createHash('sha256').update(key + timestamp).digest('hex');
         
         const action = req.query.action || 'ping';
         
-        let targetUrl = `${ampacheUrl}/server/xml.server.php?action=${action}&auth=${passphrase}&time=${timestamp}&user=${ampacheUser}`;
+        let targetUrl = `${ampacheUrl}?action=${action}&auth=${passphrase}&time=${timestamp}&user=${ampacheUser}`;
         
         // Forward other query params if they exist
         Object.keys(req.query).forEach(key => {
             if (key !== 'action') {
-                targetUrl += `&${key}=${req.query[key]}`;
+                targetUrl += `&${key}=${encodeURIComponent(req.query[key])}`;
             }
         });
         
