@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, SetStateAction } from 'react';
 import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
@@ -37,7 +38,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
             setAnimationOrigin(undefined);
         }
         if (data !== undefined) {
-            setter(data as SetStateAction<T>);
+            setter(data as SetStateAction<T | null>);
         } else {
             setter(true as SetStateAction<boolean>);
         }
@@ -164,7 +165,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
             </div>
             <div className="mt-6">
                 {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={(s, e) => handleModalOpenWithAnimation(setMessagingStudent, e, s)} onClearData={handleClearData} onImpersonate={handleImpersonate} />}
-                {activeTab === 'broadcast' && <BroadcastManager onOpenModal={(e) => handleModalOpenWithAnimation(setIsBroadcastModalOpen, e)} onOpenAIModal={(e) => handleModalOpenWithAnimation(setIsAIBroadcastModalOpen, e)} target={broadcastTarget} setTarget={setBroadcastTarget} />}
+                {activeTab === 'broadcast' && <BroadcastManager onOpenModal={(e) => handleModalOpenWithAnimation(setIsBroadcastModalOpen, e, true)} onOpenAIModal={(e) => handleModalOpenWithAnimation(setIsAIBroadcastModalOpen, e, true)} target={broadcastTarget} setTarget={setBroadcastTarget} />}
                 {activeTab === 'guide' && <AIGuide examType={currentUser?.CONFIG.settings.examType} />}
             </div>
 
@@ -180,7 +181,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                     onClose={() => setIsAIBroadcastModalOpen(false)}
                     onDataReady={handleAIBroadcastSave}
                     onPracticeTestReady={() => {}}
-                    onOpenGuide={() => {}}
+                    onOpenGuide={(e) => handleModalOpenWithAnimation(setIsAIBroadcastModalOpen, e, true)}
                     examType={currentUser?.CONFIG.settings.examType}
                 />
             )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import McqTimer from './McqTimer';
 import Icon from './Icon';
@@ -16,7 +17,7 @@ interface CustomPracticeModalProps {
   aiInitialTopic?: string | null;
   defaultPerQuestionTime: number;
   onLogResult: (result: ResultData) => void;
-  onUpdateWeaknesses: (weaknesses: string[]) => void; // FIX: Changed to single weakness string
+  onUpdateWeaknesses: (weaknesses: string[]) => void;
   student: StudentData;
   onSaveTask: (task: ScheduleItem) => void;
   animationOrigin?: { x: string, y: string };
@@ -365,6 +366,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
       </div>
       {isAiKeyModalOpen && (
           <AIGenerateAnswerKeyModal
+              animationOrigin={animationOrigin}
               onClose={() => setIsAiKeyModalOpen(false)}
               onKeyGenerated={(keyText) => {
                   if (activeTab === 'jeeMains') {
@@ -377,6 +379,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
       )}
       {isAiParserOpen && (
           <AIParserModal
+            animationOrigin={animationOrigin}
             onClose={() => setIsAiParserOpen(false)}
             onDataReady={handleDataFromParser}
             onPracticeTestReady={() => {}} // This will be handled by the StudentDashboard

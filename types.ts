@@ -1,3 +1,4 @@
+
 export type Language = 'EN' | 'GU';
 
 export interface LocalizedString {
@@ -215,6 +216,7 @@ export interface DashboardWidgetItem {
     id: string; // Corresponds to a key in the widgetConfig map
     wide?: boolean;
     translucent?: boolean;
+    // Add position if needed for drag-and-drop
 }
 
 // The complete, normalized user data object used throughout the frontend
@@ -236,7 +238,7 @@ export interface Config {
         accentColor: string;
         blurEnabled: boolean;
         mobileLayout: 'standard' | 'toolbar';
-        forceOfflineMode: boolean; // FIX: Changed to boolean
+        forceOfflineMode: boolean; 
         perQuestionTime: number; // Default time in seconds per MCQ
         hasGeminiKey?: boolean; // A safe flag for the frontend
         showAiChatAssistant?: boolean;
@@ -310,7 +312,7 @@ export interface CustomPracticeModalProps {
   aiInitialTopic?: string | null;
   defaultPerQuestionTime: number;
   onLogResult: (result: ResultData) => void;
-  onUpdateWeaknesses: (weaknesses: string[]) => void; // FIX: Changed to string[]
+  onUpdateWeaknesses: (weaknesses: string[]) => void; 
   student: StudentData;
   onSaveTask: (task: ScheduleItem) => void;
   animationOrigin?: { x: string, y: string };
@@ -326,13 +328,13 @@ export interface SettingsModalProps {
   onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean; customDjDropFile?: File; }>, newCustomWidgets: CustomWidget[]) => void;
   onExportToIcs: () => void;
   googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
-  onGoogleSignIn: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-  onGoogleSignOut: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onGoogleSignIn: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; 
+  onGoogleSignOut: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; 
   onBackupToDrive: () => void;
   onRestoreFromDrive: () => void;
   onApiKeySet: () => void;
-  onOpenAssistantGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-  onOpenAiGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onOpenAssistantGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; 
+  onOpenAiGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; 
   onClearAllSchedule: () => void;
   studentCustomWidgets: CustomWidget[];
   onSaveCustomWidgets: (widget: CustomWidget) => void;
@@ -382,11 +384,6 @@ export interface AIChatPopupProps {
 
 export interface TestAnalysisReportProps {
   result: ResultData;
-  onClose?: () => void; // Made optional for direct rendering
-  student?: StudentData; // Made optional for direct rendering
-  onUpdateWeaknesses?: (weaknesses: string[]) => void; // Made optional for direct rendering
-  onSaveDeck?: (deck: FlashcardDeck) => void; // Made optional for direct rendering
-  animationOrigin?: { x: string, y: string };
   onAnalyzeMistake: (questionNumber: number) => void;
 }
 

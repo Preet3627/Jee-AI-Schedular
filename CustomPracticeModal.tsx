@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import McqTimer from './McqTimer';
 import Icon from './Icon';
@@ -365,6 +366,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
       </div>
       {isAiKeyModalOpen && (
           <AIGenerateAnswerKeyModal
+              animationOrigin={animationOrigin}
               onClose={() => setIsAiKeyModalOpen(false)}
               onKeyGenerated={(keyText) => {
                   if (activeTab === 'jeeMains') {
@@ -377,6 +379,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
       )}
       {isAiParserOpen && (
           <AIParserModal
+            animationOrigin={animationOrigin}
             onClose={() => setIsAiParserOpen(false)}
             onDataReady={handleDataFromParser}
             onPracticeTestReady={() => {}} // This will be handled by the StudentDashboard

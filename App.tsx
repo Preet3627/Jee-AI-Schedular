@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, SetStateAction } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData, FlashcardDeck, ActiveTab } from './types';
@@ -105,11 +106,11 @@ const App: React.FC = () => {
     }, [currentUser, userRole, isDemoMode]);
     
 
-    const handleGoogleSignOut = () => {
+    const handleGoogleSignOut = useCallback(() => {
         auth.handleSignOut(() => {
             setGoogleAuthStatus('signed_out');
         });
-    };
+    }, []);
 
     const handleGapiError = (error: any, contextMessage?: string) => {
         console.error("Google API Error:", error);
@@ -168,7 +169,7 @@ const App: React.FC = () => {
         refreshUser();
     };
     
-    const handleFullCalendarSync = async () => {
+    const handleFullCalendarSync = useCallback(async () => {
         if (!currentUser || googleAuthStatus !== 'signed_in') return;
         setIsSyncing(true);
         try {
@@ -199,7 +200,7 @@ const App: React.FC = () => {
         } finally {
             setIsSyncing(false);
         }
-    };
+    }, [currentUser, googleAuthStatus, refreshUser, handleSaveBatchTasks]);
 
 
     const handleUpdateConfig = async (configUpdate: Partial<Config>) => {

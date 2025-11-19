@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, SetStateAction } from 'react';
 import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion, ActiveTab, DashboardWidgetItem, CustomWidget as CustomWidgetType } from '../types';
 import ScheduleList from './ScheduleList';
@@ -10,10 +11,9 @@ import ReadingHoursWidget from './widgets/ReadingHoursWidget';
 import ScoreTrendWidget from './widgets/MarksAnalysisWidget';
 import CustomPracticeModal from './CustomPracticeModal';
 import HomeworkWidget from './widgets/HomeworkWidget';
-import ActivityTracker from './ActivityTracker'; // FIX: Corrected import path
+import ActivityTracker from './ActivityTracker'; 
 import PerformanceMetrics from './PerformanceMetrics';
 import SettingsModal from './SettingsModal';
-import BottomToolbar from './BottomToolbar';
 import CreateEditTaskModal from './CreateEditTaskModal';
 import ExamsView from './ExamsView';
 import CreateEditExamModal from './CreateEditExamModal';
@@ -28,7 +28,7 @@ import AIDoubtSolverModal from './AIDoubtSolverModal';
 import { api } from '../api/apiService';
 import SubjectAllocationWidget from './widgets/SubjectAllocationWidget';
 import UpcomingExamsWidget from './widgets/UpcomingExamsWidget';
-import TestReportModal from './TestReportModal'; // FIX: Renamed import
+import TestReportModal from './TestReportModal'; 
 import FlashcardManager from './flashcards/FlashcardManager';
 import CreateEditDeckModal from './flashcards/CreateEditDeckModal';
 import DeckViewModal from './flashcards/DeckViewModal';
@@ -52,7 +52,8 @@ import MusicPlayerWidget from './widgets/MusicPlayerWidget';
 import MusicLibraryModal from './MusicLibraryModal';
 import CustomWidgetComponent from './widgets/CustomWidget';
 import { motivationalQuotes } from '../data/motivationalQuotes';
-import { useMusicPlayer } from '../context/MusicPlayerContext'; // FIX: Import useMusicPlayer
+import { useMusicPlayer } from '../context/MusicPlayerContext'; 
+import BottomToolbar from './BottomToolbar';
 
 
 interface StudentDashboardProps {
@@ -157,7 +158,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         }
 
         if (data !== undefined) {
-            setter(data as SetStateAction<T>); // Cast for cases like setViewingDeck(deck)
+            setter(data as SetStateAction<T | null>); // Cast for cases like setViewingDeck(deck)
         } else {
             setter(true as SetStateAction<boolean>); // Default for simple boolean setters
         }
@@ -430,7 +431,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const handleAiPracticeTest = (data: { questions: PracticeQuestion[], answers: Record<string, string> }) => {
         setAiPracticeTest(data);
         setisAiParserModalOpen(false); // Close parser
-        setTimeout(() => setIsPracticeModalOpen(true), 300); // Open practice modal after transition
+        setTimeout(() => handleModalOpenWithAnimation(setIsPracticeModalOpen, null, true), 300); // Open practice modal after transition
     };
 
     const handleCompleteTask = (task: ScheduleCardData) => {
@@ -663,9 +664,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
           <button onClick={(e) => handleModalOpenWithAnimation(setisAiParserModalOpen, e)} className="p-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700 flex items-center gap-2 text-sm font-semibold" title="AI Import">
             <Icon name="gemini" className="w-4 h-4" /> AI Import
           </button>
-          <button onClick={(e) => handleModalOpenWithAnimation(setIsPracticeModalOpen, e)} className="p-2.5 rounded-lg bg-purple-600/50 hover:bg-purple-600" title="Custom Practice"><Icon name="stopwatch" /></button>
-          <button onClick={(e) => handleModalOpenWithAnimation(setIsSettingsModalOpen, e)} className="p-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700"><Icon name="settings" /></button>
-          <button onClick={(e) => handleModalOpenWithAnimation(setIsCreateModalOpen, e)} className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
+          <button onClick={(e) => handleModalOpenWithAnimation(setIsPracticeModalOpen, e, true)} className="p-2.5 rounded-lg bg-purple-600/50 hover:bg-purple-600" title="Custom Practice"><Icon name="stopwatch" /></button>
+          <button onClick={(e) => handleModalOpenWithAnimation(setIsSettingsModalOpen, e, true)} className="p-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700"><Icon name="settings" /></button>
+          <button onClick={(e) => handleModalOpenWithAnimation(setIsCreateModalOpen, e, true)} className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]">
             <Icon name="plus" /> Create
           </button>
         </div>
@@ -674,12 +675,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     
     const renderDashboardContent = () => {
         const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
-        // FIX: Explicitly typed `allAvailableWidgets` with `Record<string, React.ReactNode>`
         const allAvailableWidgets: Record<string, React.ReactNode> = {
-            'countdown': <CountdownWidget items={student.SCHEDULE_ITEMS} onClick={(e) => handleModalOpenWithAnimation(setIsCreateModalOpen, e)} />,
+            'countdown': <CountdownWidget items={student.SCHEDULE_ITEMS} onClick={(e) => handleModalOpenWithAnimation(setIsCreateModalOpen, e, true)} />,
             'dailyInsight': <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />,
             'quote': <MotivationalQuoteWidget quote={randomQuote} />,
-            'music': <MusicPlayerWidget onOpenLibrary={(event) => handleModalOpenWithAnimation(setIsMusicLibraryOpen, event)} />,
+            'music': <MusicPlayerWidget onOpenLibrary={(event) => handleModalOpenWithAnimation(setIsMusicLibraryOpen, event, true)} />,
             'subjectAllocation': <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />,
             'scoreTrend': <ScoreTrendWidget results={student.RESULTS} />,
             'flashcards': <InteractiveFlashcardWidget student={student} onUpdateConfig={onUpdateConfig} />,
@@ -750,7 +750,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                                 onTaskSelect={handleTaskSelect}
                                 onToggleSelectMode={handleToggleSelectMode}
                                 onDeleteSelected={handleDeleteSelected}
-                                onMoveSelected={(e) => handleModalOpenWithAnimation(setIsMoveModalOpen, e)}
+                                onMoveSelected={(e) => handleModalOpenWithAnimation(setIsMoveModalOpen, e, true)}
                             />
                         </div>
                         <div className="space-y-8">
@@ -766,17 +766,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             case 'flashcards':
                 return <FlashcardManager 
                             decks={student.CONFIG.flashcardDecks || []}
-                            onAddDeck={(e) => handleModalOpenWithAnimation(setIsCreateDeckModalOpen, e)}
+                            onAddDeck={(e) => handleModalOpenWithAnimation(setIsCreateDeckModalOpen, e, true)}
                             onEditDeck={(deck, e) => { setEditingDeck(deck); handleModalOpenWithAnimation(setIsCreateDeckModalOpen, e, deck); }}
                             onDeleteDeck={handleDeleteDeck}
                             onViewDeck={(deck, e) => { setViewingDeck(deck); handleModalOpenWithAnimation(setViewingDeck, e, deck); }}
                             onStartReview={(deckId, e) => handleStartReviewSession(deckId, e)}
-                            onGenerateWithAI={(e) => handleModalOpenWithAnimation(setIsAiFlashcardModalOpen, e)}
+                            onGenerateWithAI={(e) => handleModalOpenWithAnimation(setIsAiFlashcardModalOpen, e, true)}
                         />;
             case 'exams':
                 return <ExamsView 
                           exams={student.EXAMS} 
-                          onAdd={(e) => { setEditingExam(null); handleModalOpenWithAnimation(setIsExamModalOpen, e); }}
+                          onAdd={(e) => { setEditingExam(null); handleModalOpenWithAnimation(setIsExamModalOpen, e, true); }}
                           onEdit={(exam, e) => { setEditingExam(exam); handleModalOpenWithAnimation(setIsExamModalOpen, e, exam); }}
                           onDelete={onDeleteExam} 
                         />;
@@ -785,19 +785,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
                             <div className="flex justify-end gap-4">
-                                <button onClick={(e) => handleModalOpenWithAnimation(setIsAiMistakeModalOpen, e)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600"><Icon name="book-open" /> Analyze Mistake with AI</button>
-                                <button onClick={(e) => handleModalOpenWithAnimation(setIsLogResultModalOpen, e)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button>
+                                <button onClick={(e) => handleModalOpenWithAnimation(setIsAiMistakeModalOpen, e, true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600"><Icon name="book-open" /> Analyze Mistake with AI</button>
+                                <button onClick={(e) => handleModalOpenWithAnimation(setIsLogResultModalOpen, e, true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)]"><Icon name="plus" /> Log Mock Result</button>
                             </div>
                             {student.RESULTS.length > 0 ? [...student.RESULTS].reverse().map(result => (<MistakeManager key={result.ID} result={result} onToggleMistakeFixed={onToggleMistakeFixed} onViewAnalysis={(r, e) => {setViewingReport(r); handleModalOpenWithAnimation(setViewingReport, e, r);}} onEdit={(r, e) => {setEditingResult(r); handleModalOpenWithAnimation(setIsEditResultModalOpen, e, r);}} onDelete={onDeleteResult} />)) : <p className="text-gray-500 text-center py-10">No results recorded.</p>}
                         </div>
                         <div className="space-y-8">
-                             <PerformanceMetrics score={student.CONFIG.SCORE} weaknesses={student.CONFIG.WEAK} onEditWeaknesses={(e) => handleModalOpenWithAnimation(setIsEditWeaknessesModalOpen, e)} />
+                             <PerformanceMetrics score={student.CONFIG.SCORE} weaknesses={student.CONFIG.WEAK} onEditWeaknesses={(e) => handleModalOpenWithAnimation(setIsEditWeaknessesModalOpen, e, true)} />
                              <AchievementsWidget student={student} allDoubts={allDoubts} />
                         </div>
                     </div>
                 );
             case 'doubts':
-                return <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} onAskAi={(e) => handleModalOpenWithAnimation(setIsAiDoubtSolverOpen, e)} />;
+                return <CommunityDashboard student={student} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} onAskAi={(e) => handleModalOpenWithAnimation(setIsAiDoubtSolverOpen, e, true)} />;
             default:
                 return null;
         }
@@ -808,7 +808,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             
             {showAiChatFab && !isAiChatOpen && (
                 <button 
-                    onClick={(e) => handleModalOpenWithAnimation(setIsAiChatOpen, e)}
+                    onClick={(e) => handleModalOpenWithAnimation(setIsAiChatOpen, e, true)}
                     className="fixed bottom-6 right-6 z-40 w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30 transition-transform hover:scale-110 active:scale-95"
                     title="Open AI Assistant"
                 >
@@ -821,8 +821,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold capitalize text-white">{activeTab}</h2>
                     <div className="flex items-center gap-2">
-                        <button onClick={(e) => handleModalOpenWithAnimation(setIsPracticeModalOpen, e)} className="p-2.5 rounded-lg bg-purple-600/50 hover:bg-purple-600" title="Custom Practice"><Icon name="stopwatch" /></button>
-                        <button onClick={(e) => handleModalOpenWithAnimation(setIsSettingsModalOpen, e)} className="p-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700" title="Settings"><Icon name="settings" /></button>
+                        <button onClick={(e) => handleModalOpenWithAnimation(setIsPracticeModalOpen, e, true)} className="p-2.5 rounded-lg bg-purple-600/50 hover:bg-purple-600" title="Custom Practice"><Icon name="stopwatch" /></button>
+                        <button onClick={(e) => handleModalOpenWithAnimation(setIsSettingsModalOpen, e, true)} className="p-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700" title="Settings"><Icon name="settings" /></button>
                     </div>
                 </div>
             ) : <TopTabBar />}
@@ -832,9 +832,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             </div>
 
             {isCreateModalOpen && <CreateEditTaskModal animationOrigin={animationOrigin} task={editingTask || viewingTask} viewOnly={!!viewingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); setViewingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
-            {isAiParserModalOpen && <AIParserModal animationOrigin={animationOrigin} onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} onPracticeTestReady={handleAiPracticeTest} onOpenGuide={(e) => handleModalOpenWithAnimation(setIsAiGuideModalOpen, e)} examType={student.CONFIG.settings.examType} />}
+            {isAiParserModalOpen && <AIParserModal animationOrigin={animationOrigin} onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} onPracticeTestReady={handleAiPracticeTest} onOpenGuide={(e) => handleModalOpenWithAnimation(setIsAiGuideModalOpen, e, true)} examType={student.CONFIG.settings.examType} />}
             {isPracticeModalOpen && <CustomPracticeModal animationOrigin={animationOrigin} initialTask={practiceTask} aiPracticeTest={aiPracticeTest} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); setAiPracticeTest(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
-            {isSettingsModalOpen && <SettingsModal animationOrigin={animationOrigin} settings={student.CONFIG.settings} decks={student.CONFIG.flashcardDecks || []} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={(e) => handleModalOpenWithAnimation(setIsAssistantGuideOpen, e)} onOpenAiGuide={(e) => handleModalOpenWithAnimation(setIsAiGuideModalOpen, e)} onClearAllSchedule={handleClearAllSchedule} studentCustomWidgets={student.CONFIG.customWidgets || []} onSaveCustomWidgets={handleSaveCustomWidget} />}
+            {isSettingsModalOpen && <SettingsModal animationOrigin={animationOrigin} settings={student.CONFIG.settings} decks={student.CONFIG.flashcardDecks || []} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={(e) => handleModalOpenWithAnimation(setIsAssistantGuideOpen, e, true)} onOpenAiGuide={(e) => handleModalOpenWithAnimation(setIsAiGuideModalOpen, e, true)} onClearAllSchedule={handleClearAllSchedule} studentCustomWidgets={student.CONFIG.customWidgets || []} onSaveCustomWidgets={handleSaveCustomWidget} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal animationOrigin={animationOrigin} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} currentWeaknesses={student.CONFIG.WEAK} />}
             {isLogResultModalOpen && <LogResultModal animationOrigin={animationOrigin} onClose={() => {setIsLogResultModalOpen(false); setInitialScoreForModal(undefined); setInitialMistakesForModal(undefined);}} onSave={onLogResult} initialScore={initialScoreForModal} initialMistakes={initialMistakesForModal} />}
             {isEditResultModalOpen && editingResult && <EditResultModal animationOrigin={animationOrigin} result={editingResult} onClose={() => { setIsEditResultModalOpen(false); setEditingResult(null); }} onSave={onUpdateResult} />}
@@ -847,7 +847,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isMusicLibraryOpen && <MusicLibraryModal animationOrigin={animationOrigin} onClose={() => setIsMusicLibraryOpen(false)} />}
             {deepLinkData && (
                 <DeepLinkConfirmationModal
-                    animationOrigin={animationOrigin} // FIX: Added animationOrigin
+                    animationOrigin={animationOrigin} 
                     data={deepLinkData}
                     onClose={() => setDeepLinkData(null)}
                     onConfirm={() => {
@@ -865,7 +865,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {/* Flashcard Modals */}
             {isCreateDeckModalOpen && <CreateEditDeckModal animationOrigin={animationOrigin} deck={editingDeck} onClose={() => { setIsCreateDeckModalOpen(false); setEditingDeck(null); }} onSave={handleSaveDeck} />}
             {isAiFlashcardModalOpen && <AIGenerateFlashcardsModal animationOrigin={animationOrigin} student={student} onClose={() => setIsAiFlashcardModalOpen(false)} onSaveDeck={handleSaveDeck} />}
-            {viewingDeck && <DeckViewModal animationOrigin={animationOrigin} deck={viewingDeck} onClose={() => setViewingDeck(null)} onAddCard={(e) => { setEditingCard(null); handleModalOpenWithAnimation(setIsCreateCardModalOpen, e); }} onEditCard={(card, e) => { setEditingCard(card); handleModalOpenWithAnimation(setIsCreateCardModalOpen, e, card); }} onDeleteCard={(cardId) => handleDeleteCard(viewingDeck.id, cardId)} onStartReview={(e) => { setReviewingDeck(viewingDeck); setViewingDeck(null); handleModalOpenWithAnimation(setReviewingDeck, e, reviewingDeck); }} />}
+            {viewingDeck && <DeckViewModal animationOrigin={animationOrigin} deck={viewingDeck} onClose={() => setViewingDeck(null)} onAddCard={(e) => { setEditingCard(null); handleModalOpenWithAnimation(setIsCreateCardModalOpen, e, true); }} onEditCard={(card, e) => { setEditingCard(card); handleModalOpenWithAnimation(setIsCreateCardModalOpen, e, card); }} onDeleteCard={(cardId) => handleDeleteCard(viewingDeck.id, cardId)} onStartReview={(e) => { setReviewingDeck(viewingDeck); setViewingDeck(null); handleModalOpenWithAnimation(setReviewingDeck, e, reviewingDeck); }} />}
             {isCreateCardModalOpen && viewingDeck && <CreateEditFlashcardModal animationOrigin={animationOrigin} card={editingCard} deckId={viewingDeck.id} onClose={() => { setIsCreateCardModalOpen(false); setEditingCard(null); }} onSave={handleSaveCard} />}
             {reviewingDeck && <FlashcardReviewModal animationOrigin={animationOrigin} deck={reviewingDeck} onClose={() => setReviewingDeck(null)} />}
             
@@ -877,7 +877,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             {isAiGuideModalOpen && <AIGuideModal animationOrigin={animationOrigin} onClose={() => setIsAiGuideModalOpen(false)} examType={student.CONFIG.settings.examType} />}
             
             {/* Renders the bottom toolbar only if the mobile layout is active. */}
-            {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={(e) => handleModalOpenWithAnimation(setIsCreateModalOpen, e)} />}
+            {useToolbarLayout && <BottomToolbar activeTab={activeTab} setActiveTab={setActiveTab} onFabClick={(e) => handleModalOpenWithAnimation(setIsCreateModalOpen, e, true)} />}
         </main>
     );
 };

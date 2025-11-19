@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
@@ -58,7 +59,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
 
         const updateProgress = () => {
             const now = new Date();
-            const [hours, minutes] = cardData.TIME.split(':').map(Number);
+            const [hours, minutes] = (cardData as ScheduleCardData | HomeworkData).TIME!.split(':').map(Number);
             const startTime = new Date();
             startTime.setHours(hours, minutes, 0, 0);
             
