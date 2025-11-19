@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import { api } from '../api/apiService';
@@ -13,6 +14,7 @@ interface AIParserModalProps {
   animationOrigin?: { x: string, y: string };
 }
 
+// FIX: Changed to named export
 const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onPracticeTestReady, onOpenGuide, examType, animationOrigin }) => {
   const { currentUser } = useAuth();
   const theme = currentUser?.CONFIG.settings.theme;

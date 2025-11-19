@@ -1,3 +1,5 @@
+// Add React import for React-specific types
+import React from 'react';
 
 export type Language = 'EN' | 'GU';
 

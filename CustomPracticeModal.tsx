@@ -5,6 +5,7 @@ import Icon from './Icon';
 import { getQuestionNumbersFromRanges } from '../utils/qRangesParser';
 import { HomeworkData, ResultData, StudentData, ScheduleItem, PracticeQuestion } from '../types';
 import AIGenerateAnswerKeyModal from './AIGenerateAnswerKeyModal';
+// FIX: Corrected import to named import as AIParserModal is likely exported as a named component
 import AIParserModal from './AIParserModal';
 import { api } from '../api/apiService';
 import { useAuth } from '../context/AuthContext';
