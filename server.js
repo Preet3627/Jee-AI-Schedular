@@ -28,7 +28,8 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 // --- ENV & SETUP CHECK ---
 const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME && process.env.ENCRYPTION_KEY && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
-const isNextcloudConfigured = process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_SHARE_TOKEN;
+const isNextcloudMusicConfigured = process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_MUSIC_SHARE_TOKEN;
+const isNextcloudStudyConfigured = process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_SHARE_TOKEN;
 
 let pool = null;
 let mailer = null;
@@ -411,7 +412,7 @@ apiRouter.get('/config/public', (req, res) => {
     if (!isConfigured || !process.env.GOOGLE_CLIENT_ID) {
         return res.status(503).json({ error: 'Google integration is not configured on the server.' });
     }
-    res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID, isNextcloudConfigured });
+    res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID });
 });
 
 
@@ -1207,65 +1208,18 @@ apiRouter.post('/messages', authMiddleware, adminMiddleware, async (req, res) =>
 });
 
 
-// --- MUSIC (AMPACE/NEXTCLOUD) PROXY ---
-apiRouter.get('/music/proxy', authMiddleware, async (req, res) => {
-    const ampacheUrl = process.env.NEXTCLOUD_AMPACHE_URL;
-    const ampacheUser = process.env.NEXTCLOUD_AMPACHE_USER;
-    const ampachePass = process.env.NEXTCLOUD_AMPACHE_PASS;
-
-    if (!ampacheUrl || !ampacheUser || !ampachePass) {
-        return res.status(503).json({ error: 'Music service is not configured. Please set NEXTCLOUD_AMPACHE variables in the .env file.' });
+// --- MUSIC (NEW WEB-DAV) ENDPOINTS ---
+const browseNextcloudShare = async (req, res, shareToken, sharePassword) => {
+    if (!shareToken) {
+        return res.status(503).json({ error: 'Service is not configured by the administrator.' });
     }
-
-    try {
-        const timestamp = Math.floor(Date.now() / 1000);
-        // Correct Ampache handshake: passphrase = sha256(timestamp + sha256(password))
-        const key = crypto.createHash('sha256').update(ampachePass).digest('hex');
-        const passphrase = crypto.createHash('sha256').update(timestamp + key).digest('hex');
-        
-        const action = req.query.action || 'ping';
-        
-        let targetUrl = new URL(ampacheUrl);
-        targetUrl.searchParams.set('action', action);
-        targetUrl.searchParams.set('auth', passphrase);
-        targetUrl.searchParams.set('time', timestamp);
-        targetUrl.searchParams.set('user', ampacheUser);
-        
-        // Forward other query params if they exist
-        Object.keys(req.query).forEach(key => {
-            if (key !== 'action') {
-                targetUrl.searchParams.set(key, req.query[key]);
-            }
-        });
-        
-        const response = await fetch(targetUrl.toString());
-        if (!response.ok) throw new Error(`Ampache server responded with ${response.status}`);
-        
-        const xmlData = await response.text();
-        const jsonData = await parseStringPromise(xmlData, { explicitArray: false, mergeAttrs: true, emptyTag: null });
-        
-        res.json(jsonData.root);
-
-    } catch (error) {
-        console.error("Ampache Proxy Error:", error);
-        res.status(500).json({ error: 'Failed to communicate with music service.' });
-    }
-});
-
-
-
-// --- STUDY MATERIAL (NEXTCLOUD) ENDPOINTS ---
-apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
-    if (!isNextcloudConfigured) {
-        return res.status(503).json({ error: 'Study material repository is not configured.' });
-    }
-
+    
     const requestedPath = req.query.path || '/';
-    const { NEXTCLOUD_URL, NEXTCLOUD_SHARE_TOKEN, NEXTCLOUD_SHARE_PASSWORD } = process.env;
+    const { NEXTCLOUD_URL } = process.env;
     const webdavUrl = `${NEXTCLOUD_URL}/public.php/webdav${requestedPath}`;
 
     try {
-        const auth = 'Basic ' + Buffer.from(`${NEXTCLOUD_SHARE_TOKEN}:${NEXTCLOUD_SHARE_PASSWORD || ''}`).toString('base64');
+        const auth = 'Basic ' + Buffer.from(`${shareToken}:${sharePassword || ''}`).toString('base64');
         const response = await fetch(webdavUrl, {
             method: 'PROPFIND',
             headers: { 'Authorization': auth, 'Depth': '1' }
@@ -1281,14 +1235,8 @@ apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
         const items = (jsonData['d:multistatus']['d:response'] || [])
             .map((item) => {
                 const clientPath = decodeURIComponent(item['d:href']).replace('/public.php/webdav', '');
-                
-                // Normalize paths by removing trailing slashes for comparison, but keep root as '/'
                 const normalize = (p) => (p.length > 1 && p.endsWith('/')) ? p.slice(0, -1) : p;
-                
-                // This correctly filters out the entry for the directory itself, while keeping subdirectories.
-                if (normalize(clientPath) === normalize(requestedPath)) {
-                    return null;
-                }
+                if (normalize(clientPath) === normalize(requestedPath)) return null;
 
                 const prop = item['d:propstat']['d:prop'];
                 const isCollection = prop['d:resourcetype'] && typeof prop['d:resourcetype'] === 'object' && 'd:collection' in prop['d:resourcetype'];
@@ -1303,7 +1251,7 @@ apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
                 };
             })
             .filter(Boolean)
-            .sort((a, b) => { // Sort folders first, then alphabetically
+            .sort((a, b) => {
                 if (a.type === b.type) return a.name.localeCompare(b.name);
                 return a.type === 'folder' ? -1 : 1;
             });
@@ -1312,12 +1260,56 @@ apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
 
     } catch (error) {
         console.error("Nextcloud browse error:", error);
-        res.status(500).json({ error: "Failed to retrieve study materials." });
+        res.status(500).json({ error: "Failed to retrieve directory contents." });
+    }
+}
+
+apiRouter.get('/music/browse', authMiddleware, async (req, res) => {
+    await browseNextcloudShare(req, res, process.env.NEXTCLOUD_MUSIC_SHARE_TOKEN, process.env.NEXTCLOUD_MUSIC_SHARE_PASSWORD);
+});
+
+apiRouter.get('/music/content', (req, res) => {
+    // This endpoint is a proxy to bypass CORS and add auth for direct streaming.
+    const { path: requestedPath, token } = req.query;
+    if (!requestedPath || !token) {
+        return res.status(400).send('File path and token are required.');
+    }
+
+    try {
+        // Verify token to ensure only logged-in users can access
+        jwt.verify(token, JWT_SECRET);
+        
+        const { NEXTCLOUD_URL, NEXTCLOUD_MUSIC_SHARE_TOKEN, NEXTCLOUD_MUSIC_SHARE_PASSWORD } = process.env;
+        const fileUrl = `${NEXTCLOUD_URL}/public.php/webdav${requestedPath}`;
+        const auth = 'Basic ' + Buffer.from(`${NEXTCLOUD_MUSIC_SHARE_TOKEN}:${NEXTCLOUD_MUSIC_SHARE_PASSWORD || ''}`).toString('base64');
+
+        // Forward the request to Nextcloud
+        fetch(fileUrl, { headers: { 'Authorization': auth } })
+            .then(ncRes => {
+                if (!ncRes.ok) throw new Error(`Nextcloud responded with ${ncRes.status}`);
+                res.setHeader('Content-Type', ncRes.headers.get('content-type'));
+                res.setHeader('Content-Length', ncRes.headers.get('content-length'));
+                res.setHeader('Accept-Ranges', 'bytes');
+                ncRes.body.pipe(res);
+            })
+            .catch(err => {
+                console.error("Music streaming proxy error:", err);
+                res.status(502).send('Failed to stream file.');
+            });
+
+    } catch (error) {
+        res.status(401).send('Invalid token.');
     }
 });
 
+
+// --- STUDY MATERIAL (NEXTCLOUD) ENDPOINTS ---
+apiRouter.get('/study-material/browse', authMiddleware, async (req, res) => {
+    await browseNextcloudShare(req, res, process.env.NEXTCLOUD_SHARE_TOKEN, process.env.NEXTCLOUD_SHARE_PASSWORD);
+});
+
 apiRouter.post('/study-material/details', authMiddleware, async (req, res) => {
-    if (!isNextcloudConfigured) {
+    if (!isNextcloudStudyConfigured) {
         return res.status(503).json({ error: 'Study material repository is not configured.' });
     }
     const { paths } = req.body;
@@ -1366,7 +1358,7 @@ apiRouter.post('/study-material/details', authMiddleware, async (req, res) => {
 });
 
 apiRouter.get('/study-material/content', authMiddleware, async (req, res) => {
-    if (!isNextcloudConfigured) {
+    if (!isNextcloudStudyConfigured) {
         return res.status(503).json({ error: 'Study material repository is not configured.' });
     }
     const requestedPath = req.query.path;
@@ -1590,6 +1582,7 @@ apiRouter.post('/ai/parse-text', authMiddleware, async (req, res) => {
         const systemInstruction = `Your entire response MUST be a single, raw JSON object based on the user's text. DO NOT include any explanations, conversational text, or markdown formatting. The JSON object must adhere to the provided schema. Use the knowledge base for context on subjects and topics.
 If the user's request is vague, ask for clarification by returning an error. You MUST ask for details like timetables, exam dates, syllabus, and weak topics for schedules.
 If the user's request is for 'PYQs', 'questions', or 'problems', you MUST use the 'HOMEWORK' type.
+If the user mentions creating a 'custom widget', 'note panel', or 'info box', use the 'custom_widget' structure.
 ${getKnowledgeBaseForUser(config)}`;
 
         // Modular and robust schema definition
@@ -1670,21 +1663,25 @@ ${getKnowledgeBaseForUser(config)}`;
             required: ['questions', 'answers']
         };
 
+        const customWidgetSchema = {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                content: { type: Type.STRING, description: 'Markdown-compatible content for the widget body.'}
+            },
+            required: ['title', 'content']
+        };
+
         const aiImportSchema = {
             type: Type.OBJECT,
             properties: {
                 schedules: { type: Type.ARRAY, items: scheduleItemSchema },
                 exams: { type: Type.ARRAY, items: examSchema },
                 metrics: { type: Type.ARRAY, items: metricSchema },
-                practice_test: practiceTestSchema
+                practice_test: practiceTestSchema,
+                custom_widget: customWidgetSchema,
             },
-            nullable: true,
-            properties: {
-                schedules: { type: Type.ARRAY, items: scheduleItemSchema, nullable: true },
-                exams: { type: Type.ARRAY, items: examSchema, nullable: true },
-                metrics: { type: Type.ARRAY, items: metricSchema, nullable: true },
-                practice_test: { ...practiceTestSchema, nullable: true }
-            }
+            nullable: true
         };
 
 

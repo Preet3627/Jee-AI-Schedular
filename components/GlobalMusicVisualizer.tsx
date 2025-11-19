@@ -24,7 +24,7 @@ const GlobalMusicVisualizer: React.FC = () => {
         const dataArray = new Uint8Array(bufferLength);
 
         const draw = () => {
-            // FIX: Pass the 'draw' callback to requestAnimationFrame to create an animation loop.
+            // FIX: `requestAnimationFrame` requires a callback argument. Passed the `draw` function to create the animation loop.
             animationFrameId.current = requestAnimationFrame(draw);
             analyser.getByteFrequencyData(dataArray);
 
