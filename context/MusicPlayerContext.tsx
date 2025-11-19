@@ -1,31 +1,27 @@
 import React, { createContext, useState, useContext, ReactNode, useRef, useCallback, useEffect } from 'react';
 import { api } from '../api/apiService';
-
-interface Track {
-    id: string;
-    title: string;
-    artist: string;
-    album: string;
-    track: string;
-    coverArt: string;
-    duration: string;
-    size: string;
-    coverArtUrl?: string;
-}
+import { Track } from '../types';
 
 interface MusicPlayerContextType {
     audioElement: HTMLAudioElement | null;
     analyser: AnalyserNode | null;
     isPlaying: boolean;
     currentTrack: Track | null;
+    isFullScreenPlayerOpen: boolean;
     playTrack: (track: Track, tracklist: Track[]) => void;
     play: () => void;
     pause: () => void;
     nextTrack: () => void;
     prevTrack: () => void;
+    toggleFullScreenPlayer: () => void;
+    seek: (time: number) => void;
+    duration: number;
+    currentTime: number;
 }
 
 const MusicPlayerContext = createContext<MusicPlayerContextType | undefined>(undefined);
+
+const DJ_DROP_URL = 'https://nc.ponsrischool.in/index.php/s/em85Zdf2EYEkz3j/download';
 
 export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
@@ -33,9 +29,14 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
     const [tracklist, setTracklist] = useState<Track[]>([]);
+    const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
     
     const audioElementRef = useRef<HTMLAudioElement | null>(null);
+    const djDropAudioRef = useRef<HTMLAudioElement | null>(null);
     const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+    const isFirstPlayRef = useRef(true);
     
     const initializeAudioContext = useCallback(() => {
         if (!audioContext) {
@@ -47,10 +48,23 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
     }, [audioContext]);
     
+    const playDjDrop = () => {
+        if (djDropAudioRef.current) {
+            djDropAudioRef.current.currentTime = 0;
+            djDropAudioRef.current.play().catch(e => console.error("DJ drop playback error:", e));
+        }
+    };
+
     const playTrack = useCallback((track: Track, newTracklist: Track[]) => {
         initializeAudioContext();
         
         if (audioElementRef.current && audioContext && analyser) {
+            
+            if (!isFirstPlayRef.current) {
+                playDjDrop();
+            }
+            isFirstPlayRef.current = false;
+            
             const trackWithArtUrl = { ...track, coverArtUrl: api.getMusicStreamUrl(track.coverArt) };
             setCurrentTrack(trackWithArtUrl);
             setTracklist(newTracklist);
@@ -89,6 +103,12 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
             setIsPlaying(false);
         }
     };
+
+    const seek = (time: number) => {
+        if (audioElementRef.current) {
+            audioElementRef.current.currentTime = time;
+        }
+    };
     
     const navigateTrack = (direction: 'next' | 'prev') => {
         if (!currentTrack || tracklist.length === 0) return;
@@ -105,24 +125,39 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
         playTrack(tracklist[newIndex], tracklist);
     };
 
-    const nextTrack = () => navigateTrack('next');
+    const nextTrack = useCallback(() => navigateTrack('next'), [currentTrack, tracklist, playTrack]);
     const prevTrack = () => navigateTrack('prev');
+
+    const toggleFullScreenPlayer = () => {
+        setIsFullScreenPlayerOpen(prev => !prev);
+    };
 
     useEffect(() => {
         if (!audioElementRef.current) {
-            audioElementRef.current = new Audio();
-            audioElementRef.current.addEventListener('ended', nextTrack);
+            const audio = new Audio();
+            audioElementRef.current = audio;
+            audio.addEventListener('ended', nextTrack);
+            audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime));
+            audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
+        }
+        if (!djDropAudioRef.current) {
+            const drop = new Audio(DJ_DROP_URL);
+            drop.crossOrigin = "anonymous";
+            djDropAudioRef.current = drop;
         }
         
+        const audio = audioElementRef.current;
         return () => {
-            if (audioElementRef.current) {
-                audioElementRef.current.removeEventListener('ended', nextTrack);
+            if (audio) {
+                audio.removeEventListener('ended', nextTrack);
+                audio.removeEventListener('timeupdate', () => {});
+                audio.removeEventListener('loadedmetadata', () => {});
             }
         };
     }, [nextTrack]);
 
 
-    const value = { audioElement: audioElementRef.current, analyser, isPlaying, currentTrack, playTrack, play, pause, nextTrack, prevTrack };
+    const value = { audioElement: audioElementRef.current, analyser, isPlaying, currentTrack, isFullScreenPlayerOpen, playTrack, play, pause, nextTrack, prevTrack, toggleFullScreenPlayer, seek, duration, currentTime };
 
     return (
         <MusicPlayerContext.Provider value={value}>

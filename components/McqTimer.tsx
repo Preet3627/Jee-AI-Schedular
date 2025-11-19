@@ -385,17 +385,17 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
         }
         
         if (!feedback) {
-            return `bg-gray-800 border-gray-700 hover:border-cyan-500 focus:outline-none`;
+            return `bg-gray-800 border-gray-700 hover:border-cyan-500`;
         }
         
         const userAnswer = normalizeAnswer(answers[currentQuestionNumber]);
         const correctAnswer = normalizeAnswer(feedback.correctAnswer);
         const currentOption = normalizeAnswer(option);
 
-        if (currentOption === correctAnswer) return 'bg-green-800/50 border-green-500 focus:outline-none';
-        if (currentOption === userAnswer && userAnswer !== correctAnswer) return 'bg-red-800/50 border-red-500 focus:outline-none';
+        if (currentOption === correctAnswer) return 'bg-green-800/50 border-green-500';
+        if (currentOption === userAnswer && userAnswer !== correctAnswer) return 'bg-red-800/50 border-red-500';
 
-        return 'bg-gray-800 border-gray-700 opacity-60 focus:outline-none';
+        return 'bg-gray-800 border-gray-700 opacity-60';
     };
   
     return (

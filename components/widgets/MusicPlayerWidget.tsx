@@ -14,7 +14,8 @@ const MusicPlayerWidget: React.FC<MusicPlayerWidgetProps> = ({ onOpenLibrary, la
         play, 
         pause,
         nextTrack,
-        prevTrack
+        prevTrack,
+        toggleFullScreenPlayer
     } = useMusicPlayer();
     
     const artworkSrc = currentTrack?.coverArtUrl;
@@ -34,7 +35,7 @@ const MusicPlayerWidget: React.FC<MusicPlayerWidgetProps> = ({ onOpenLibrary, la
     if (layout === 'minimal') {
         return (
             <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-4 backdrop-blur-sm flex items-center gap-4">
-                <button onClick={onOpenLibrary} className="flex-shrink-0">
+                <button onClick={toggleFullScreenPlayer} className="flex-shrink-0">
                     {artworkSrc ? (
                         <img src={artworkSrc} alt={currentTrack.album || 'album art'} className="w-16 h-16 rounded-lg object-cover" />
                     ) : (
@@ -43,7 +44,7 @@ const MusicPlayerWidget: React.FC<MusicPlayerWidgetProps> = ({ onOpenLibrary, la
                         </div>
                     )}
                 </button>
-                <div className="flex-grow overflow-hidden">
+                <div className="flex-grow overflow-hidden cursor-pointer" onClick={toggleFullScreenPlayer}>
                     <p className="font-bold text-white truncate">{currentTrack.title}</p>
                     <p className="text-sm text-gray-400 truncate">{currentTrack.artist}</p>
                 </div>
@@ -56,7 +57,7 @@ const MusicPlayerWidget: React.FC<MusicPlayerWidgetProps> = ({ onOpenLibrary, la
 
     return (
         <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-6 backdrop-blur-sm text-center">
-            <button onClick={onOpenLibrary} className="w-full">
+            <button onClick={toggleFullScreenPlayer} className="w-full">
                 {artworkSrc ? (
                     <img src={artworkSrc} alt={currentTrack.album || 'album art'} className="w-32 h-32 rounded-lg object-cover mx-auto mb-4" />
                 ) : (

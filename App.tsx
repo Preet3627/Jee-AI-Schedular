@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -21,6 +23,8 @@ import * as gdrive from './utils/googleDrive';
 import * as auth from './utils/googleAuth';
 import ExamTypeSelectionModal from './components/ExamTypeSelectionModal';
 import GlobalMusicVisualizer from './components/GlobalMusicVisualizer';
+import { useMusicPlayer } from './context/MusicPlayerContext';
+import FullScreenMusicPlayer from './components/FullScreenMusicPlayer';
 
 // FIX: Add global declarations for Google API objects to resolve TypeScript errors.
 declare global {
@@ -34,6 +38,7 @@ const API_URL = '/api';
 
 const App: React.FC = () => {
     const { currentUser, userRole, isLoading, isDemoMode, enterDemoMode, logout, refreshUser } = useAuth();
+    const { isFullScreenPlayerOpen } = useMusicPlayer();
     
     const [allStudents, setAllStudents] = useState<StudentData[]>([]);
     const [allDoubts, setAllDoubts] = useState<DoubtData[]>([]);
@@ -507,6 +512,7 @@ const App: React.FC = () => {
             return (
                  <div style={{'--accent-color': dashboardUser.CONFIG.settings.accentColor} as React.CSSProperties} className={`${dashboardUser.CONFIG.settings.blurEnabled === false ? 'no-blur' : ''} safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom`}>
                     <GlobalMusicVisualizer />
+                    {isFullScreenPlayerOpen && <FullScreenMusicPlayer />}
                     <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${useToolbarLayout ? 'pb-24' : ''}`}>
                         <Header user={{ name: dashboardUser.fullName, id: dashboardUser.sid, profilePhoto: dashboardUser.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         {userRole === 'admin' ? (

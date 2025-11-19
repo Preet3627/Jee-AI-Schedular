@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/apiService';
 import Icon from './Icon';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
+// FIX: Import the 'Track' type from the central types file.
+import { Track } from '../types';
 
 interface MusicLibraryModalProps {
   onClose: () => void;
@@ -13,17 +15,6 @@ interface Album {
     artist: string;
     coverArt: string;
     songCount: string;
-}
-
-interface Track {
-    id: string;
-    title: string;
-    artist: string;
-    album: string;
-    track: string;
-    coverArt: string;
-    duration: string;
-    size: string;
 }
 
 const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {

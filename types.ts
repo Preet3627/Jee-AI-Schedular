@@ -152,6 +152,19 @@ export interface StudySession {
   questions_skipped: number[];
 }
 
+// FIX: Added the 'Track' interface and exported it to be used across the application.
+export interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  track: string; // track number
+  coverArt: string; // cover art ID from Ampache
+  duration: string; // in seconds
+  size: string; // in bytes
+  coverArtUrl?: string; // dynamically added by the player context
+}
+
 export interface Flashcard {
   id: string;
   front: string;

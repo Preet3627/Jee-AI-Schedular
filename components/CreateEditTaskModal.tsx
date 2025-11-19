@@ -116,7 +116,7 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
             SUBJECT_TAG: { EN: formData.subject.toUpperCase(), GU: "" },
             Q_RANGES: formData.qRanges,
             TIME: formData.time || undefined,
-            category: formData.category as 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ' | 'Custom',
+            category: formData.category as HomeworkData['category'],
             answers: parseAnswers(formData.answers),
             googleEventId: isEditing && 'googleEventId' in task ? task.googleEventId : undefined,
         } as HomeworkData;
