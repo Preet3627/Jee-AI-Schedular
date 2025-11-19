@@ -1,10 +1,10 @@
-
 import React, { useState, useCallback, SetStateAction } from 'react';
 import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
 import AIGuide from './AIGuide';
 import MessagingModal from './MessagingModal';
 import CreateEditTaskModal from './CreateEditTaskModal';
+// FIX: Changed to default import for AIParserModal
 import AIParserModal from './AIParserModal';
 import { api } from '../api/apiService';
 import { useAuth } from '../context/AuthContext';

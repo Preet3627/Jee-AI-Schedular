@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 
 export type IconName = 'bell' | 'copy' | 'check' | 'trash' | 'play' | 'pause' | 'stop' | 'upload' | 'stopwatch' | 'logout' | 'dashboard' | 'users' | 'plus' | 'fixed' | 'login' | 'user-plus' | 'edit' | 'ellipsis' | 'forward' | 'trophy' | 'star' | 'streak' | 'send' | 'message' | 'settings' | 'schedule' | 'planner' | 'performance' | 'community' | 'calendar' | 'image' | 'book-open' | 'drive' | 'gemini' | 'marker' | 'cards' | 'folder' | 'file-text' | 'pin' | 'music' | 'lock-closed' | 'lock-open' | 'shuffle' | 'expand' | 'arrow-left' | 'arrow-right' | 'sound-wave';

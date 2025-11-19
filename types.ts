@@ -1,3 +1,4 @@
+
 // Add React import for React-specific types
 import React from 'react';
 
@@ -218,7 +219,6 @@ export interface DashboardWidgetItem {
     id: string; // Corresponds to a key in the widgetConfig map
     wide?: boolean;
     translucent?: boolean;
-    // Add position if needed for drag-and-drop
 }
 
 // The complete, normalized user data object used throughout the frontend

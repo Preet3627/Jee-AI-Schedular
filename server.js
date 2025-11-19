@@ -1,4 +1,5 @@
 
+
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -411,4 +412,50 @@ const getUserData = async (userId) => {
       SCHEDULE_ITEMS: scheduleRows.map(r => typeof r.item_data === 'string' ? JSON.parse(r.item_data) : r.item_data),
       RESULTS: configObject.RESULTS || [],
       EXAMS: configObject.EXAMS || [],
-      STUDY_S
+      STUDY_SESSIONS: configObject.STUDY_SESSIONS || [],
+      DOUBTS: configObject.DOUBTS || [],
+    };
+};
+
+// --- AUTH ROUTES ---
+apiRouter.post('/register', configurationCheckMiddleware, async (req, res) => {
+    const { fullName, sid, email, password } = req.body;
+    if (!fullName || !sid || !email || !password) {
+        return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    try {
+        const [existingUser] = await pool.query('SELECT id FROM users WHERE email = ? OR sid = ?', [email, sid]);
+        if (existingUser.length > 0) {
+            return res.status(409).json({ error: 'Email or Student ID already exists.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const profilePhoto = generateAvatar(fullName);
+        const verificationCode = mailer ? crypto.randomBytes(3).toString('hex').toUpperCase() : null;
+        const verificationExpires = mailer ? new Date(Date.now() + 3600000) : null; // 1 hour
+
+        const [result] = await pool.query(
+            'INSERT INTO users (sid, email, password, full_name, profile_photo, is_verified, verification_code, verification_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [sid, email, hashedPassword, fullName, profilePhoto, !mailer, verificationCode, verificationExpires]
+        );
+
+        const userId = result.insertId;
+
+        // Create default config for the new user
+        const defaultConfig = {
+            WAKE: '06:00', SCORE: '0/300', WEAK: [], UNACADEMY_SUB: false,
+            settings: { accentColor: '#0891b2', blurEnabled: true, mobileLayout: 'standard', forceOfflineMode: false, perQuestionTime: 180, showAiChatAssistant: true, creditSaver: false, examType: 'JEE', theme: 'default', dashboardLayout: [], dashboardFlashcardDeckIds: [], musicPlayerWidgetLayout: 'minimal' },
+            RESULTS: [], EXAMS: [], STUDY_SESSIONS: [], DOUBTS: [], flashcardDecks: [], customWidgets: [], localPlaylists: []
+        };
+        await pool.query(
+            `INSERT INTO user_configs (user_id, config) VALUES (?, ?)`,
+            [userId, encrypt(JSON.stringify(defaultConfig))]
+        );
+        
+        if (mailer && verificationCode) {
+            await mailer.sendMail({
+                from: process.env.SMTP_USER,
+                to: email,
+                subject: 'Verify Your JEE Scheduler Pro Account',
+                html: `<p>Your verification code is: <b>${verificationCode}</b></

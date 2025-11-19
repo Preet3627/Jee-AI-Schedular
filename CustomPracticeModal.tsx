@@ -6,8 +6,8 @@ import Icon from './Icon';
 import { getQuestionNumbersFromRanges } from '../utils/qRangesParser';
 import { HomeworkData, ResultData, StudentData, ScheduleItem, PracticeQuestion } from '../types';
 import AIGenerateAnswerKeyModal from './AIGenerateAnswerKeyModal';
-// FIX: Corrected import to named import as AIParserModal is likely exported as a named component
-import { AIParserModal } from './AIParserModal';
+// FIX: Corrected import to default import as AIParserModal is likely exported as a default component
+import AIParserModal from './AIParserModal';
 import { api } from '../api/apiService';
 import { useAuth } from '../context/AuthContext';
 
@@ -358,7 +358,7 @@ const CustomPracticeModal: React.FC<CustomPracticeModalProps> = (props) => {
               
               <div className="flex justify-end gap-4 pt-4 mt-4 border-t border-[var(--glass-border)]">
                 <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors">Cancel</button>
-                <button onClick={handleStart} disabled={isLoading || (activeTab === 'manual' && totalQuestions === 0)} className="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
+                <button onClick={handleStart} disabled={isLoading || (activeTab === 'manual' && totalQuestions === 0)} className="flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--accent-color)] to-[var(--gradient-purple)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
                   {isLoading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Generating...</> : <><Icon name="play" className="w-4 h-4" /> Start</>}
                 </button>
               </div>

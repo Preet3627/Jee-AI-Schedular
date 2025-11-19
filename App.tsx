@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, SetStateAction } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData, FlashcardDeck, ActiveTab } from './types';
@@ -106,7 +107,7 @@ const App: React.FC = () => {
     }, [currentUser, userRole, isDemoMode]);
     
 
-    const handleGoogleSignOut = useCallback(() => {
+    const handleGoogleSignOut = useCallback((event?: React.MouseEvent) => {
         auth.handleSignOut(() => {
             setGoogleAuthStatus('signed_out');
         });
@@ -231,7 +232,7 @@ const App: React.FC = () => {
     
     const onLogResult = async (result: ResultData) => {
         if (!currentUser) return;
-        const updatedUser = { ...currentUser, RESULTS: [...currentUser.RESULTS, result], CONFIG: {...currentUser.CONFIG, SCORE: result.SCORE, WEAK: [...new Set([...currentUser.CONFIG.WEAK, ...result.MISTAKES])] } };
+        const updatedUser = { ...currentUser, RESULTS: [...currentUser.RESULTS, result], CONFIG: {...currentUser.CONFIG, SCORE: result.SCORE, WEAK: [...new Set([...(currentUser.CONFIG.WEAK || []), ...result.MISTAKES])] } };
         await api.fullSync(updatedUser);
         refreshUser();
     };
@@ -273,7 +274,7 @@ const App: React.FC = () => {
         updatedUser.EXAMS.push(...data.exams);
         updatedUser.RESULTS.push(...data.results);
 
-        const newWeaknesses = new Set([...updatedUser.CONFIG.WEAK, ...data.weaknesses]);
+        const newWeaknesses = new Set([...(updatedUser.CONFIG.WEAK || []), ...data.weaknesses]);
         data.results.forEach(r => {
             r.MISTAKES.forEach(m => newWeaknesses.add(m));
         });
