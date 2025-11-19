@@ -37,7 +37,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
         } else {
             setAnimationOrigin(undefined);
         }
-        if (data !== undefined) {
+        if (typeof data === 'boolean') { // Handle boolean setters like setIsBroadcastModalOpen(true)
+            setter(data as SetStateAction<boolean>);
+        } else if (data !== undefined) {
             setter(data as SetStateAction<T | null>);
         } else {
             setter(true as SetStateAction<boolean>);

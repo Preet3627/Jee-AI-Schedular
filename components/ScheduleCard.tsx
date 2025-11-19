@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
@@ -49,7 +47,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
             return cardData.date === today.toISOString().split('T')[0];
         }
         return cardData.DAY.EN.toUpperCase() === todayName;
-    }, [cardData.date, cardData.DAY.EN]);
+    }, [('date' in cardData && cardData.date), cardData.DAY.EN]); // FIX: Added type guard for 'date' property
 
     useEffect(() => {
         // FIX: Added type guard for 'TIME' property
@@ -88,8 +86,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
         const interval = setInterval(updateProgress, 60000); // Update every minute
         return () => clearInterval(interval);
 
-    }, [cardData.TIME, isToday]);
-
+    }, [('TIME' in cardData && cardData.TIME), isToday]); // FIX: Added type guard for 'TIME'
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -149,7 +146,8 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
 
       {isManageable && !isSelectMode && (
           <div className="absolute top-3 right-3 flex items-center gap-1">
-              <button onClick={(e) => { e.stopPropagation(); onStar(cardData.ID); }} title="Add to Today's Focus" className="text-gray-400 hover:text-yellow-400 p-1.5 rounded-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* FIX: Added `title` attribute for accessibility */}
+              <button onClick={(e) => { e.stopPropagation(); onStar(cardData.ID); }} title={isStarred ? "Remove from Today's Focus" : "Add to Today's Focus"} className="text-gray-400 hover:text-yellow-400 p-1.5 rounded-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Icon name="star" className={`w-5 h-5 ${isStarred ? 'text-yellow-400 fill-current' : ''}`} />
               </button>
               <div ref={menuRef}>
@@ -240,8 +238,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
            )}
            
       </div>
-    </div>
-  );
+    );
 };
 
 export default ScheduleCard;

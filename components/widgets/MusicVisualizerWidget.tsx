@@ -11,6 +11,10 @@ const MusicVisualizerWidget: React.FC = () => {
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas || !analyser || !isPlaying) {
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx?.clearRect(0, 0, canvas.width, canvas.height);
+            }
             return;
         }
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { StudentData, MessageData } from '../types';
 import Icon from './Icon';
@@ -7,11 +6,12 @@ interface MessagingModalProps {
   student: StudentData;
   onClose: () => void;
   isDemoMode: boolean;
+  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
 }
 
 const API_URL = '/api';
 
-const MessagingModal: React.FC<MessagingModalProps> = ({ student, onClose, isDemoMode }) => {
+const MessagingModal: React.FC<MessagingModalProps> = ({ student, onClose, isDemoMode, animationOrigin }) => { // FIX: Added animationOrigin prop
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +81,11 @@ const MessagingModal: React.FC<MessagingModalProps> = ({ student, onClose, isDem
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
 
   return (
-    <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
+    <div
+      className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`}
+      style={{ '--clip-origin-x': animationOrigin?.x, '--clip-origin-y': animationOrigin?.y } as React.CSSProperties} // FIX: Added style for animation origin
+      onClick={handleClose}
+    >
       <div className={`w-full max-w-lg h-[70vh] flex flex-col bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
         <header className="p-4 border-b border-[var(--glass-border)] flex-shrink-0">
           <h2 className="text-xl font-bold text-white">Message to {student.fullName}</h2>

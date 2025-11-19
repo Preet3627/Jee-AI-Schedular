@@ -145,7 +145,11 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   );
 
   return (
-    <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
+    <div
+      className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`}
+      style={{ '--clip-origin-x': animationOrigin?.x, '--clip-origin-y': animationOrigin?.y } as React.CSSProperties} // FIX: Added style for animation origin
+      onClick={handleClose}
+    >
       <div className={`w-full max-w-md bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses} overflow-y-auto max-h-[90vh]`} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-6">Settings</h2>
         <form onSubmit={handleSubmit} className="space-y-6">

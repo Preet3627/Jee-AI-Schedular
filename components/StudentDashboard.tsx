@@ -158,7 +158,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             setAnimationOrigin(undefined); // Clear animation origin if no event
         }
 
-        if (data !== undefined) {
+        if (typeof data === 'boolean') {
+            setter(data as SetStateAction<boolean>);
+        } else if (data !== undefined) {
             setter(data as SetStateAction<T | null>); // Cast for cases like setViewingDeck(deck)
         } else {
             setter(true as SetStateAction<boolean>); // Default for simple boolean setters
