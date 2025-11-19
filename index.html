@@ -55,8 +55,8 @@
 
       .theme-liquid-glass {
         --main-bg: #000000;
-        --glass-bg: rgba(28, 28, 30, 0.65);
-        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-bg: rgba(28, 28, 30, 0.75);
+        --glass-border: rgba(255, 255, 255, 0.15);
         --body-bg-image: none;
         --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
         --modal-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
@@ -89,7 +89,7 @@
         --glass-border: rgba(55, 65, 81, 0.2);
       }
       .theme-liquid-glass .widget-translucent {
-        --glass-bg: rgba(20, 20, 20, 0.3);
+        --glass-bg: rgba(20, 20, 20, 0.4);
         --glass-border: rgba(255, 255, 255, 0.1);
       }
       
@@ -104,15 +104,36 @@
       ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
 
       /* Flashcard Flip & Dynamic Height */
-      .flashcard-container { display: grid; perspective: 1000px; }
-      .flashcard-inner { position: relative; width: 100%; transition: transform 0.6s; transform-style: preserve-3d; grid-area: 1 / 1 / 2 / 2; }
-      .flashcard-flipped { transform: rotateY(180deg); }
-      .flashcard-front, .flashcard-back {
-        width: 100%; min-height: 150px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
-        display: flex; align-items: center; justify-content: center; padding: 1rem; border-radius: 0.75rem; text-align: center;
+      .flashcard-container {
+        display: grid;
+        perspective: 1000px;
+        min-height: 150px;
+      }
+      .flashcard-inner {
+        position: relative;
+        width: 100%;
+        transition: transform 0.6s;
+        transform-style: preserve-3d;
         grid-area: 1 / 1 / 2 / 2;
       }
-      .flashcard-front { z-index: 2; }
+      .flashcard-flipped { transform: rotateY(180deg); }
+      .flashcard-front, .flashcard-back {
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        text-align: center;
+        grid-area: 1 / 1 / 2 / 2;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .flashcard-front { z-index: 2; transform: rotateY(0deg); }
       .flashcard-back { transform: rotateY(180deg); }
 
 
@@ -173,26 +194,26 @@
 <script type="importmap">
 {
   "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "workbox-precaching": "https://aistudiocdn.com/workbox-precaching@^7.3.0",
-    "express": "https://aistudiocdn.com/express@^5.1.0",
-    "mysql2/": "https://aistudiocdn.com/mysql2@^3.15.3/",
     "cors": "https://aistudiocdn.com/cors@^2.8.5",
-    "bcryptjs": "https://aistudiocdn.com/bcryptjs@^3.0.3",
-    "jsonwebtoken": "https://aistudiocdn.com/jsonwebtoken@^9.0.2",
-    "google-auth-library": "https://aistudiocdn.com/google-auth-library@^10.5.0",
-    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10",
-    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
+    "express": "https://aistudiocdn.com/express@^5.1.0",
     "path": "https://aistudiocdn.com/path@^0.12.7",
-    "url": "https://aistudiocdn.com/url@^0.11.4",
-    "crypto": "https://aistudiocdn.com/crypto@^1.0.1",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "xml2js": "https://aistudiocdn.com/xml2js@^0.6.2",
-    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
     "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0",
+    "bcryptjs": "https://aistudiocdn.com/bcryptjs@^3.0.3",
+    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10",
+    "crypto": "https://aistudiocdn.com/crypto@^1.0.1",
+    "google-auth-library": "https://aistudiocdn.com/google-auth-library@^10.5.0",
+    "jsonwebtoken": "https://aistudiocdn.com/jsonwebtoken@^9.0.2",
+    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
+    "mysql2/": "https://aistudiocdn.com/mysql2@^3.15.3/",
+    "workbox-precaching": "https://aistudiocdn.com/workbox-precaching@^7.4.0",
+    "xml2js": "https://aistudiocdn.com/xml2js@^0.6.2",
     "music-metadata-browser": "https://aistudiocdn.com/music-metadata-browser@^2.5.11"
   }
 }
