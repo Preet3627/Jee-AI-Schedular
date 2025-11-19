@@ -15,7 +15,7 @@ interface AIParserModalProps {
 }
 
 // FIX: Changed to named export
-const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onPracticeTestReady, onOpenGuide, examType, animationOrigin }) => {
+export const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onPracticeTestReady, onOpenGuide, examType, animationOrigin }) => {
   const { currentUser } = useAuth();
   const theme = currentUser?.CONFIG.settings.theme;
   const [inputText, setInputText] = useState('');
@@ -144,5 +144,3 @@ const AIParserModal: React.FC<AIParserModalProps> = ({ onClose, onDataReady, onP
     </div>
   );
 };
-
-export default AIParserModal;
