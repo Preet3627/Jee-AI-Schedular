@@ -210,12 +210,6 @@ export interface LocalPlaylist {
 
 export type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
-export interface DashboardWidgetItem {
-  id: string;
-  wide: boolean;
-  translucent: boolean;
-}
-
 // Represents the structure of the encrypted JSON blob in the `user_configs` table
 export interface Config {
     WAKE: string;
@@ -242,12 +236,11 @@ export interface Config {
         creditSaver?: boolean; // Use faster, cheaper AI models
         examType?: 'JEE' | 'NEET';
         theme?: 'default' | 'liquid-glass' | 'midnight';
-        // FIX: Changed dashboardLayout to be an array of strings (widget IDs) to match usage.
+        // FIX: The layout is an array of widget ID strings, not complex objects.
         dashboardLayout?: string[];
         dashboardFlashcardDeckIds?: string[];
         musicPlayerWidgetLayout?: 'minimal' | 'expanded';
-        // FIX: Added widgetSettings to support per-widget configurations.
-        widgetSettings?: Record<string, { translucent?: boolean }>;
+        widgetSettings?: Record<string, { translucent?: boolean; wide?: boolean; }>;
     };
 }
 

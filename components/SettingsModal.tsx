@@ -35,7 +35,6 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [examType, setExamType] = useState(settings.examType || 'JEE');
   const [theme, setTheme] = useState(settings.theme || 'default');
   
-  // FIX: dashboardLayout is a string[] of widget keys. This section handles mapping UI presets to that array.
   const WIDGET_KEYS = ['countdown', 'dailyInsight', 'quote', 'music', 'subjectAllocation', 'scoreTrend', 'flashcards', 'readingHours', 'todaysAgenda', 'upcomingExams', 'homework', 'visualizer'];
   const LAYOUT_PRESETS: Record<'default' | 'focus' | 'compact', string[]> = {
     default: WIDGET_KEYS,
@@ -43,6 +42,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
     compact: ['todaysAgenda', 'scoreTrend', 'subjectAllocation', 'readingHours', 'flashcards', 'upcomingExams'],
   };
 
+  // FIX: dashboardLayout is a string[] of widget keys. This section handles mapping UI presets to that array.
   const getPresetFromLayout = (layout: string[] | undefined): 'default' | 'focus' | 'compact' => {
     if (!layout) return 'default';
     const sortedLayout = [...layout].sort();
@@ -86,6 +86,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         isCalendarSyncEnabled: calendarSync,
         examType: examType as 'JEE' | 'NEET',
         theme: theme as 'default' | 'liquid-glass' | 'midnight',
+        // FIX: The dashboardLayout property expects a string array of widget IDs.
         dashboardLayout: LAYOUT_PRESETS[dashboardLayoutPreset],
         dashboardFlashcardDeckIds,
         musicPlayerWidgetLayout: musicPlayerLayout as 'minimal' | 'expanded',

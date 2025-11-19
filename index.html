@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#02040a">
+    <meta name="theme-color" content="#000000">
     <title>JEE Scheduler Pro | AI-Powered Study Planner</title>
     <meta name="description" content="An AI-powered, multilingual weekly scheduler for JEE aspirants, featuring a clean, futuristic UI to optimize study sessions, track performance, and collaborate with peers." />
     <meta name="keywords" content="JEE, IIT-JEE, study planner, AI scheduler, JEE preparation, student dashboard, offline PWA, Google Calendar sync, mock test analysis" />
@@ -36,12 +36,12 @@
         
         /* Default Theme */
         --main-bg: #02040a;
-        --glass-bg: rgba(17, 24, 39, 0.5); /* bg-gray-900 with opacity */
-        --glass-border: rgba(55, 65, 81, 0.4); /* bg-gray-700 with opacity */
+        --glass-bg: rgba(17, 24, 39, 0.5);
+        --glass-border: rgba(55, 65, 81, 0.4);
         --body-bg-image: radial-gradient(ellipse at top, #111827, #02040a 70%);
         --font-sans: 'Inter', sans-serif;
         --modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        --modal-border-radius: 0.75rem; /* rounded-xl */
+        --modal-border-radius: 0.75rem;
 
         /* Customizable Accent Color */
         --accent-color: var(--gradient-cyan);
@@ -55,7 +55,7 @@
 
       .theme-liquid-glass {
         --main-bg: #000000;
-        --glass-bg: rgba(30, 30, 30, 0.6);
+        --glass-bg: rgba(25, 25, 25, 0.5);
         --glass-border: rgba(255, 255, 255, 0.1);
         --body-bg-image: none;
         --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
@@ -138,34 +138,10 @@
       @keyframes tabContentFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
       .tab-content-enter { animation: tabContentFadeIn 0.35s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards; }
       
-      .no-blur .backdrop-blur-sm, .no-blur .backdrop-blur-md, .no-blur .backdrop-blur-lg { backdrop-filter: none; }
-      
-      @keyframes soundbar { 0% { transform: scaleY(0.1); } 25% { transform: scaleY(0.8); } 50% { transform: scaleY(0.3); } 75% { transform: scaleY(1.0); } 100% { transform: scaleY(0.1); } }
-      .soundbar-bar { animation: soundbar 1.5s ease-in-out infinite; }
-
-      .flashcard-container { perspective: 1000px; }
-      .flashcard-inner { position: relative; width: 100%; display: grid; transition: transform 0.6s; transform-style: preserve-3d; }
-      .flashcard-flipped { transform: rotateY(180deg); }
-      .flashcard-front, .flashcard-back { grid-area: 1 / 1; width: 100%; min-height: 200px; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; padding: 1.5rem; border-radius: 0.75rem; text-align: center; }
-      .flashcard-back { transform: rotateY(180deg); }
-
-      /* Countdown Clock Styles */
-      @keyframes running-glow {
-        0% { box-shadow: 0 0 5px #f59e0b, 0 0 10px #f59e0b, 0 0 15px #f59e0b; filter: brightness(1.1); }
-        50% { box-shadow: 0 0 8px #fcd34d, 0 0 16px #fcd34d, 0 0 24px #fcd34d; filter: brightness(1.3); }
-        100% { box-shadow: 0 0 5px #f59e0b, 0 0 10px #f59e0b, 0 0 15px #f59e0b; filter: brightness(1.1); }
+      .no-blur .backdrop-blur-sm, .no-blur .backdrop-blur-md, .no-blur .backdrop-blur-lg {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
       }
-      .segment-active { background-color: #f59e0b; box-shadow: 0 0 4px #f59e0b; opacity: 1; }
-      .segment-inactive { background-color: #374151; opacity: 0.15; }
-      .countdown-imminent .segment-active { animation: running-glow 1.5s infinite; }
-      
-      .fullscreen-player-bg { position: fixed; top: -20px; left: -20px; right: -20px; bottom: -20px; background-size: cover; background-position: center; filter: blur(20px) brightness(0.5); z-index: -1; }
-      
-      .persistent-music-player-progress::-webkit-progress-bar { background-color: rgba(255, 255, 255, 0.1); }
-      .persistent-music-player-progress::-webkit-progress-value { background-color: white; }
-      .persistent-music-player-progress::-moz-progress-bar { background-color: white; }
-
-      @media (display-mode: fullscreen) { body { padding-bottom: 0 !important; } .safe-padding-bottom { padding-bottom: 0 !important; } }
     </style>
   <script type="importmap">
 {
@@ -189,15 +165,16 @@
     "xml2js": "https://aistudiocdn.com/xml2js@^0.6.2",
     "vite": "https://aistudiocdn.com/vite@^7.2.2",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0"
+    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0",
+    "music-metadata-browser": "https://aistudiocdn.com/music-metadata-browser@^2.5.11"
   }
 }
 </script>
 </head>
-  <body class="bg-gray-900">
+  <body>
     <div id="root"></div>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
     <script type="module" src="/index.tsx"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
   </body>
 </html>

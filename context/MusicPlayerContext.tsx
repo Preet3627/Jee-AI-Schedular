@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useRef, useCallback, useEffect } from 'react';
 import { api } from '../api/apiService';
 import { Track } from '../types';
+import * as musicMetadata from 'music-metadata-browser';
 
 interface MusicPlayerContextType {
     audioElement: HTMLAudioElement | null;
@@ -38,6 +39,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     const djDropAudioRef = useRef<HTMLAudioElement | null>(null);
     const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
     const isFirstPlayRef = useRef(true);
+    const currentObjectUrlRef = useRef<string | null>(null);
     
     const initializeAudioContext = useCallback(() => {
         if (!audioContext) {
@@ -56,7 +58,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
     };
 
-    const playTrack = useCallback((track: Track, newTracklist: Track[]) => {
+    const playTrack = useCallback(async (track: Track, newTracklist: Track[]) => {
         initializeAudioContext();
         
         if (audioElementRef.current && audioContext && analyser) {
@@ -66,11 +68,37 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
             }
             isFirstPlayRef.current = false;
             
-            const trackWithArtUrl = { ...track, coverArtUrl: api.getMusicStreamUrl(track.coverArt) };
-            setCurrentTrack(trackWithArtUrl);
             setTracklist(newTracklist);
 
-            const streamUrl = api.getMusicStreamUrl(track.id);
+            let streamUrl: string;
+            let coverArtUrl = 'https://ponsrischool.in/wp-content/uploads/2025/11/Gemini_Generated_Image_ujvnj5ujvnj5ujvn.png'; // Default art
+
+            if (track.isLocal && track.file) {
+                if (currentObjectUrlRef.current) {
+                    URL.revokeObjectURL(currentObjectUrlRef.current);
+                }
+                streamUrl = URL.createObjectURL(track.file);
+                currentObjectUrlRef.current = streamUrl;
+
+                try {
+                    const metadata = await musicMetadata.parseBlob(track.file);
+                    if (metadata.common.picture && metadata.common.picture.length > 0) {
+                        const picture = metadata.common.picture[0];
+                        const blob = new Blob([picture.data], { type: picture.format });
+                        coverArtUrl = URL.createObjectURL(blob);
+                    }
+                } catch (e) {
+                    console.warn("Could not parse metadata for local file", e);
+                }
+
+            } else {
+                 streamUrl = api.getMusicContentUrl(track.id);
+                 coverArtUrl = api.getMusicContentUrl(track.coverArt);
+            }
+
+            const trackWithArtUrl = { ...track, coverArtUrl };
+            setCurrentTrack(trackWithArtUrl);
+
             audioElementRef.current.src = streamUrl;
             audioElementRef.current.crossOrigin = "anonymous";
             
@@ -153,6 +181,9 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({ childre
                 audio.removeEventListener('ended', nextTrack);
                 audio.removeEventListener('timeupdate', () => {});
                 audio.removeEventListener('loadedmetadata', () => {});
+            }
+             if (currentObjectUrlRef.current) {
+                URL.revokeObjectURL(currentObjectUrlRef.current);
             }
         };
     }, [nextTrack]);

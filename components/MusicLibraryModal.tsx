@@ -9,36 +9,25 @@ interface MusicLibraryModalProps {
   onClose: () => void;
 }
 
-interface Album {
-    id: string;
-    name: string;
-    artist: string;
-    coverArt: string;
-    songCount: string;
-}
-
 const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {
     const [isExiting, setIsExiting] = useState(false);
-    const [albums, setAlbums] = useState<Album[]>([]);
     const [tracks, setTracks] = useState<Track[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const { playTrack, currentTrack, isPlaying } = useMusicPlayer();
-    const [activeView, setActiveView] = useState<'albums' | 'tracks'>('albums');
-    const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
-
+    
     useEffect(() => {
         const fetchLibrary = async () => {
             setIsLoading(true);
             setError('');
             try {
-                const data = await api.getMusicLibrary();
-                if (data && data.album) {
-                    setAlbums(Array.isArray(data.album) ? data.album : [data.album]);
+                const data = await api.getMusicFiles('/');
+                if (data && Array.isArray(data)) {
+                    setTracks(data);
                 } else {
-                    setAlbums([]);
-                    if (!data) throw new Error("Music service returned no data.");
+                    setTracks([]);
+                    throw new Error("Music service returned no data.");
                 }
             } catch (err: any) {
                 setError(err.error || "Failed to load music library. Check server configuration and .env file.");
@@ -49,22 +38,32 @@ const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {
         fetchLibrary();
     }, []);
 
-    const fetchAlbumTracks = async (album: Album) => {
-        setIsLoading(true);
-        setError('');
-        setSelectedAlbum(album);
-        setActiveView('tracks');
+    const handleLocalFiles = async () => {
         try {
-            const data = await api.getMusicAlbum(album.id);
-            if (data && data.song) {
-                setTracks(Array.isArray(data.song) ? data.song : [data.song]);
-            } else {
-                setTracks([]);
+            const dirHandle = await (window as any).showDirectoryPicker();
+            const localTracks: Track[] = [];
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'file' && entry.name.match(/\.(mp3|flac|wav|m4a|ogg)$/i)) {
+                    const file = await entry.getFile();
+                    const nameParts = file.name.replace(/\.[^/.]+$/, "").split(' - ');
+                    localTracks.push({
+                        id: file.name, // Use file name as a unique ID for local files
+                        title: nameParts.length > 1 ? nameParts[1] : nameParts[0],
+                        artist: nameParts.length > 1 ? nameParts[0] : 'Unknown Artist',
+                        album: 'Local Files',
+                        track: '1',
+                        coverArt: '',
+                        duration: '0',
+                        size: file.size.toString(),
+                        isLocal: true,
+                        file: file
+                    });
+                }
             }
-        } catch (err: any) {
-            setError("Failed to load album tracks.");
-        } finally {
-            setIsLoading(false);
+            setTracks(prev => [...localTracks, ...prev.filter(t => !t.isLocal)]);
+        } catch (err) {
+            console.error("Error accessing local files:", err);
+            alert("Could not access the folder. Please ensure you've granted permission.");
         }
     };
     
@@ -89,10 +88,9 @@ const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {
                 <div className="flex-grow flex flex-col bg-gray-800/30">
                     <header className="flex-shrink-0 p-4 border-b border-gray-700/50 flex justify-between items-center gap-4">
                         <div className="flex items-center gap-4">
-                           <button className="px-3 py-1.5 text-sm font-semibold rounded-lg text-white bg-red-600 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-white"></div> LIVE</button>
-                           <button className="px-3 py-1.5 text-sm font-semibold rounded-lg text-gray-300 hover:bg-gray-700">NEWS</button>
-                           <button className="px-3 py-1.5 text-sm font-semibold rounded-lg text-white bg-gray-700">POPULAR</button>
-                           <button className="px-3 py-1.5 text-sm font-semibold rounded-lg text-gray-300 hover:bg-gray-700">FEATURED</button>
+                           <button onClick={handleLocalFiles} className="px-3 py-1.5 text-sm font-semibold rounded-lg text-white bg-green-600 flex items-center gap-2">
+                             <Icon name="folder" /> Browse Local Files
+                           </button>
                         </div>
                          <div className="relative">
                             <input
@@ -110,8 +108,10 @@ const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {
                         {!isLoading && !error && (
                             filteredTracks.map(track => (
                                 <div key={track.id} className={`w-full p-2 rounded-lg flex items-center gap-3 transition-colors ${currentTrack?.id === track.id ? 'bg-cyan-600/20' : 'bg-gray-800/50'}`}>
-                                    <button onClick={() => playTrack(track, tracks)} className="relative flex-shrink-0">
-                                        <img src={api.getMusicStreamUrl(track.coverArt)} alt={track.album} className="w-16 h-16 rounded-md object-cover" />
+                                    <button onClick={() => playTrack(track, filteredTracks)} className="relative flex-shrink-0">
+                                        <div className="w-16 h-16 rounded-md bg-gray-700 flex items-center justify-center">
+                                            <Icon name="music" className="w-8 h-8 text-gray-500" />
+                                        </div>
                                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                                             <Icon name={currentTrack?.id === track.id && isPlaying ? 'pause' : 'play'} className="w-8 h-8 text-white" />
                                         </div>
@@ -123,7 +123,7 @@ const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {
                                     <div className="flex-shrink-0 w-2/5">
                                         <StaticWaveform trackId={track.id} />
                                     </div>
-                                    <div className="text-sm text-gray-400 font-mono flex-shrink-0">{Math.floor(Number(track.duration)/60)}:{String(Number(track.duration)%60).padStart(2,'0')}</div>
+                                    <div className="text-sm text-gray-400 font-mono flex-shrink-0">{track.duration}</div>
                                 </div>
                             ))
                         )}
@@ -144,15 +144,6 @@ const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {
                             </button>
                         ))}
                     </div>
-                     <h3 className="font-bold text-white mt-6 mb-4">Following</h3>
-                     <div className="space-y-3">
-                        {['Artist One', 'DJ Two', 'Podcast Three'].map(name => (
-                             <div key={name} className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-gray-600"></div>
-                                <span className="text-sm text-gray-300">{name}</span>
-                             </div>
-                        ))}
-                     </div>
                 </div>
             </div>
         </div>
