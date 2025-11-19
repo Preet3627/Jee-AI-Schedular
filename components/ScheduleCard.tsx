@@ -40,6 +40,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
     const isSynced = 'googleEventId' in cardData && !!cardData.googleEventId;
 
     // FIX: Import `useMemo` from React to resolve the 'Cannot find name' error.
+    // FIX: Changed dependency to `cardData` object to safely access optional `date` property.
     const isToday = useMemo(() => {
         const today = new Date();
         const todayName = today.toLocaleString('en-us', { weekday: 'long' }).toUpperCase();
@@ -47,8 +48,9 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
             return cardData.date === today.toISOString().split('T')[0];
         }
         return cardData.DAY.EN.toUpperCase() === todayName;
-    }, [cardData.DAY.EN, cardData.date]);
+    }, [cardData]);
 
+    // FIX: Changed dependency to `cardData` object to safely access optional `TIME` property.
     useEffect(() => {
         if (!isToday || !('TIME' in cardData) || !cardData.TIME) {
             setCountdownProgress(100);
@@ -83,7 +85,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
         const interval = setInterval(updateProgress, 60000); // Update every minute
         return () => clearInterval(interval);
 
-    }, [cardData.TIME, isToday]);
+    }, [cardData, isToday]);
 
 
     useEffect(() => {

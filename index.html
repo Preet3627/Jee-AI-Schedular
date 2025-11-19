@@ -39,6 +39,9 @@
         --glass-bg: rgba(17, 24, 39, 0.5); /* bg-gray-900 with opacity */
         --glass-border: rgba(55, 65, 81, 0.4); /* bg-gray-700 with opacity */
         --body-bg-image: radial-gradient(ellipse at top, #111827, #02040a 70%);
+        --font-sans: 'Inter', sans-serif;
+        --modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        --modal-border-radius: 0.75rem; /* rounded-xl */
 
         /* Customizable Accent Color */
         --accent-color: var(--gradient-cyan);
@@ -51,10 +54,20 @@
       }
 
       .theme-liquid-glass {
-        --main-bg: #e0f2fe; /* light sky blue */
-        --glass-bg: rgba(255, 255, 255, 0.4);
-        --glass-border: rgba(200, 200, 255, 0.6);
-        --body-bg-image: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);
+        --main-bg: #000000;
+        --glass-bg: rgba(30, 30, 30, 0.6);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --body-bg-image: none;
+        --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        --modal-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        --modal-border-radius: 1rem;
+      }
+      
+      .theme-liquid-glass .modal-content-enter,
+      .theme-liquid-glass .modal-content-exit,
+      .theme-liquid-glass .modal-content-exit-active,
+      .theme-liquid-glass .modal-content-enter-active {
+        border-radius: var(--modal-border-radius);
       }
 
       .theme-midnight {
@@ -68,11 +81,16 @@
         background-color: var(--main-bg);
         background-image: var(--body-bg-image);
         background-attachment: fixed;
+        font-family: var(--font-sans);
       }
 
       .widget-translucent {
         --glass-bg: rgba(17, 24, 39, 0.2);
         --glass-border: rgba(55, 65, 81, 0.2);
+      }
+      .theme-liquid-glass .widget-translucent {
+        --glass-bg: rgba(20, 20, 20, 0.3);
+        --glass-border: rgba(255, 255, 255, 0.1);
       }
       
       .safe-padding-top { padding-top: var(--safe-area-inset-top); }
@@ -85,192 +103,93 @@
       ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
 
-      /* iOS-like Transitions */
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      @keyframes fadeOut {
-        from { opacity: 1; }
-        to { opacity: 0; }
-      }
-      @keyframes scaleIn {
-        from { transform: scale(0.95); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-      }
-      @keyframes scaleOut {
-        from { transform: scale(1); opacity: 1; }
-        to { transform: scale(0.95); opacity: 0; }
-      }
+      /* Transitions */
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+      @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      @keyframes scaleOut { from { transform: scale(1); opacity: 1; } to { transform: scale(0.95); opacity: 0; } }
       
-      /* MCQ Timer Transitions */
-      @keyframes questionFadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes questionFadeOut {
-        from { opacity: 1; transform: translateY(0); }
-        to { opacity: 0; transform: translateY(-10px); }
-      }
+      @keyframes questionFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes questionFadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
       .question-enter { animation: questionFadeIn 0.3s ease-out forwards; }
       .question-exit { animation: questionFadeOut 0.3s ease-out forwards; }
-
-
-      .modal-enter {
-        animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-      .modal-content-enter {
-        animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-      .modal-exit {
-        animation: fadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-      .modal-content-exit {
-        animation: scaleOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
       
-      .popup-menu {
-        transform-origin: top right;
-      }
-      .popup-enter {
-        animation: scaleIn 0.15s ease-out forwards;
-      }
-      .popup-exit {
-        animation: scaleOut 0.15s ease-out forwards;
-      }
+      .modal-enter { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .modal-content-enter { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .modal-exit { animation: fadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .modal-content-exit { animation: scaleOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-      /* Tab Content Transition */
-      @keyframes tabContentFadeIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
+      /* Genie Animation */
+      @keyframes genie-in {
+        0% { clip-path: circle(0%); opacity: 0; }
+        100% { clip-path: circle(150% at var(--clip-origin-x) var(--clip-origin-y)); opacity: 1; }
       }
-      .tab-content-enter {
-        animation: tabContentFadeIn 0.35s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+      @keyframes genie-out {
+        0% { clip-path: circle(150% at var(--clip-origin-x) var(--clip-origin-y)); opacity: 1; }
+        100% { clip-path: circle(0% at var(--clip-origin-x) var(--clip-origin-y)); opacity: 0; }
       }
+      .genie-in { animation: genie-in 0.5s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+      .genie-out { animation: genie-out 0.5s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+
+      .popup-menu { transform-origin: top right; }
+      .popup-enter { animation: scaleIn 0.15s ease-out forwards; }
+      .popup-exit { animation: scaleOut 0.15s ease-out forwards; }
+
+      @keyframes tabContentFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      .tab-content-enter { animation: tabContentFadeIn 0.35s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards; }
       
-      .no-blur .backdrop-blur-sm { backdrop-filter: none; }
-      .no-blur .backdrop-blur-md { backdrop-filter: none; }
-      .no-blur .backdrop-blur-lg { backdrop-filter: none; }
+      .no-blur .backdrop-blur-sm, .no-blur .backdrop-blur-md, .no-blur .backdrop-blur-lg { backdrop-filter: none; }
       
-      /* Music Visualizer Animation */
-      @keyframes soundbar {
-        0% { transform: scaleY(0.1); }
-        25% { transform: scaleY(0.8); }
-        50% { transform: scaleY(0.3); }
-        75% { transform: scaleY(1.0); }
-        100% { transform: scaleY(0.1); }
-      }
+      @keyframes soundbar { 0% { transform: scaleY(0.1); } 25% { transform: scaleY(0.8); } 50% { transform: scaleY(0.3); } 75% { transform: scaleY(1.0); } 100% { transform: scaleY(0.1); } }
+      .soundbar-bar { animation: soundbar 1.5s ease-in-out infinite; }
 
-      .soundbar-bar {
-        animation: soundbar 1.5s ease-in-out infinite;
-      }
+      .flashcard-container { perspective: 1000px; }
+      .flashcard-inner { position: relative; width: 100%; display: grid; transition: transform 0.6s; transform-style: preserve-3d; }
+      .flashcard-flipped { transform: rotateY(180deg); }
+      .flashcard-front, .flashcard-back { grid-area: 1 / 1; width: 100%; min-height: 200px; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; padding: 1.5rem; border-radius: 0.75rem; text-align: center; }
+      .flashcard-back { transform: rotateY(180deg); }
 
-      /* Flashcard Flip Animation */
-      .flashcard-container {
-        perspective: 1000px;
+      /* Countdown Clock Styles */
+      @keyframes running-glow {
+        0% { box-shadow: 0 0 5px #f59e0b, 0 0 10px #f59e0b, 0 0 15px #f59e0b; filter: brightness(1.1); }
+        50% { box-shadow: 0 0 8px #fcd34d, 0 0 16px #fcd34d, 0 0 24px #fcd34d; filter: brightness(1.3); }
+        100% { box-shadow: 0 0 5px #f59e0b, 0 0 10px #f59e0b, 0 0 15px #f59e0b; filter: brightness(1.1); }
       }
-      .flashcard-inner {
-        position: relative;
-        width: 100%;
-        display: grid;
-        transition: transform 0.6s;
-        transform-style: preserve-3d;
-      }
-      .flashcard-flipped {
-        transform: rotateY(180deg);
-      }
-      .flashcard-front, .flashcard-back {
-        grid-area: 1 / 1;
-        width: 100%;
-        min-height: 200px; /* Adjusted for widget */
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1.5rem;
-        border-radius: 0.75rem;
-        text-align: center;
-      }
-      .flashcard-back {
-        transform: rotateY(180deg);
-      }
-
-      /* New Countdown Clock Styles */
-      .segment-active {
-        background-color: #f59e0b; /* amber-500 */
-        box-shadow: 0 0 8px #f59e0b, 0 0 16px #f59e0b;
-        opacity: 1;
-      }
-      .segment-inactive {
-        background-color: #374151; /* gray-700 */
-        opacity: 0.15;
-      }
+      .segment-active { background-color: #f59e0b; box-shadow: 0 0 4px #f59e0b; opacity: 1; }
+      .segment-inactive { background-color: #374151; opacity: 0.15; }
+      .countdown-imminent .segment-active { animation: running-glow 1.5s infinite; }
       
-      /* Global Music Visualizer "Notch" */
-      .global-visualizer-notch {
-        top: calc(var(--safe-area-inset-top, 0px) + 8px);
-      }
+      .fullscreen-player-bg { position: fixed; top: -20px; left: -20px; right: -20px; bottom: -20px; background-size: cover; background-position: center; filter: blur(20px) brightness(0.5); z-index: -1; }
       
-      /* Fullscreen Music Player Background */
-      .fullscreen-player-bg {
-        position: fixed;
-        top: -20px;
-        left: -20px;
-        right: -20px;
-        bottom: -20px;
-        background-size: cover;
-        background-position: center;
-        filter: blur(20px) brightness(0.5);
-        z-index: -1;
-      }
-      
-      /* Persistent Music Player */
-      .persistent-music-player-progress::-webkit-progress-bar {
-        background-color: rgba(255, 255, 255, 0.1);
-      }
-      .persistent-music-player-progress::-webkit-progress-value {
-        background-color: white;
-      }
-      .persistent-music-player-progress::-moz-progress-bar {
-        background-color: white;
-      }
+      .persistent-music-player-progress::-webkit-progress-bar { background-color: rgba(255, 255, 255, 0.1); }
+      .persistent-music-player-progress::-webkit-progress-value { background-color: white; }
+      .persistent-music-player-progress::-moz-progress-bar { background-color: white; }
 
-
-      /* Fix for PWA fullscreen bottom space */
-      @media (display-mode: fullscreen) {
-        body {
-          /* Ensure no padding is added by safe-area when in true fullscreen */
-          padding-bottom: 0 !important;
-        }
-        .safe-padding-bottom {
-          padding-bottom: 0 !important;
-        }
-      }
+      @media (display-mode: fullscreen) { body { padding-bottom: 0 !important; } .safe-padding-bottom { padding-bottom: 0 !important; } }
     </style>
   <script type="importmap">
 {
   "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "workbox-precaching": "https://aistudiocdn.com/workbox-precaching@^7.3.0",
     "express": "https://aistudiocdn.com/express@^5.1.0",
-    "mysql2/": "https://aistudiocdn.com/mysql2@^3.15.3/",
     "cors": "https://aistudiocdn.com/cors@^2.8.5",
-    "bcryptjs": "https://aistudiocdn.com/bcryptjs@^3.0.3",
-    "jsonwebtoken": "https://aistudiocdn.com/jsonwebtoken@^9.0.2",
-    "google-auth-library": "https://aistudiocdn.com/google-auth-library@^10.5.0",
-    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10",
     "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
     "path": "https://aistudiocdn.com/path@^0.12.7",
     "url": "https://aistudiocdn.com/url@^0.11.4",
     "crypto": "https://aistudiocdn.com/crypto@^1.0.1",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "xml2js": "https://aistudiocdn.com/xml2js@^0.6.2",
     "vite": "https://aistudiocdn.com/vite@^7.2.2",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0"
+    "google-auth-library": "https://aistudiocdn.com/google-auth-library@^10.5.0",
+    "bcryptjs": "https://aistudiocdn.com/bcryptjs@^3.0.3",
+    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0",
+    "workbox-precaching": "https://aistudiocdn.com/workbox-precaching@^7.3.0",
+    "xml2js": "https://aistudiocdn.com/xml2js@^0.6.2",
+    "jsonwebtoken": "https://aistudiocdn.com/jsonwebtoken@^9.0.2",
+    "mysql2/": "https://aistudiocdn.com/mysql2@^3.15.3/",
+    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10"
   }
 }
 </script>

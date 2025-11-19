@@ -24,7 +24,6 @@ const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    // FIX: Add `isPlaying` to the destructuring of `useMusicPlayer` to resolve the 'Cannot find name' error.
     const { playTrack, currentTrack, isPlaying } = useMusicPlayer();
     const [activeView, setActiveView] = useState<'albums' | 'tracks'>('albums');
     const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);

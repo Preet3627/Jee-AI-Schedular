@@ -25,8 +25,20 @@ To ensure formulas and chemical equations are rendered correctly, use the follow
 | **Square Root**| `sqrt(...)` | `sqrt(b^2 - 4ac)` | sqrt(b² - 4ac) |
 
 ---
-## 3. Output Formats: Deep Link vs. JSON Block
-Your response should be a single JSON object. For quick actions via chat, this can be wrapped in a deep link. For large data imports, provide it as a raw JSON code block.
+## 3. Custom Widgets
+You can instruct the AI to generate content for a custom widget on the dashboard. This is useful for creating quick reference panels, notes, or lists. The output should be a simple title and markdown-compatible content.
+
+**Example Request:** "Create a custom widget summarizing the key differences between Mitosis and Meiosis."
+
+**Example JSON Output:**
+```json
+{
+  "custom_widget": {
+    "title": "Mitosis vs. Meiosis",
+    "content": "* **Mitosis:** Somatic cells, 1 division, 2 diploid (2n) daughter cells.\n* **Meiosis:** Germ cells, 2 divisions, 4 haploid (n) daughter cells."
+  }
+}
+```
 
 ---
 ## 4. Full JSON Schema (for Code Blocks)
@@ -53,31 +65,6 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `q_ranges`| string | **For `HOMEWORK`**. E.g., `"1-15; 20-25"`. |
 | `answers`| string | **For `HOMEWORK`**. Stringified JSON, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
 
-**IMPORTANT HOMEWORK EXAMPLE:** A full homework task with all fields.
-```json
-{
-  "schedules": [
-    {
-      "id": "H54321",
-      "type": "HOMEWORK",
-      "day": "THURSDAY",
-      "time": "19:30",
-      "title": "**Biology**: *Genetics Practice*",
-      "detail": "[size=16]Solve questions on Mendelian Genetics.[/size] Remember the phenotypic ratio for a dihybrid cross is `9:3:3:1`.",
-      "subject": "BIOLOGY",
-      "category": "Level-2",
-      "q_ranges": "Module 3: Q25-40",
-      "answers": "{\"25\":\"A\", \"26\":\"C\", \"27\":\"D\", \"28\":\"B\"}"
-    }
-  ],
-  "exams": [],
-  "metrics": [],
-  "practice_test": null,
-  "flashcard_deck": null,
-  "homework_assignment": null
-}
-```
-
 ### `flashcard_deck` Object Schema
 | Key | Type | Description |
 |---|---|---|
@@ -102,40 +89,7 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `type` | string | `"MCQ"` or `"NUM"`. |
 
 ---
-## 5. Generating Flashcard Decks
-To create a flashcard deck, provide a JSON object with the `flashcard_deck` key.
-
-**Example Request:** "Create flashcards for Biology chapter on the Cell Cycle"
-
-**Example JSON Output:**
-```json
-{
-  "schedules": [],
-  "exams": [],
-  "metrics": [],
-  "practice_test": null,
-  "flashcard_deck": {
-    "name": "Cell Cycle & Mitosis",
-    "subject": "BIOLOGY",
-    "chapter": "Cell Cycle",
-    "cards": [
-      {
-        "front": "What are the four main stages of the cell cycle?",
-        "back": "The four main stages are Gap 1 (G1), Synthesis (S), Gap 2 (G2), and Mitosis (M)."
-      },
-      {
-        "front": "What is the key event during the S phase?",
-        "back": "The key event is DNA replication, where the cell synthesizes an identical copy of its DNA."
-      }
-    ]
-  },
-  "homework_assignment": null
-}
-```
----
-## 6. Scientific Symbols & Diagrams
-
-### A. Symbols
+## 5. Scientific Symbols & Diagrams
 You can render common scientific and mathematical symbols using LaTeX-like commands in any text field.
 
 | Command    | Renders As |
@@ -150,5 +104,4 @@ You can render common scientific and mathematical symbols using LaTeX-like comma
 | `\delta`   | δ          |
 | `\Delta`   | Δ          |
 
-### B. Diagrams
-The system **cannot render image-based diagrams** directly from your JSON output. However, you can create textual descriptions or ASCII art to represent diagrams (e.g., Punnett squares, floral diagrams), which will be rendered in a pre-formatted block.
+**Diagrams:** The system **cannot render image-based diagrams**. However, you can create textual descriptions or ASCII art to represent diagrams (e.g., Punnett squares, floral diagrams), which will be rendered in a pre-formatted block.

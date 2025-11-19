@@ -239,7 +239,8 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnl
                 </div>
                 <div>
                   <label className="text-sm font-bold text-gray-400">Category</label>
-                  <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className={inputClass}>
+                  {/* FIX: Cast the select's value to the correct literal type in the onChange handler. */}
+                  <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as 'Custom' | 'Level-1' | 'Level-2' | 'Classroom-Discussion' | 'PYQ'})} className={inputClass}>
                       <option value="Custom">Custom</option>
                       <option value="Level-1">Level-1</option>
                       <option value="Level-2">Level-2</option>

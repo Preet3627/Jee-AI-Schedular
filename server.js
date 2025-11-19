@@ -8,10 +8,8 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// FIX: Correct import path for generateAvatar.
 import { generateAvatar } from './utils/generateAvatar.js';
 import crypto from 'crypto';
-// FIX: Correct import for GoogleGenAI to resolve server crash. FunctionDeclaration is a type and not needed in JS.
 import { GoogleGenAI, Type } from '@google/genai';
 import { parseStringPromise } from 'xml2js';
 import { knowledgeBase } from './data/knowledgeBase.js';
@@ -364,12 +362,11 @@ const getUserData = async (userId) => {
     
     let [[userConfigRow]] = await pool.query('SELECT config FROM user_configs WHERE user_id = ?', [userId]);
     
-    // FIX: If a user has no config, create a default one on-the-fly.
     if (!userConfigRow) {
         const defaultConfig = {
             WAKE: '06:00', SCORE: '0/300', WEAK: [], UNACADEMY_SUB: false,
             settings: { accentColor: '#0891b2', blurEnabled: true, mobileLayout: 'standard', forceOfflineMode: false, perQuestionTime: 180 },
-            RESULTS: [], EXAMS: [], STUDY_SESSIONS: [], DOUBTS: [], flashcardDecks: [],
+            RESULTS: [], EXAMS: [], STUDY_SESSIONS: [], DOUBTS: [], flashcardDecks: [], customWidgets: []
         };
         const encryptedDefaultConfig = encrypt(JSON.stringify(defaultConfig));
         await pool.query(
@@ -1217,26 +1214,31 @@ apiRouter.get('/music/proxy', authMiddleware, async (req, res) => {
     const ampachePass = process.env.NEXTCLOUD_AMPACHE_PASS;
 
     if (!ampacheUrl || !ampacheUser || !ampachePass) {
-        return res.status(503).json({ error: 'Music service is not configured.' });
+        return res.status(503).json({ error: 'Music service is not configured. Please set NEXTCLOUD_AMPACHE variables in the .env file.' });
     }
 
     try {
         const timestamp = Math.floor(Date.now() / 1000);
-        const key = crypto.createHash('md5').update(ampachePass).digest('hex');
-        const passphrase = crypto.createHash('sha256').update(key + timestamp).digest('hex');
+        // Correct Ampache handshake: passphrase = sha256(timestamp + sha256(password))
+        const key = crypto.createHash('sha256').update(ampachePass).digest('hex');
+        const passphrase = crypto.createHash('sha256').update(timestamp + key).digest('hex');
         
         const action = req.query.action || 'ping';
         
-        let targetUrl = `${ampacheUrl}?action=${action}&auth=${passphrase}&time=${timestamp}&user=${ampacheUser}`;
+        let targetUrl = new URL(ampacheUrl);
+        targetUrl.searchParams.set('action', action);
+        targetUrl.searchParams.set('auth', passphrase);
+        targetUrl.searchParams.set('time', timestamp);
+        targetUrl.searchParams.set('user', ampacheUser);
         
         // Forward other query params if they exist
         Object.keys(req.query).forEach(key => {
             if (key !== 'action') {
-                targetUrl += `&${key}=${encodeURIComponent(req.query[key])}`;
+                targetUrl.searchParams.set(key, req.query[key]);
             }
         });
         
-        const response = await fetch(targetUrl);
+        const response = await fetch(targetUrl.toString());
         if (!response.ok) throw new Error(`Ampache server responded with ${response.status}`);
         
         const xmlData = await response.text();
@@ -1821,7 +1823,6 @@ apiRouter.post('/ai/chat', authMiddleware, async (req, res) => {
         
         const contents = [];
         if (history) {
-            // FIX: Filter out any messages with empty or invalid parts to prevent API errors.
             const validHistory = history.filter(msg => msg.parts && msg.parts[0] && typeof msg.parts[0].text === 'string' && msg.parts[0].text.trim() !== '');
             contents.push(...validHistory);
         }

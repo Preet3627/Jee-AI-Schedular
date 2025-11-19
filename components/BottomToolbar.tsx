@@ -1,7 +1,9 @@
 import React from 'react';
 import Icon, { IconName } from './Icon';
+// FIX: Import ActiveTab from the central types file.
+import { ActiveTab } from '../types';
 
-type ActiveTab = 'dashboard' | 'schedule' | 'planner' | 'performance' | 'doubts' | 'exams' | 'flashcards' | 'material';
+// FIX: Removed local ActiveTab type definition.
 
 interface BottomToolbarProps {
     activeTab: ActiveTab;

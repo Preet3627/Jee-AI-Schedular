@@ -1,15 +1,7 @@
-
-
-
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
-// FIX: Corrected import path for mockData.
 import { studentDatabase } from './data/mockData';
-// FIX: Corrected import path to point to apiService.
 import { api } from './api/apiService';
 
 import Header from './components/Header';
@@ -27,7 +19,6 @@ import { useMusicPlayer } from './context/MusicPlayerContext';
 import FullScreenMusicPlayer from './components/FullScreenMusicPlayer';
 import PersistentMusicPlayer from './components/PersistentMusicPlayer';
 
-// FIX: Add global declarations for Google API objects to resolve TypeScript errors.
 declare global {
   interface Window {
     gapi: any;
@@ -60,17 +51,11 @@ const App: React.FC = () => {
     }, []);
 
     // --- Deep Link & Voice Action Integration ---
-    // This effect is the entry point for deep links, which are the web equivalent of native "App Actions".
-    // When Google Assistant (or Gemini) processes a voice command, it opens a URL with `action` and `data`
-    // query parameters (e.g., `.../?action=new_schedule&data=...`). This code parses that URL,
-    // validates the data, and triggers the appropriate UI action, such as opening a pre-filled modal.
-    // This is how the PWA integrates with voice commands without needing native code.
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('reset-token');
         if (token) {
             setResetToken(token);
-            // Clean the URL
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -80,7 +65,6 @@ const App: React.FC = () => {
 
         if (action === 'view_task' && taskId) {
             setDeepLinkAction({ action: 'view_task', data: { id: taskId } });
-             // Clean the URL
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (action && dataStr) {
             const handleDeepLink = async (encodedData: string) => {
@@ -101,7 +85,6 @@ const App: React.FC = () => {
                         alert("The data from the link is malformed and could not be automatically corrected. Please check the source.");
                     }
                 } finally {
-                     // Clean the URL so the action doesn't re-trigger on refresh
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
             };
@@ -129,7 +112,6 @@ const App: React.FC = () => {
 
     const handleGapiError = (error: any, contextMessage?: string) => {
         console.error("Google API Error:", error);
-        // Check for GAPI's error structure as well as general fetch error status
         const status = error.status || error.code || (error.result && error.result.error && error.result.error.code);
         if (status === 401 || status === 403) {
             alert("Your Google session has expired or permissions have changed. Please sign in again to use Google services.");
@@ -171,7 +153,6 @@ const App: React.FC = () => {
 
     const handleDeleteTask = async (taskId: string) => {
         const taskToDelete = currentUser?.SCHEDULE_ITEMS.find(t => t.ID === taskId);
-        // FIX: Check if `taskToDelete` exists and has the `googleEventId` property before accessing it, as not all `ScheduleItem` types have it.
         if (currentUser?.CONFIG.isCalendarSyncEnabled && googleAuthStatus === 'signed_in' && taskToDelete && 'googleEventId' in taskToDelete && taskToDelete.googleEventId) {
             try {
                 setIsSyncing(true);
@@ -194,7 +175,6 @@ const App: React.FC = () => {
             const allTasks = currentUser.SCHEDULE_ITEMS;
             
             for (const task of allTasks) {
-                // Only sync timed tasks that aren't already synced
                 if (!('googleEventId' in task && task.googleEventId) && 'TIME' in task && task.TIME) {
                     try {
                         const eventId = await gcal.createEvent(task);
@@ -240,7 +220,6 @@ const App: React.FC = () => {
     };
     
     const onLogStudySession = async (session: Omit<StudySession, 'date'>) => {
-        // This logic should be on the backend, but for now we mimic it on the client
         if (!currentUser) return;
         const newSession = { ...session, date: new Date().toISOString().split('T')[0] };
         const updatedUser = {...currentUser, STUDY_SESSIONS: [...currentUser.STUDY_SESSIONS, newSession]};
@@ -286,15 +265,12 @@ const App: React.FC = () => {
     const handleBatchImport = async (data: { schedules: ScheduleItem[], exams: ExamData[], results: ResultData[], weaknesses: string[] }) => {
         if (!currentUser) return;
         
-        // Deep clone to avoid mutation issues with React state
         const updatedUser = JSON.parse(JSON.stringify(currentUser));
 
-        // Add new items
         updatedUser.SCHEDULE_ITEMS.push(...data.schedules);
         updatedUser.EXAMS.push(...data.exams);
         updatedUser.RESULTS.push(...data.results);
 
-        // Update config with new weaknesses and latest score
         const newWeaknesses = new Set([...updatedUser.CONFIG.WEAK, ...data.weaknesses]);
         data.results.forEach(r => {
             r.MISTAKES.forEach(m => newWeaknesses.add(m));
@@ -302,12 +278,10 @@ const App: React.FC = () => {
         updatedUser.CONFIG.WEAK = Array.from(newWeaknesses);
 
         if (data.results.length > 0) {
-            // Find the result with the latest date to set as the current score
             const sortedResults = [...updatedUser.RESULTS].sort((a, b) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime());
             updatedUser.CONFIG.SCORE = sortedResults[0].SCORE;
         }
 
-        // A single sync with the backend for performance
         await api.fullSync(updatedUser);
         await refreshUser();
 
@@ -333,13 +307,11 @@ const App: React.FC = () => {
     const onBackupToDrive = async () => {
         if (!currentUser || googleAuthStatus !== 'signed_in') return;
         try {
-            // This syncs the non-sensitive parts of the user data
             const backupData = {
                 SCHEDULE_ITEMS: currentUser.SCHEDULE_ITEMS,
                 RESULTS: currentUser.RESULTS,
                 EXAMS: currentUser.EXAMS,
                 STUDY_SESSIONS: currentUser.STUDY_SESSIONS,
-                // CONFIG excludes sensitive settings
                 CONFIG: {
                     WEAK: currentUser.CONFIG.WEAK,
                     flashcardDecks: currentUser.CONFIG.flashcardDecks,
@@ -347,7 +319,6 @@ const App: React.FC = () => {
             };
             const fileId = await gdrive.uploadData(JSON.stringify(backupData), currentUser.CONFIG.googleDriveFileId);
             const syncTime = new Date().toISOString();
-            // We only update the sync time and fileId, not the whole config
             await api.updateConfig({ googleDriveFileId: fileId, driveLastSync: syncTime });
             refreshUser();
             alert('Backup successful!');
@@ -384,7 +355,6 @@ const App: React.FC = () => {
     };
 
     const checkBackend = useCallback(async (isInitialCheck: boolean) => {
-        // FIX: Replaced NodeJS.Timeout with ReturnType<typeof setTimeout> for browser compatibility.
         let statusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
         if (isInitialCheck && !currentUser) {
             statusCheckTimeout = setTimeout(() => {
@@ -463,13 +433,11 @@ const App: React.FC = () => {
                     },
                     (error) => {
                         console.error("GAPI Init Error:", error);
-                        // FIX: Use JSON.stringify for better error logging
                         console.error("GAPI Init Error Object", JSON.stringify(error, null, 2));
                         setGoogleAuthStatus('unconfigured');
                     }
                 );
             } else if (googleClientId) {
-                 // If client ID is present but gapi/google aren't, wait for them.
                 const checkScripts = setInterval(() => {
                     if (window.gapi && window.google) {
                         clearInterval(checkScripts);
@@ -485,7 +453,6 @@ const App: React.FC = () => {
 
     const handleSelectExamType = async (examType: 'JEE' | 'NEET') => {
         if (!currentUser) return;
-        // Create a deep copy to avoid direct state mutation
         const newSettings = JSON.parse(JSON.stringify(currentUser.CONFIG.settings));
         newSettings.examType = examType;
         await handleUpdateConfig({ settings: newSettings });
@@ -505,7 +472,6 @@ const App: React.FC = () => {
             return <ConfigurationErrorScreen onRetryConnection={() => checkBackend(false)} backendStatus={backendStatus} />;
         }
         
-        // If user is loaded (from cache or fetch), show their dashboard.
         if (currentUser) {
             const dashboardUser = currentUser;
             const useToolbarLayout = isMobile && dashboardUser.CONFIG.settings.mobileLayout === 'toolbar';
@@ -526,7 +492,6 @@ const App: React.FC = () => {
             );
         }
         
-        // Show demo admin dashboard if in demo mode
         if (isDemoMode && userRole === 'admin') {
              return (
                  <div style={{'--accent-color': '#0891b2'} as React.CSSProperties} className="safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom">
@@ -538,12 +503,10 @@ const App: React.FC = () => {
             );
         }
 
-        // If no user and offline after the grace period, show the offline screen.
         if (backendStatus === 'offline' && !isDemoMode) {
             return <BackendOfflineScreen onSelectDemoUser={enterDemoMode} onRetryConnection={() => checkBackend(false)} backendStatus={backendStatus} />;
         }
 
-        // Otherwise, show the authentication screen (which might initially show buttons before switching to offline).
         return <AuthScreen backendStatus={backendStatus} googleClientId={googleClientId} resetToken={resetToken} />;
     };
 

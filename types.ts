@@ -152,7 +152,6 @@ export interface StudySession {
   questions_skipped: number[];
 }
 
-// FIX: Added the 'Track' interface and exported it to be used across the application.
 export interface Track {
   id: string;
   title: string;
@@ -195,6 +194,14 @@ export interface PracticeQuestion {
   type: 'MCQ' | 'NUM';
 }
 
+export interface CustomWidget {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
+
 // Represents the structure of the encrypted JSON blob in the `user_configs` table
 export interface Config {
     WAKE: string;
@@ -208,6 +215,7 @@ export interface Config {
     geminiApiKey?: string; // This is stored encrypted on the backend ONLY.
     flashcardDecks?: FlashcardDeck[];
     pinnedMaterials?: string[]; // Array of item paths
+    customWidgets?: CustomWidget[];
     settings: {
         accentColor: string;
         blurEnabled: boolean;
@@ -219,22 +227,11 @@ export interface Config {
         creditSaver?: boolean; // Use faster, cheaper AI models
         examType?: 'JEE' | 'NEET';
         theme?: 'default' | 'liquid-glass' | 'midnight';
-        dashboardLayout?: string[]; // Array of widget keys/IDs
-        widgetSettings?: { [widgetId: string]: { translucent?: boolean } };
+        // FIX: Changed dashboardLayout to string[] and added widgetSettings to match implementation.
+        dashboardLayout?: string[];
+        widgetSettings?: { [key: string]: { translucent?: boolean; wide?: boolean; } };
         dashboardFlashcardDeckIds?: string[];
         musicPlayerWidgetLayout?: 'minimal' | 'expanded';
-        dashboardWidgets?: {
-            [key: string]: boolean;
-            countdown: boolean;
-            dailyInsight: boolean;
-            subjectAllocation: boolean;
-            scoreTrend: boolean;
-            flashcards: boolean;
-            readingHours: boolean;
-            todaysAgenda: boolean;
-            upcomingExams: boolean;
-            homework: boolean;
-        }
     };
 }
 
@@ -254,7 +251,6 @@ export interface StudentData {
     // Data from other tables, combined by the backend
     CONFIG: Config;
     SCHEDULE_ITEMS: ScheduleItem[];
-    // FIX: Moved these properties from Config to StudentData to match backend response
     RESULTS: ResultData[];
     EXAMS: ExamData[];
     STUDY_SESSIONS: StudySession[];

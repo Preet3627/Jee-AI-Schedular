@@ -25,25 +25,20 @@ To ensure formulas and chemical equations are rendered correctly, use the follow
 | **Square Root**| `sqrt(...)` | `sqrt(b^2 - 4ac)` | sqrt(b² - 4ac) |
 
 ---
-## 3. Output Formats: Deep Link vs. JSON Block
-Your response should be a single JSON object. For quick actions via chat, this can be wrapped in a deep link. For large data imports, provide it as a raw JSON code block.
+## 3. Custom Widgets
+You can instruct the AI to generate content for a custom widget on the dashboard. This is useful for creating quick reference panels, notes, or lists. The output should be a simple title and markdown-compatible content.
 
-### A. Deep Links (for Quick, Single Actions)
-- **Use Case:** Creating a *single* task, logging a *single* score.
-- **URL Structure:** `https://jee.ponsrischool.in/?action={ACTION_TYPE}&data={URL_ENCODED_JSON}`
-  - `{ACTION_TYPE}`: `new_schedule`, `log_score`, `create_homework`, `flashcard_review`.
-  - `{URL_ENCODED_JSON}`: A URL-encoded JSON object for one task (see schema below).
+**Example Request:** "Create a custom widget with the key formulas for Kinematics."
 
-**Deep Link `data` object schema:**
-| Key | Type | Description |
-|---|---|---|
-| `subject` | string | `Physics`, `Chemistry`, `Math`. |
-| `topic` | string | Specific chapter or concept. |
-| `date` | string | `YYYY-MM-DD`. |
-| `time` | string | **For `new_schedule` & `flashcard_review`**. `HH:MM` format. |
-| `details`| string | Notes for the task. |
-| `score` | number | **For `log_score`**. |
-| `max_score`| number | **For `log_score`**. |
+**Example JSON Output:**
+```json
+{
+  "custom_widget": {
+    "title": "Kinematics Formulas",
+    "content": "1. `v = u + at`\n2. `s = ut + 1/2 * at^2`\n3. `v^2 = u^2 + 2as`"
+  }
+}
+```
 
 ---
 ## 4. Full JSON Schema (for Code Blocks)
@@ -70,31 +65,6 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `q_ranges`| string | **For `HOMEWORK`**. E.g., `"1-15; 20-25"`. |
 | `answers`| string | **For `HOMEWORK`**. Stringified JSON, e.g., `"{\"1\":\"A\", \"2\":\"C\"}"`. |
 
-**IMPORTANT HOMEWORK EXAMPLE:** A full homework task with all fields.
-```json
-{
-  "schedules": [
-    {
-      "id": "H12345",
-      "type": "HOMEWORK",
-      "day": "WEDNESDAY",
-      "time": "20:00",
-      "title": "**Physics PYQs**: *Rotational Motion*",
-      "detail": "[size=16]Complete the following Previous Year Questions.[/size] Focus on torque and angular momentum formulas like `τ = I * α`.",
-      "subject": "PHYSICS",
-      "category": "PYQ",
-      "q_ranges": "2022: Q5, Q8; 2021: Q12-15",
-      "answers": "{\"5\":\"A\", \"8\":\"C\", \"12\":\"D\", \"13\":\"B\", \"14\":\"A\", \"15\":\"32.5\"}"
-    }
-  ],
-  "exams": [],
-  "metrics": [],
-  "practice_test": null,
-  "flashcard_deck": null,
-  "homework_assignment": null
-}
-```
-
 ### `flashcard_deck` Object Schema
 | Key | Type | Description |
 |---|---|---|
@@ -118,44 +88,8 @@ Your entire output must be a single JSON object with these top-level keys. Provi
 | `options`| array | For `MCQ`, array of 4 strings. For `NUM`, `[]`. |
 | `type` | string | `"MCQ"` or `"NUM"`. |
 
-**NCERT-Specific Requests:**
-If a user asks for homework from an NCERT textbook (e.g., "schedule NCERT Physics chapter 2, questions 1 to 5"), you must generate a `homework_assignment` using your internal knowledge base to find the question text, answers, and solutions.
-
 ---
-## 5. Generating Flashcard Decks
-To create a flashcard deck, provide a JSON object with the `flashcard_deck` key.
-
-**Example Request:** "Create flashcards for Physics chapter on Thermodynamics"
-
-**Example JSON Output:**
-```json
-{
-  "schedules": [],
-  "exams": [],
-  "metrics": [],
-  "practice_test": null,
-  "flashcard_deck": {
-    "name": "Thermodynamics Basics",
-    "subject": "PHYSICS",
-    "chapter": "Thermodynamics",
-    "cards": [
-      {
-        "front": "What is the First Law of Thermodynamics?",
-        "back": "The change in internal energy of a system is equal to the heat added to the system minus the work done by the system (ΔU = q + w)."
-      },
-      {
-        "front": "What is Enthalpy (ΔH)?",
-        "back": "Enthalpy is the heat change of a reaction at constant pressure. A negative ΔH indicates an exothermic reaction."
-      }
-    ]
-  },
-  "homework_assignment": null
-}
-```
----
-## 6. Scientific Symbols & Diagrams
-
-### A. Symbols
+## 5. Scientific Symbols & Diagrams
 You can render common scientific and mathematical symbols using LaTeX-like commands in any text field.
 
 | Command    | Renders As |
@@ -170,20 +104,4 @@ You can render common scientific and mathematical symbols using LaTeX-like comma
 | `\delta`   | δ          |
 | `\Delta`   | Δ          |
 
-### B. Diagrams
-The system **cannot render image-based diagrams** directly from your JSON output. However, you can create textual descriptions or ASCII art to represent diagrams, which will be rendered in a pre-formatted block.
-
-**Example for a Free Body Diagram:**
-"Create a textual diagram for a block on an inclined plane. Show the normal force (N) perpendicular to the surface, gravity (mg) pointing straight down, and friction (f) pointing up the incline."
-
-Your response inside a `detail` field could be:
-```
-      /N
-     /
-    /
-   /______
-  / \      \
- /   \ mg    \
-/_____\_______\
-   f
-```
+**Diagrams:** The system **cannot render image-based diagrams**. However, you can create textual descriptions or ASCII art to represent diagrams (e.g., Free Body Diagrams), which will be rendered in a pre-formatted block.

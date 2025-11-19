@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion } from '../types';
+// FIX: Import ActiveTab from the central types file.
+import { StudentData, ScheduleItem, ActivityData, Config, StudySession, HomeworkData, ExamData, ResultData, DoubtData, FlashcardDeck, Flashcard, StudyMaterialItem, ScheduleCardData, PracticeQuestion, ActiveTab } from '../types';
 import ScheduleList from './ScheduleList';
 import Icon, { IconName } from './Icon';
 // FIX: Corrected import path for component.
@@ -62,7 +63,7 @@ import MotivationalQuoteWidget from './widgets/MotivationalQuoteWidget';
 import MusicPlayerWidget from './widgets/MusicPlayerWidget';
 import MusicLibraryModal from './MusicLibraryModal';
 
-type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
+// FIX: Removed local ActiveTab type definition. It's now imported from types.ts.
 
 interface StudentDashboardProps {
     student: StudentData;
