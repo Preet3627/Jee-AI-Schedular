@@ -54,10 +54,10 @@ import GoogleAssistantGuideModal from './GoogleAssistantGuideModal';
 import DeepLinkConfirmationModal from './DeepLinkConfirmationModal';
 import AIGuideModal from './AIGuideModal';
 import { useAuth } from '../context/AuthContext';
-import FlashcardWidget from './widgets/FlashcardWidget';
 import MoveTasksModal from './MoveTasksModal';
 import TodayPlanner from './TodayPlanner';
 import CountdownWidget from './widgets/CountdownWidget';
+import InteractiveFlashcardWidget from './widgets/InteractiveFlashcardWidget';
 
 type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
 
@@ -97,6 +97,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
     const [isPracticeModalOpen, setIsPracticeModalOpen] = useState(false);
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<ScheduleItem | null>(null);
+    const [viewingTask, setViewingTask] = useState<ScheduleItem | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [practiceTask, setPracticeTask] = useState<HomeworkData | null>(null);
     const [isEditWeaknessesModalOpen, setIsEditWeaknessesModalOpen] = useState(false);
@@ -190,6 +191,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
             setDeepLinkData(data);
             return;
         }
+
+        if (action === 'view_task') {
+            const task = student.SCHEDULE_ITEMS.find(t => t.ID === data.id);
+            if (task) {
+                setViewingTask(task);
+                setIsCreateModalOpen(true);
+            }
+            return;
+        }
         
         const getDayFromDate = (dateStr: string) => {
             if (!dateStr) return new Date().toLocaleString('en-us', {weekday: 'long'}).toUpperCase();
@@ -242,7 +252,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
         }
 
 
-    }, [deepLinkAction]);
+    }, [deepLinkAction, student.SCHEDULE_ITEMS]);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -604,31 +614,66 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
       </div>
     );
     
-    const widgets = student.CONFIG.settings.dashboardWidgets || {};
+    const layout = student.CONFIG.settings.dashboardLayout || 'default';
 
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'dashboard':
+    const renderDashboardContent = () => {
+        const widgets = {
+            countdown: <CountdownWidget items={student.SCHEDULE_ITEMS} />,
+            dailyInsight: <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />,
+            subjectAllocation: <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />,
+            scoreTrend: <ScoreTrendWidget results={student.RESULTS} />,
+            flashcards: <InteractiveFlashcardWidget student={student} onUpdateConfig={onUpdateConfig} />,
+            readingHours: <ReadingHoursWidget student={student} />,
+            todaysAgenda: <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />,
+            upcomingExams: <UpcomingExamsWidget exams={student.EXAMS} />,
+            homework: <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />,
+        };
+
+        switch (layout) {
+            case 'focus':
+                return (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-8">{widgets.countdown} {widgets.dailyInsight}</div>
+                        <div className="space-y-8">{widgets.todaysAgenda} {widgets.upcomingExams}</div>
+                    </div>
+                );
+            case 'compact':
+                return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="space-y-8">{widgets.countdown} {widgets.todaysAgenda}</div>
+                        <div className="space-y-8">{widgets.subjectAllocation} {widgets.scoreTrend}</div>
+                        <div className="space-y-8">{widgets.flashcards} {widgets.homework}</div>
+                        <div className="space-y-8">{widgets.readingHours} {widgets.upcomingExams}</div>
+                    </div>
+                );
+            default: // 'default'
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
                             <MusicVisualizerWidget />
-                            {(widgets.countdown ?? true) && <CountdownWidget items={student.SCHEDULE_ITEMS} />}
-                            {(widgets.dailyInsight ?? true) && <DailyInsightWidget weaknesses={student.CONFIG.WEAK} exams={student.EXAMS} />}
+                            {widgets.countdown}
+                            {widgets.dailyInsight}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {(widgets.subjectAllocation ?? true) && <SubjectAllocationWidget items={student.SCHEDULE_ITEMS} />}
-                                {(widgets.scoreTrend ?? true) && <ScoreTrendWidget results={student.RESULTS} />}
+                                {widgets.subjectAllocation}
+                                {widgets.scoreTrend}
                             </div>
-                            {(widgets.flashcards ?? true) && <FlashcardWidget decks={student.CONFIG.flashcardDecks || []} onStartReview={handleStartReviewSession} />}
-                            {(widgets.readingHours ?? true) && <ReadingHoursWidget student={student} />}
+                            {widgets.flashcards}
+                            {widgets.readingHours}
                         </div>
                         <div className="space-y-8">
-                             {(widgets.todaysAgenda ?? true) && <TodaysAgendaWidget items={student.SCHEDULE_ITEMS} onStar={handleStarTask} />}
-                             {(widgets.upcomingExams ?? true) && <UpcomingExamsWidget exams={student.EXAMS} />}
-                             {(widgets.homework ?? true) && <HomeworkWidget items={student.SCHEDULE_ITEMS} onStartPractice={handleStartPractice} />}
+                            {widgets.todaysAgenda}
+                            {widgets.upcomingExams}
+                            {widgets.homework}
                         </div>
                     </div>
                 );
+        }
+    };
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'dashboard':
+                return renderDashboardContent();
             case 'today':
                 return <TodayPlanner items={taskItems} onEdit={handleEditClick} />;
             case 'schedule':
@@ -729,10 +774,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = (props) => {
               {renderContent()}
             </div>
 
-            {isCreateModalOpen && <CreateEditTaskModal task={editingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
+            {isCreateModalOpen && <CreateEditTaskModal task={editingTask || viewingTask} viewOnly={!!viewingTask} onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); setViewingTask(null); }} onSave={onSaveTask} decks={student.CONFIG.flashcardDecks || []} />}
             {isAiParserModalOpen && <AIParserModal onClose={() => setisAiParserModalOpen(false)} onDataReady={handleDataImport} onPracticeTestReady={handleAiPracticeTest} onOpenGuide={() => setIsAiGuideModalOpen(true)} examType={student.CONFIG.settings.examType} />}
             {isPracticeModalOpen && <CustomPracticeModal initialTask={practiceTask} aiPracticeTest={aiPracticeTest} onClose={() => { setIsPracticeModalOpen(false); setPracticeTask(null); setAiPracticeTest(null); }} onSessionComplete={(duration, solved, skipped) => onLogStudySession({ duration, questions_solved: solved, questions_skipped: skipped })} defaultPerQuestionTime={student.CONFIG.settings.perQuestionTime || 180} onLogResult={onLogResult} student={student} onUpdateWeaknesses={onUpdateWeaknesses} onSaveTask={onSaveTask} />}
-            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={() => setIsAssistantGuideOpen(true)} onOpenAiGuide={() => setIsAiGuideModalOpen(true)} onClearAllSchedule={handleClearAllSchedule} />}
+            {isSettingsModalOpen && <SettingsModal settings={student.CONFIG.settings} decks={student.CONFIG.flashcardDecks || []} driveLastSync={student.CONFIG.driveLastSync} isCalendarSyncEnabled={student.CONFIG.isCalendarSyncEnabled} calendarLastSync={student.CONFIG.calendarLastSync} onClose={() => setIsSettingsModalOpen(false)} onSave={handleUpdateSettings} onApiKeySet={handleApiKeySet} googleAuthStatus={googleAuthStatus} onGoogleSignIn={onGoogleSignIn} onGoogleSignOut={onGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} onExportToIcs={onExportToIcs} onOpenAssistantGuide={() => setIsAssistantGuideOpen(true)} onOpenAiGuide={() => setIsAiGuideModalOpen(true)} onClearAllSchedule={handleClearAllSchedule} />}
             {isEditWeaknessesModalOpen && <EditWeaknessesModal currentWeaknesses={student.CONFIG.WEAK} onClose={() => setIsEditWeaknessesModalOpen(false)} onSave={onUpdateWeaknesses} />}
             {isLogResultModalOpen && <LogResultModal onClose={() => {setIsLogResultModalOpen(false); setInitialScoreForModal(undefined); setInitialMistakesForModal(undefined);}} onSave={onLogResult} initialScore={initialScoreForModal} initialMistakes={initialMistakesForModal} />}
             {isEditResultModalOpen && editingResult && <EditResultModal result={editingResult} onClose={() => { setIsEditResultModalOpen(false); setEditingResult(null); }} onSave={onUpdateResult} />}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Config } from '../types';
+import { Config, FlashcardDeck } from '../types';
 import Icon from './Icon';
 
 interface SettingsModalProps {
   settings: Config['settings'];
+  decks: FlashcardDeck[];
   driveLastSync?: string;
   isCalendarSyncEnabled?: boolean;
   calendarLastSync?: string;
@@ -22,7 +23,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
-  const { settings, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet, onOpenAssistantGuide, onOpenAiGuide, onClearAllSchedule } = props;
+  const { settings, decks, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet, onOpenAssistantGuide, onOpenAiGuide, onClearAllSchedule } = props;
   const [accentColor, setAccentColor] = useState(settings.accentColor || '#0891b2');
   const [blurEnabled, setBlurEnabled] = useState(settings.blurEnabled !== false);
   const [mobileLayout, setMobileLayout] = useState(settings.mobileLayout || 'standard');
@@ -32,10 +33,10 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [calendarSync, setCalendarSync] = useState(isCalendarSyncEnabled || false);
   const [examType, setExamType] = useState(settings.examType || 'JEE');
-  const [dashboardWidgets, setDashboardWidgets] = useState(settings.dashboardWidgets || {
-      countdown: true, dailyInsight: true, subjectAllocation: true, scoreTrend: true,
-      flashcards: true, readingHours: true, todaysAgenda: true, upcomingExams: true, homework: true,
-  });
+  const [theme, setTheme] = useState(settings.theme || 'default');
+  const [dashboardLayout, setDashboardLayout] = useState(settings.dashboardLayout || 'default');
+  const [dashboardFlashcardDeckIds, setDashboardFlashcardDeckIds] = useState(settings.dashboardFlashcardDeckIds || []);
+  
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
@@ -66,7 +67,9 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         showAiChatAssistant: showAiChat,
         isCalendarSyncEnabled: calendarSync,
         examType: examType as 'JEE' | 'NEET',
-        dashboardWidgets,
+        theme: theme as 'default' | 'liquid-glass' | 'midnight',
+        dashboardLayout: dashboardLayout as 'default' | 'focus' | 'compact',
+        dashboardFlashcardDeckIds,
     };
     if (geminiApiKey.trim()) {
         settingsToSave.geminiApiKey = geminiApiKey.trim();
@@ -115,19 +118,43 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
           
           <div className="space-y-4">
              <h3 className="text-base font-bold text-gray-300">Dashboard Customization</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                 {Object.keys(dashboardWidgets).map(key => (
-                     <label key={key} className="flex items-center gap-2 text-sm text-gray-300">
-                         <input
-                            type="checkbox"
-                            className="w-4 h-4 rounded text-cyan-600 bg-gray-700 border-gray-600 focus:ring-cyan-500"
-                            checked={dashboardWidgets[key]}
-                            onChange={e => setDashboardWidgets(prev => ({...prev, [key]: e.target.checked}))}
-                         />
-                         {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                     </label>
-                 ))}
-             </div>
+              <div>
+                  <label className="text-sm font-bold text-gray-400">Layout</label>
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                      {(['default', 'focus', 'compact'] as const).map(layout => (
+                          <button key={layout} type="button" onClick={() => setDashboardLayout(layout)} className={`p-2 rounded-lg border-2 ${dashboardLayout === layout ? 'border-cyan-500' : 'border-transparent'}`}>
+                              <div className={`h-16 bg-gray-900/50 rounded-md p-1.5 flex gap-1.5 ${layout === 'focus' ? 'flex-col' : ''} ${layout === 'compact' ? 'flex-wrap' : ''}`}>
+                                  <div className={`rounded-sm bg-cyan-500/50 ${layout === 'focus' ? 'w-full h-1/2' : 'w-1/2 h-full'}`}></div>
+                                  <div className={`rounded-sm bg-purple-500/50 ${layout === 'focus' ? 'w-full h-1/2' : 'w-1/2 h-full'}`}></div>
+                              </div>
+                              <p className="text-xs mt-1 text-gray-300 capitalize">{layout}</p>
+                          </button>
+                      ))}
+                  </div>
+              </div>
+              <div>
+                  <label className="text-sm font-bold text-gray-400">Flashcard Widget</label>
+                  <p className="text-xs text-gray-500 mb-2">Select decks to show on the dashboard.</p>
+                  <div className="max-h-32 overflow-y-auto space-y-1 bg-gray-900/50 p-2 rounded-md">
+                      {decks.map(deck => (
+                          <label key={deck.id} className="flex items-center gap-2 text-sm text-gray-300">
+                              <input
+                                  type="checkbox"
+                                  className="w-4 h-4 rounded text-cyan-600 bg-gray-700 border-gray-600 focus:ring-cyan-500"
+                                  checked={dashboardFlashcardDeckIds.includes(deck.id)}
+                                  onChange={e => {
+                                      if (e.target.checked) {
+                                          setDashboardFlashcardDeckIds(prev => [...prev, deck.id]);
+                                      } else {
+                                          setDashboardFlashcardDeckIds(prev => prev.filter(id => id !== deck.id));
+                                      }
+                                  }}
+                              />
+                              {deck.name}
+                          </label>
+                      ))}
+                  </div>
+              </div>
           </div>
 
           <div className="border-t border-gray-700/50"></div>
@@ -211,6 +238,17 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
           <div>
              <h3 className="text-base font-bold text-gray-300">App Preferences</h3>
              <div className="mt-4 space-y-4">
+                <div>
+                    <label className="text-base font-bold text-gray-300">Theme</label>
+                    <div className="flex gap-2 mt-2">
+                        {(['default', 'liquid-glass', 'midnight'] as const).map(t => (
+                            <button key={t} type="button" onClick={() => setTheme(t)} className={`flex-1 p-2 rounded-lg border-2 ${theme === t ? 'border-cyan-500' : 'border-transparent'}`}>
+                                <div className={`h-8 rounded-md bg-gray-700 ${t === 'liquid-glass' ? 'bg-blue-200' : ''} ${t === 'midnight' ? 'bg-black' : ''}`}></div>
+                                <p className="text-xs mt-1 text-gray-300 capitalize">{t.replace('-', ' ')}</p>
+                            </button>
+                        ))}
+                    </div>
+                </div>
                 <div>
                   <label className="text-base font-bold text-gray-300">Accent Color</label>
                   <div className="flex items-center gap-3 mt-2">

@@ -60,7 +60,7 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
             const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
 
             const summary = timedItem.CARD_TITLE.EN.replace(/,/g, '\\,').replace(/;/g, '\\;');
-            const appLink = 'https://jee.ponsrischool.in/#/schedule';
+            const appLink = `https://jee.ponsrischool.in/?action=view_task&id=${timedItem.ID}`;
             const description = `Open in App: ${appLink}\\n\\n${timedItem.FOCUS_DETAIL.EN}`.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
 
             const eventParts = [

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type IconName = 'bell' | 'copy' | 'check' | 'trash' | 'play' | 'pause' | 'stop' | 'upload' | 'stopwatch' | 'logout' | 'dashboard' | 'users' | 'plus' | 'fixed' | 'login' | 'user-plus' | 'edit' | 'ellipsis' | 'forward' | 'trophy' | 'star' | 'streak' | 'send' | 'message' | 'settings' | 'schedule' | 'planner' | 'performance' | 'community' | 'calendar' | 'image' | 'book-open' | 'drive' | 'gemini' | 'marker' | 'cards' | 'folder' | 'file-text' | 'pin' | 'music' | 'lock-closed' | 'lock-open' | 'shuffle' | 'expand';
+export type IconName = 'bell' | 'copy' | 'check' | 'trash' | 'play' | 'pause' | 'stop' | 'upload' | 'stopwatch' | 'logout' | 'dashboard' | 'users' | 'plus' | 'fixed' | 'login' | 'user-plus' | 'edit' | 'ellipsis' | 'forward' | 'trophy' | 'star' | 'streak' | 'send' | 'message' | 'settings' | 'schedule' | 'planner' | 'performance' | 'community' | 'calendar' | 'image' | 'book-open' | 'drive' | 'gemini' | 'marker' | 'cards' | 'folder' | 'file-text' | 'pin' | 'music' | 'lock-closed' | 'lock-open' | 'shuffle' | 'expand' | 'arrow-left' | 'arrow-right';
 
 interface IconProps {
   name: IconName;
@@ -234,7 +234,17 @@ const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5" }) => {
       <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11 1v4m0 0h-4m4 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11-7h-4m0 0v-4m0 4l5-5" />
       </svg>
-    )
+    ),
+    'arrow-left': (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+    ),
+    'arrow-right': (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+      </svg>
+    ),
   };
   return icons[name] || null;
 };

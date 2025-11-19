@@ -68,8 +68,13 @@ const App: React.FC = () => {
 
         const action = params.get('action');
         const dataStr = params.get('data');
+        const taskId = params.get('id'); // For new view_task action
 
-        if (action && dataStr) {
+        if (action === 'view_task' && taskId) {
+            setDeepLinkAction({ action: 'view_task', data: { id: taskId } });
+             // Clean the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (action && dataStr) {
             const handleDeepLink = async (encodedData: string) => {
                 let decodedData = '';
                 try {
@@ -97,6 +102,10 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        // Apply theme class to body
+        const theme = currentUser?.CONFIG.settings.theme || 'default';
+        document.body.className = `theme-${theme}`;
+
         // If a user is logged in but hasn't selected an exam type, show the selection modal.
         if (currentUser && userRole === 'student' && !isDemoMode && !currentUser.CONFIG.settings.examType) {
             setIsExamTypeModalOpen(true);

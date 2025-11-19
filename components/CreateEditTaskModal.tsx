@@ -5,6 +5,7 @@ import AIGenerateAnswerKeyModal from './AIGenerateAnswerKeyModal';
 
 interface CreateEditTaskModalProps {
   task: ScheduleItem | null;
+  viewOnly?: boolean;
   onClose: () => void;
   onSave: (task: ScheduleItem) => void;
   decks: FlashcardDeck[];
@@ -46,7 +47,7 @@ const formatAnswers = (answers?: Record<string, string>): string => {
     return Object.entries(answers).map(([q, a]) => `${q}:${a}`).join('\n');
 };
 
-const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose, onSave, decks }) => {
+const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, viewOnly = false, onClose, onSave, decks }) => {
     
   const getInitialTaskType = (): TaskType => {
       if (!task) return 'ACTION';
@@ -142,8 +143,41 @@ const CreateEditTaskModal: React.FC<CreateEditTaskModalProps> = ({ task, onClose
 
   const animationClasses = isExiting ? 'modal-exit' : 'modal-enter';
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
-  const inputClass = "w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500";
+  const inputClass = "w-full px-4 py-2 mt-1 text-gray-200 bg-gray-900/50 border border-[var(--glass-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-800/50 disabled:cursor-not-allowed";
 
+  const ViewField: React.FC<{ label: string, value?: string }> = ({ label, value }) => (
+    value ? (
+        <div>
+            <p className="text-sm font-bold text-gray-400">{label}</p>
+            <p className="text-gray-200 mt-1">{value}</p>
+        </div>
+    ) : null
+  );
+
+  if (viewOnly && task) {
+    return (
+      <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${animationClasses}`} onClick={handleClose}>
+        <div className={`w-full max-w-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 ${contentAnimationClasses} max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-2xl font-bold text-white mb-4">Task Details</h2>
+          <div className="space-y-4">
+            <ViewField label="Title" value={task.CARD_TITLE.EN} />
+            <ViewField label="Details" value={task.FOCUS_DETAIL.EN} />
+            <div className="grid grid-cols-2 gap-4">
+                <ViewField label="Date" value={('date' in task && task.date) ? new Date(task.date).toLocaleDateString() : task.DAY.EN} />
+                {'TIME' in task && <ViewField label="Time" value={task.TIME} />}
+            </div>
+            <ViewField label="Subject" value={task.SUBJECT_TAG.EN} />
+            {task.type === 'HOMEWORK' && <ViewField label="Questions" value={task.Q_RANGES} />}
+            
+            <div className="flex justify-end gap-4 pt-4">
+                <button type="button" onClick={handleClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600">Close</button>
+                {task.type === 'HOMEWORK' && <button type="submit" className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90">Start Practice</button>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

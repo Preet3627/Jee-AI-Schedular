@@ -33,8 +33,15 @@
       :root {
         --gradient-cyan: #0891b2;
         --gradient-purple: #7c3aed;
+        
+        /* Default Theme */
+        --main-bg: #02040a;
         --glass-bg: rgba(17, 24, 39, 0.5); /* bg-gray-900 with opacity */
         --glass-border: rgba(55, 65, 81, 0.4); /* bg-gray-700 with opacity */
+        --body-bg-image: radial-gradient(at 20% 20%, hsla(195, 80%, 30%, 0.2) 0px, transparent 50%),
+            radial-gradient(at 80% 10%, hsla(280, 70%, 40%, 0.15) 0px, transparent 50%),
+            radial-gradient(at 80% 80%, hsla(220, 80%, 35%, 0.15) 0px, transparent 50%),
+            radial-gradient(at 10% 90%, hsla(180, 75%, 30%, 0.2) 0px, transparent 50%);
 
         /* Customizable Accent Color */
         --accent-color: var(--gradient-cyan);
@@ -46,13 +53,23 @@
         --safe-area-inset-left: env(safe-area-inset-left);
       }
 
+      .theme-liquid-glass {
+        --main-bg: #e0f2fe; /* light sky blue */
+        --glass-bg: rgba(255, 255, 255, 0.4);
+        --glass-border: rgba(200, 200, 255, 0.6);
+        --body-bg-image: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);
+      }
+
+      .theme-midnight {
+        --main-bg: #000000;
+        --glass-bg: rgba(29, 29, 31, 0.6);
+        --glass-border: rgba(58, 58, 60, 0.5);
+        --body-bg-image: radial-gradient(at 50% 10%, hsla(240, 100%, 15%, 0.3) 0px, transparent 50%);
+      }
+
       body {
-        background-color: #02040a;
-        background-image:
-            radial-gradient(at 20% 20%, hsla(195, 80%, 30%, 0.2) 0px, transparent 50%),
-            radial-gradient(at 80% 10%, hsla(280, 70%, 40%, 0.15) 0px, transparent 50%),
-            radial-gradient(at 80% 80%, hsla(220, 80%, 35%, 0.15) 0px, transparent 50%),
-            radial-gradient(at 10% 90%, hsla(180, 75%, 30%, 0.2) 0px, transparent 50%);
+        background-color: var(--main-bg);
+        background-image: var(--body-bg-image);
         background-attachment: fixed;
       }
       
@@ -163,7 +180,7 @@
       .flashcard-front, .flashcard-back {
         grid-area: 1 / 1;
         width: 100%;
-        min-height: 300px;
+        min-height: 200px; /* Adjusted for widget */
         -webkit-backface-visibility: hidden;
         backface-visibility: hidden;
         display: flex;

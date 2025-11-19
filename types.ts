@@ -204,6 +204,9 @@ export interface Config {
         showAiChatAssistant?: boolean;
         creditSaver?: boolean; // Use faster, cheaper AI models
         examType?: 'JEE' | 'NEET';
+        theme?: 'default' | 'liquid-glass' | 'midnight';
+        dashboardLayout?: 'default' | 'focus' | 'compact';
+        dashboardFlashcardDeckIds?: string[];
         dashboardWidgets?: {
             [key: string]: boolean;
             countdown: boolean;
