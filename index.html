@@ -206,15 +206,24 @@
         background-color: #374151; /* gray-700 */
         opacity: 0.15;
       }
+      
+      /* Global Music Visualizer "Notch" */
+      .global-visualizer-notch {
+        top: calc(var(--safe-area-inset-top, 0px) + 8px);
+      }
 
       /* Fix for PWA fullscreen bottom space */
       @media (display-mode: fullscreen) {
+        body {
+          /* Ensure no padding is added by safe-area when in true fullscreen */
+          padding-bottom: 0 !important;
+        }
         .safe-padding-bottom {
           padding-bottom: 0 !important;
         }
       }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",

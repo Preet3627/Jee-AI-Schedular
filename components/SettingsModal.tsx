@@ -53,6 +53,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   const [dashboardLayoutPreset, setDashboardLayoutPreset] = useState<'default' | 'focus' | 'compact'>(getPresetFromLayout(settings.dashboardLayout));
   const [dashboardFlashcardDeckIds, setDashboardFlashcardDeckIds] = useState(settings.dashboardFlashcardDeckIds || []);
+  const [musicPlayerLayout, setMusicPlayerLayout] = useState(settings.musicPlayerWidgetLayout || 'minimal');
   
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
@@ -87,6 +88,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         theme: theme as 'default' | 'liquid-glass' | 'midnight',
         dashboardLayout: LAYOUT_PRESETS[dashboardLayoutPreset],
         dashboardFlashcardDeckIds,
+        musicPlayerWidgetLayout: musicPlayerLayout as 'minimal' | 'expanded',
     };
     if (geminiApiKey.trim()) {
         settingsToSave.geminiApiKey = geminiApiKey.trim();
@@ -171,6 +173,13 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                           </label>
                       ))}
                   </div>
+              </div>
+              <div>
+                  <label className="text-sm font-bold text-gray-400">Music Player Widget</label>
+                  <select value={musicPlayerLayout} onChange={e => setMusicPlayerLayout(e.target.value as 'minimal' | 'expanded')} className={inputClass}>
+                      <option value="minimal">Minimal</option>
+                      <option value="expanded">Expanded</option>
+                  </select>
               </div>
           </div>
 

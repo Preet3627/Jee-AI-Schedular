@@ -209,6 +209,7 @@ export interface Config {
         dashboardLayout?: string[]; // Array of widget keys/IDs
         widgetSettings?: { [widgetId: string]: { translucent?: boolean } };
         dashboardFlashcardDeckIds?: string[];
+        musicPlayerWidgetLayout?: 'minimal' | 'expanded';
         dashboardWidgets?: {
             [key: string]: boolean;
             countdown: boolean;

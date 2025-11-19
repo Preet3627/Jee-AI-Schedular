@@ -1,60 +1,63 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
+import { useMusicPlayer } from '../../context/MusicPlayerContext';
 import Icon from '../Icon';
 
 const MusicVisualizerWidget: React.FC = () => {
-    const [metadata, setMetadata] = useState<MediaMetadata | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    
+    const { analyser, isPlaying } = useMusicPlayer();
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const animationFrameId = useRef<number>();
+
     useEffect(() => {
-        if (!('mediaSession' in navigator)) {
+        const canvas = canvasRef.current;
+        if (!canvas || !analyser || !isPlaying) {
             return;
         }
 
-        const updateState = () => {
-            setMetadata(navigator.mediaSession.metadata);
-            setIsPlaying(navigator.mediaSession.playbackState === 'playing');
+        const canvasCtx = canvas.getContext('2d');
+        if (!canvasCtx) return;
+
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const draw = () => {
+            animationFrameId.current = requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i] / 2;
+                
+                const r = barHeight + (25 * (i/bufferLength));
+                const g = 250 * (i/bufferLength);
+                const b = 50;
+                
+                canvasCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+
+                x += barWidth + 1;
+            }
         };
 
-        // Initial state check
-        updateState();
+        draw();
 
-        // Set up an interval to poll for changes, which is the correct way for this API.
-        const intervalId = setInterval(updateState, 1000); // Poll every second
-
-        // Cleanup interval on component unmount
         return () => {
-            clearInterval(intervalId);
+            if (animationFrameId.current) {
+                cancelAnimationFrame(animationFrameId.current);
+            }
         };
-    }, []);
+    }, [analyser, isPlaying]);
 
-    if (!isPlaying || !metadata?.title) {
+    if (!isPlaying) {
         return null;
     }
-
-    const artworkSrc = metadata.artwork?.find(art => art.sizes === '96x96' || art.sizes === '128x128')?.src || metadata.artwork?.[0]?.src;
-
-    return (
-        <div className="bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-lg p-4 backdrop-blur-sm flex items-center gap-4 animate-fadeIn">
-            {artworkSrc ? (
-                <img src={artworkSrc} alt={metadata.album || 'album art'} className="w-16 h-16 rounded-lg object-cover" />
-            ) : (
-                <div className="w-16 h-16 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0">
-                    <Icon name="music" className="w-8 h-8 text-gray-500" />
-                </div>
-            )}
-            <div className="flex-grow overflow-hidden">
-                <p className="font-bold text-white truncate">{metadata.title}</p>
-                <p className="text-sm text-gray-400 truncate">{metadata.artist} - {metadata.album}</p>
-            </div>
-            <div className="flex items-end gap-1 h-12 flex-shrink-0">
-                <div className="soundbar-bar w-2 bg-cyan-400" style={{ animationDelay: '0s', animationDuration: '1.2s' }}></div>
-                <div className="soundbar-bar w-2 bg-purple-500" style={{ animationDelay: '-0.2s', animationDuration: '1.5s' }}></div>
-                <div className="soundbar-bar w-2 bg-cyan-400" style={{ animationDelay: '-0.5s', animationDuration: '1.0s' }}></div>
-                <div className="soundbar-bar w-2 bg-purple-500" style={{ animationDelay: '-0.3s', animationDuration: '1.8s' }}></div>
-                <div className="soundbar-bar w-2 bg-cyan-400" style={{ animationDelay: '-0.7s', animationDuration: '1.3s' }}></div>
-            </div>
-        </div>
-    );
+    
+    return <canvas ref={canvasRef} width="300" height="40" className="w-full h-10" />;
 };
 
 export default MusicVisualizerWidget;

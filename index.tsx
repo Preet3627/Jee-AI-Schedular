@@ -1,9 +1,9 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { LocalizationProvider } from './context/LocalizationContext';
 import { AuthProvider } from './context/AuthContext';
+import { MusicPlayerProvider } from './context/MusicPlayerContext';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -16,7 +16,9 @@ root.render(
   <React.StrictMode>
     <LocalizationProvider>
       <AuthProvider>
-        <App />
+        <MusicPlayerProvider>
+          <App />
+        </MusicPlayerProvider>
       </AuthProvider>
     </LocalizationProvider>
   </React.StrictMode>
