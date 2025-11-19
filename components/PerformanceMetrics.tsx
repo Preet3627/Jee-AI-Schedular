@@ -7,7 +7,7 @@ import Icon from './Icon';
 interface PerformanceMetricsProps {
     score: string;
     weaknesses: string[];
-    onEditWeaknesses: () => void;
+    onEditWeaknesses: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
 }
 
 const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ score, weaknesses, onEditWeaknesses }) => {

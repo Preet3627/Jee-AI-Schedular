@@ -236,7 +236,7 @@ export interface Config {
         accentColor: string;
         blurEnabled: boolean;
         mobileLayout: 'standard' | 'toolbar';
-        forceOfflineMode: false;
+        forceOfflineMode: boolean; // FIX: Changed to boolean
         perQuestionTime: number; // Default time in seconds per MCQ
         hasGeminiKey?: boolean; // A safe flag for the frontend
         showAiChatAssistant?: boolean;
@@ -310,7 +310,7 @@ export interface CustomPracticeModalProps {
   aiInitialTopic?: string | null;
   defaultPerQuestionTime: number;
   onLogResult: (result: ResultData) => void;
-  onUpdateWeaknesses: (weaknesses: string[]) => void;
+  onUpdateWeaknesses: (weaknesses: string[]) => void; // FIX: Changed to string[]
   student: StudentData;
   onSaveTask: (task: ScheduleItem) => void;
   animationOrigin?: { x: string, y: string };
@@ -326,8 +326,8 @@ export interface SettingsModalProps {
   onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean; customDjDropFile?: File; }>, newCustomWidgets: CustomWidget[]) => void;
   onExportToIcs: () => void;
   googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
-  onGoogleSignIn: () => void;
-  onGoogleSignOut: () => void;
+  onGoogleSignIn: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onGoogleSignOut: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   onBackupToDrive: () => void;
   onRestoreFromDrive: () => void;
   onApiKeySet: () => void;
@@ -382,10 +382,10 @@ export interface AIChatPopupProps {
 
 export interface TestAnalysisReportProps {
   result: ResultData;
-  onClose: () => void;
-  student: StudentData;
-  onUpdateWeaknesses: (weaknesses: string[]) => void;
-  onSaveDeck: (deck: FlashcardDeck) => void;
+  onClose?: () => void; // Made optional for direct rendering
+  student?: StudentData; // Made optional for direct rendering
+  onUpdateWeaknesses?: (weaknesses: string[]) => void; // Made optional for direct rendering
+  onSaveDeck?: (deck: FlashcardDeck) => void; // Made optional for direct rendering
   animationOrigin?: { x: string, y: string };
   onAnalyzeMistake: (questionNumber: number) => void;
 }

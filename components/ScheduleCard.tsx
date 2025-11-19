@@ -6,7 +6,7 @@ import Icon from './Icon';
 interface ScheduleCardProps {
   cardData: ScheduleItem;
   onDelete: (id: string) => void;
-  onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>) => void; // FIX: Added event parameter
   onMoveToNextDay: (id: string) => void;
   onStar: (id: string) => void;
   onStartPractice: (homework: HomeworkData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter

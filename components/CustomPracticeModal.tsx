@@ -16,7 +16,7 @@ interface CustomPracticeModalProps {
   aiInitialTopic?: string | null;
   defaultPerQuestionTime: number;
   onLogResult: (result: ResultData) => void;
-  onUpdateWeaknesses: (weaknesses: string) => void; // FIX: Changed to single weakness string
+  onUpdateWeaknesses: (weaknesses: string[]) => void; // FIX: Changed to single weakness string
   student: StudentData;
   onSaveTask: (task: ScheduleItem) => void;
   animationOrigin?: { x: string, y: string };

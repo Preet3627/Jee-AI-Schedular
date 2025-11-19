@@ -11,7 +11,7 @@ interface HeaderProps {
         profilePhoto?: string;
     };
     onLogout: () => void;
-    backendStatus: 'checking' | 'online' | 'offline';
+    backendStatus: 'checking' | 'online' | 'offline' | 'misconfigured';
     isSyncing: boolean;
 }
 
@@ -30,6 +30,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, backendStatus, isSyncin
         online: { class: 'bg-green-500', text: 'ONLINE', title: 'Connected to server' },
         offline: { class: 'bg-yellow-500', text: 'OFFLINE', title: 'Using cached data. Changes will sync when online.' },
         checking: { class: 'bg-gray-500 animate-pulse', text: '...', title: 'Checking connection' },
+        misconfigured: { class: 'bg-red-500 animate-pulse', text: 'ERROR', title: 'Server Misconfigured. Check .env' },
     };
 
     useEffect(() => {

@@ -10,7 +10,7 @@ const FullScreenMusicPlayer: React.FC = () => {
         pause, 
         nextTrack, 
         prevTrack, 
-        toggleFullScreenPlayer,
+        toggleFullScreenPlayer, 
         analyser,
         seek,
         duration,

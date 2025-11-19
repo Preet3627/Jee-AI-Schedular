@@ -6,8 +6,8 @@ import Icon from './Icon';
 interface MistakeManagerProps {
     result: ResultData;
     onToggleMistakeFixed: (resultId: string, mistake: string) => void;
-    onViewAnalysis: (result: ResultData) => void;
-    onEdit: (result: ResultData) => void;
+    onViewAnalysis: (result: ResultData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+    onEdit: (result: ResultData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
     onDelete: (resultId: string) => void;
 }
 
@@ -26,13 +26,13 @@ const MistakeManager: React.FC<MistakeManagerProps> = ({ result, onToggleMistake
                 <div className="flex items-center gap-2">
                     {result.analysis && (
                         <button 
-                            onClick={() => onViewAnalysis(result)}
+                            onClick={(e) => onViewAnalysis(result, e)}
                             className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors">
                             Analysis
                         </button>
                     )}
                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => onEdit(result)} className="p-1.5 text-gray-400 hover:text-white"><Icon name="edit" className="w-4 h-4" /></button>
+                        <button onClick={(e) => onEdit(result, e)} className="p-1.5 text-gray-400 hover:text-white"><Icon name="edit" className="w-4 h-4" /></button>
                         <button onClick={() => {if(window.confirm(`Are you sure you want to delete this result? This cannot be undone.`)) onDelete(result.ID)}} className="p-1.5 text-gray-400 hover:text-red-400"><Icon name="trash" className="w-4 h-4" /></button>
                     </div>
                 </div>

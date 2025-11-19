@@ -14,7 +14,6 @@ interface TeacherDashboardProps {
     onDeleteUser: (sid: string) => void;
     onAddTeacher?: (teacherData: any) => void;
     onBroadcastTask: (task: ScheduleItem, examType: 'JEE' | 'NEET' | 'ALL') => void;
-    // FIX: Added animationOrigin and setAnimationOrigin props
     animationOrigin?: { x: string, y: string };
     setAnimationOrigin: React.Dispatch<React.SetStateAction<{ x: string, y: string } | undefined>>;
 }
@@ -26,15 +25,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
     const [isAIBroadcastModalOpen, setIsAIBroadcastModalOpen] = useState(false);
     const [broadcastTarget, setBroadcastTarget] = useState<'ALL' | 'JEE' | 'NEET'>('ALL');
-    // FIX: Removed `animationOrigin` from local state, now passed as prop.
 
-    // FIX: Simplified handleModalOpenWithAnimation, to accept a generic setter.
-    const handleModalOpenWithAnimation = useCallback(<T,>(setter: React.Dispatch<SetStateAction<T | null | boolean>>, event: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>, data?: T) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        setAnimationOrigin({
-            x: `${rect.left + rect.width / 2}px`,
-            y: `${rect.top + rect.height / 2}px`
-        });
+    const handleModalOpenWithAnimation = useCallback(<T,>(setter: React.Dispatch<SetStateAction<T | null | boolean>>, event: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent> | null, data?: T) => {
+        if (event) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            setAnimationOrigin({
+                x: `${rect.left + rect.width / 2}px`,
+                y: `${rect.top + rect.height / 2}px`
+            });
+        } else {
+            setAnimationOrigin(undefined);
+        }
         if (data !== undefined) {
             setter(data as SetStateAction<T>);
         } else {

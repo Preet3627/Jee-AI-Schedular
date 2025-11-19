@@ -621,3 +621,36 @@ apiRouter.post('/reset-password', async (req, res) => {
         await pool.query('UPDATE users SET password = ?, password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?', [hashedPassword, user.id]);
         
         res.status(200).json({ message: 'Password has been successfully reset.' });
+    } catch (error) {
+        console.error("Reset password error:", error);
+        res.status(500).json({ error: 'Server error during password reset.' });
+    }
+});
+
+
+// --- AUTHENTICATED ENDPOINTS (require authMiddleware) ---
+apiRouter.use(authMiddleware);
+
+apiRouter.get('/me', async (req, res) => {
+    try {
+        const userData = await getUserData(req.userId);
+        if (!userData) return res.status(404).json({ error: 'User data not found.' });
+        res.json(userData);
+    } catch (error) {
+        console.error("Error getting user data:", error);
+        res.status(500).json({ error: 'Server error fetching user data.' });
+    }
+});
+
+apiRouter.post('/heartbeat', async (req, res) => {
+    try {
+        await pool.query('UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?', [req.userId]);
+        res.status(200).json({ message: 'Heartbeat received.' });
+    } catch (error) {
+        console.error("Heartbeat error:", error);
+        res.status(500).json({ error: 'Server error on heartbeat.' });
+    }
+});
+
+apiRouter.put('/profile', async (req, res) => {
+    const { fullName,

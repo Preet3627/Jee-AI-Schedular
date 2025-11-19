@@ -13,8 +13,8 @@ interface SettingsModalProps {
   onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean; customDjDropFile?: File; }>, newCustomWidgets: CustomWidget[]) => void;
   onExportToIcs: () => void;
   googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
-  onGoogleSignIn: () => void;
-  onGoogleSignOut: () => void;
+  onGoogleSignIn: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added optional event parameter
+  onGoogleSignOut: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added optional event parameter
   onBackupToDrive: () => void;
   onRestoreFromDrive: () => void;
   onApiKeySet: () => void;

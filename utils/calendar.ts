@@ -118,4 +118,13 @@ export const exportCalendar = (items: ScheduleItem[], exams: ExamData[], student
         
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `${studentName.replace
+        link.setAttribute("download", `${studentName.replace(/\s+/g, '_')}_schedule.ics`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Error exporting calendar:", error);
+        alert("Failed to export calendar. Please try again.");
+    }
+};
