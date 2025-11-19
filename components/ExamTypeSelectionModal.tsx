@@ -1,25 +1,28 @@
-
 import React, { useState } from 'react';
 import Icon from './Icon';
+import { ExamTypeSelectionModalProps } from '../types'; // FIX: Imported ExamTypeSelectionModalProps
 
-interface ExamTypeSelectionModalProps {
-  onSelect: (examType: 'JEE' | 'NEET') => void;
-  animationOrigin?: { x: string, y: string }; // FIX: Added animationOrigin prop
-}
-
-const ExamTypeSelectionModal: React.FC<ExamTypeSelectionModalProps> = ({ onSelect, animationOrigin }) => {
+const ExamTypeSelectionModal: React.FC<ExamTypeSelectionModalProps> = ({ onSelect, onClose, animationOrigin }) => { // FIX: Added onClose prop
   const [isExiting, setIsExiting] = useState(false);
 
   const handleSelect = (examType: 'JEE' | 'NEET') => {
     setIsExiting(true);
-    setTimeout(() => onSelect(examType), 300);
+    setTimeout(() => {
+        onSelect(examType);
+        onClose(); // FIX: Call onClose after selection
+    }, 300);
   };
   
+  const handleClose = () => { // FIX: Added handleClose function
+    setIsExiting(true);
+    setTimeout(onClose, 300);
+  };
+
   const animationClasses = isExiting ? 'modal-exit' : 'modal-enter';
   const contentAnimationClasses = isExiting ? 'modal-content-exit' : 'modal-content-enter';
 
   return (
-    <div className={`fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-md ${animationClasses}`}>
+    <div className={`fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-md ${animationClasses}`} onClick={handleClose}>
       <div className={`w-full max-w-md bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-6 text-center ${contentAnimationClasses}`} onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-white mb-2">Welcome!</h2>
         <p className="text-gray-300 mb-6">Please select your primary exam to personalize your experience.</p>

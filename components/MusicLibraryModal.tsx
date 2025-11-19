@@ -7,9 +7,11 @@ import StaticWaveform from './StaticWaveform';
 
 interface MusicLibraryModalProps {
   onClose: () => void;
+  // FIX: Added animationOrigin prop
+  animationOrigin?: { x: string, y: string };
 }
 
-const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose }) => {
+const MusicLibraryModal: React.FC<MusicLibraryModalProps> = ({ onClose, animationOrigin }) => {
     const [isExiting, setIsExiting] = useState(false);
     const [tracks, setTracks] = useState<Track[]>([]);
     const [isLoading, setIsLoading] = useState(true);

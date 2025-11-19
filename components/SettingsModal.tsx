@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Config, FlashcardDeck, DashboardWidgetItem } from '../types';
+import { Config, FlashcardDeck, DashboardWidgetItem, CustomWidget } from '../types';
 import Icon from './Icon';
 
 interface SettingsModalProps {
@@ -9,7 +9,8 @@ interface SettingsModalProps {
   isCalendarSyncEnabled?: boolean;
   calendarLastSync?: string;
   onClose: () => void;
-  onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean }>) => void;
+  // FIX: Updated onSave prop type to include customDjDropFile and newCustomWidgets
+  onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean; customDjDropFile?: File; }>, newCustomWidgets: CustomWidget[]) => void;
   onExportToIcs: () => void;
   googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
   onGoogleSignIn: () => void;
@@ -17,13 +18,17 @@ interface SettingsModalProps {
   onBackupToDrive: () => void;
   onRestoreFromDrive: () => void;
   onApiKeySet: () => void;
-  onOpenAssistantGuide: () => void;
-  onOpenAiGuide: () => void;
+  onOpenAssistantGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added optional event parameter
+  onOpenAiGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added optional event parameter
   onClearAllSchedule: () => void;
+  studentCustomWidgets: CustomWidget[];
+  onSaveCustomWidgets: (widget: CustomWidget) => void;
+  // FIX: Added animationOrigin prop
+  animationOrigin?: { x: string, y: string };
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = (props) => {
-  const { settings, decks, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet, onOpenAssistantGuide, onOpenAiGuide, onClearAllSchedule } = props;
+  const { settings, decks, driveLastSync, isCalendarSyncEnabled, calendarLastSync, onClose, onSave, onExportToIcs, googleAuthStatus, onGoogleSignIn, onGoogleSignOut, onBackupToDrive, onRestoreFromDrive, onApiKeySet, onOpenAssistantGuide, onOpenAiGuide, onClearAllSchedule, studentCustomWidgets, onSaveCustomWidgets, animationOrigin } = props;
   const [accentColor, setAccentColor] = useState(settings.accentColor || '#0891b2');
   const [blurEnabled, setBlurEnabled] = useState(settings.blurEnabled !== false);
   const [mobileLayout, setMobileLayout] = useState(settings.mobileLayout || 'standard');
@@ -46,9 +51,14 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const getPresetFromLayout = (layout: DashboardWidgetItem[] | undefined): 'default' | 'focus' | 'compact' => {
     if (!layout) return 'default';
     const sortedLayoutIds = layout.map(item => item.id).sort();
-    if (JSON.stringify(sortedLayoutIds) === JSON.stringify([...LAYOUT_PRESETS.focus].sort())) return 'focus';
-    if (JSON.stringify(sortedLayoutIds) === JSON.stringify([...LAYOUT_PRESETS.compact].sort())) return 'compact';
-    return 'default';
+    const sortedDefaultIds = LAYOUT_PRESETS.default.sort();
+    const sortedFocusIds = LAYOUT_PRESETS.focus.sort();
+    const sortedCompactIds = LAYOUT_PRESETS.compact.sort();
+
+    if (JSON.stringify(sortedLayoutIds) === JSON.stringify(sortedDefaultIds)) return 'default';
+    if (JSON.stringify(sortedLayoutIds) === JSON.stringify(sortedFocusIds)) return 'focus';
+    if (JSON.stringify(sortedLayoutIds) === JSON.stringify(sortedCompactIds)) return 'compact';
+    return 'default'; // Fallback if no exact preset match
   };
 
   const [dashboardLayoutPreset, setDashboardLayoutPreset] = useState<'default' | 'focus' | 'compact'>(getPresetFromLayout(settings.dashboardLayout));
@@ -58,6 +68,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [isExiting, setIsExiting] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+  const [customDjDropFile, setCustomDjDropFile] = useState<File | undefined>(undefined); // New state for custom DJ drop file
 
   const handleClose = () => {
     setIsExiting(true);
@@ -76,7 +87,7 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const settingsToSave: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean }> = { 
+    const settingsToSave: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean; customDjDropFile?: File; }> = { 
         accentColor, 
         blurEnabled, 
         mobileLayout: mobileLayout as 'standard' | 'toolbar', 
@@ -93,11 +104,14 @@ const SettingsModal: React.FC<SettingsModalProps> = (props) => {
     };
     if (geminiApiKey.trim()) {
         settingsToSave.geminiApiKey = geminiApiKey.trim();
-        onSave(settingsToSave);
-        onApiKeySet();
-    } else {
-        onSave(settingsToSave);
+        // Clear the input after saving
+        setGeminiApiKey(''); 
     }
+    if (customDjDropFile) {
+        settingsToSave.customDjDropFile = customDjDropFile;
+    }
+    // Pass custom widgets separately since they are not part of `settings` nested object
+    onSave(settingsToSave, studentCustomWidgets); // FIX: Pass studentCustomWidgets here
     handleClose();
   };
 

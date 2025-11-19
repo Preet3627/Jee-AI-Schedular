@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
@@ -7,11 +6,11 @@ import Icon from './Icon';
 interface ScheduleCardProps {
   cardData: ScheduleItem;
   onDelete: (id: string) => void;
-  onEdit: (item: ScheduleItem) => void;
+  onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
   onMoveToNextDay: (id: string) => void;
   onStar: (id: string) => void;
-  onStartPractice: (homework: HomeworkData) => void;
-  onStartReviewSession: (deckId: string) => void;
+  onStartPractice: (homework: HomeworkData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onStartReviewSession: (deckId: string, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
   onCompleteTask: (task: ScheduleCardData) => void;
   onMarkDoubt?: (topic: string, q_id: string) => void;
   isSubscribed: boolean;
@@ -48,7 +47,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
             return cardData.date === today.toISOString().split('T')[0];
         }
         return cardData.DAY.EN.toUpperCase() === todayName;
-    }, [cardData.date, cardData.DAY.EN]);
+    }, [('date' in cardData && cardData.date), cardData.DAY.EN]); // FIX: Added type guard for cardData.date
 
     useEffect(() => {
         // FIX: Added type guard for 'TIME' property
@@ -85,7 +84,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
         const interval = setInterval(updateProgress, 60000); // Update every minute
         return () => clearInterval(interval);
 
-    }, [cardData.TIME, isToday]);
+    }, [('TIME' in cardData && cardData.TIME), isToday]); // FIX: Added type guard for cardData.TIME
 
 
     useEffect(() => {
@@ -157,7 +156,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
                       <div className={`popup-menu ${isMenuOpen ? 'popup-enter' : 'popup-exit'} absolute right-0 mt-2 w-48 bg-gray-900/80 border border-gray-700 rounded-lg shadow-lg backdrop-blur-xl z-10`} onClick={e => e.stopPropagation()}>
                           <ul className="py-1">
                               <li>
-                                  <button onClick={() => { onEdit(cardData); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50">
+                                  <button onClick={(e) => { onEdit(cardData, e); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700/50">
                                       <Icon name="edit" className="w-4 h-4" /> Edit Task
                                   </button>
                               </li>
@@ -218,12 +217,12 @@ const ScheduleCard: React.FC<ScheduleCardProps> = (props) => {
                     </button>
                   )}
                   {isFlashcardReview && (
-                    <button onClick={() => onStartReviewSession((cardData as ScheduleCardData).deckId!)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-yellow-600/80 hover:bg-yellow-500/80 transition-colors">
+                    <button onClick={(e) => onStartReviewSession((cardData as ScheduleCardData).deckId!, e)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-yellow-600/80 hover:bg-yellow-500/80 transition-colors">
                       <Icon name="cards" className="w-4 h-4" /> Start Review
                     </button>
                   )}
                   {canStartPractice && (
-                    <button onClick={() => onStartPractice(cardData as HomeworkData)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-purple-600/80 hover:bg-purple-500/80 transition-colors">
+                    <button onClick={(e) => onStartPractice(cardData as HomeworkData, e)} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 px-3 rounded-md bg-purple-600/80 hover:bg-purple-500/80 transition-colors">
                       <Icon name="stopwatch" className="w-4 h-4" /> Start Practice
                     </button>
                   )}

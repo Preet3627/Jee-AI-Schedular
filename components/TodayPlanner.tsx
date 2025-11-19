@@ -32,7 +32,7 @@ const TodayPlanner: React.FC<TodayPlannerProps> = ({ items, onEdit }) => {
                     {todaysItems.map(item => (
                         <div key={item.ID} className="bg-gray-800/50 p-4 rounded-lg flex items-center gap-4 group">
                             <div className="w-20 flex-shrink-0 text-center">
-                                {'TIME' in item && item.TIME ? (
+                                {'TIME' in item && item.TIME ? ( // FIX: Added type guard for 'TIME'
                                     <>
                                         <p className="font-mono text-lg font-bold text-white">{item.TIME}</p>
                                         <p className="text-xs text-gray-400">{item.SUBJECT_TAG.EN}</p>

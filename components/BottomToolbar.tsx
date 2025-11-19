@@ -8,7 +8,7 @@ import { ActiveTab } from '../types';
 interface BottomToolbarProps {
     activeTab: ActiveTab;
     setActiveTab: (tab: ActiveTab) => void;
-    onFabClick: () => void;
+    onFabClick: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter for consistency
 }
 
 const BottomToolbar: React.FC<BottomToolbarProps> = ({ activeTab, setActiveTab, onFabClick }) => {

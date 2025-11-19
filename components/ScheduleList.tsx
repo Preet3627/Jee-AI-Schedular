@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { useLocalization } from '../context/LocalizationContext';
 import ScheduleCard from './ScheduleCard';
@@ -9,11 +7,11 @@ import Icon from './Icon';
 interface ScheduleListProps {
     items: ScheduleItem[];
     onDelete: (id: string) => void;
-    onEdit: (item: ScheduleItem) => void;
+    onEdit: (item: ScheduleItem, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
     onMoveToNextDay: (id: string) => void;
     onStar: (id: string) => void;
-    onStartPractice: (homework: HomeworkData) => void;
-    onStartReviewSession: (deckId: string) => void;
+    onStartPractice: (homework: HomeworkData, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+    onStartReviewSession: (deckId: string, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
     onMarkDoubt?: (topic: string, q_id: string) => void; // Optional for now
     onCompleteTask: (task: ScheduleCardData) => void;
     isSubscribed: boolean;
@@ -24,7 +22,7 @@ interface ScheduleListProps {
     onTaskSelect: (taskId: string) => void;
     onToggleSelectMode: () => void;
     onDeleteSelected: () => void;
-    onMoveSelected: () => void;
+    onMoveSelected: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
 }
 
 const ScheduleList: React.FC<ScheduleListProps> = (props) => {

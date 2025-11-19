@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ScheduleItem } from '../../types';
 import Icon from '../Icon';
@@ -14,7 +13,7 @@ const getNextTask = (items: ScheduleItem[]): (ScheduleItem & { scheduledTime: Da
     
     const upcomingTasks = items
         .map(item => {
-            if (!('TIME' in item) || !item.TIME) return null;
+            if (!('TIME' in item) || !item.TIME) return null; // FIX: Added type guard for 'TIME'
 
             const [hours, minutes] = item.TIME.split(':').map(Number);
             let taskDate = new Date();

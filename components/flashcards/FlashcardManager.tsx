@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { FlashcardDeck } from '../../types';
 import Icon from '../Icon';
@@ -6,10 +5,10 @@ import Icon from '../Icon';
 interface FlashcardManagerProps {
   decks: FlashcardDeck[];
   onAddDeck: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
-  onEditDeck: (deck: FlashcardDeck, event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onEditDeck: (deck: FlashcardDeck, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
   onDeleteDeck: (deckId: string) => void;
-  onViewDeck: (deck: FlashcardDeck, event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void; // FIX: Added event parameter, changed event type
-  onStartReview: (deckId: string, event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
+  onViewDeck: (deck: FlashcardDeck, event?: React.MouseEvent<HTMLDivElement | HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter, changed event type
+  onStartReview: (deckId: string, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
   onGenerateWithAI: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void; // FIX: Added event parameter
 }
 
@@ -53,7 +52,7 @@ const FlashcardManager: React.FC<FlashcardManagerProps> = ({ decks, onAddDeck, o
                         <h4 className="text-md font-semibold text-gray-300 mb-3 ml-2">{chapter}</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {groupedDecks[subject][chapter].map(deck => {
-                                const handleLockToggle = () => onEditDeck({ ...deck, isLocked: !deck.isLocked });
+                                const handleLockToggle = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => onEditDeck({ ...deck, isLocked: !deck.isLocked }, e);
                                 const handleDelete = () => {
                                     if (deck.isLocked) {
                                         if (window.confirm("This deck is locked. Are you sure you want to delete it? This cannot be undone.")) {
@@ -83,7 +82,7 @@ const FlashcardManager: React.FC<FlashcardManagerProps> = ({ decks, onAddDeck, o
                                     <p className="text-sm text-gray-400 mt-2">{deck.cards.length} card(s)</p>
                                   </div>
                                   <div className="flex gap-2 mt-4">
-                                    <button onClick={(e) => onViewDeck(deck, e as React.MouseEvent<HTMLDivElement, MouseEvent>)} className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Manage</button>
+                                    <button onClick={(e) => onViewDeck(deck, e)} className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-md bg-gray-700 hover:bg-gray-600">Manage</button>
                                     <button onClick={(e) => onStartReview(deck.id, e)} disabled={deck.cards.length === 0} className="flex-1 text-center px-3 py-2 text-xs font-semibold rounded-md bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed">Review</button>
                                   </div>
                                 </div>

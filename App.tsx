@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { StudentData, ScheduleItem, StudySession, Config, ResultData, ExamData, DoubtData } from './types';
@@ -19,6 +18,7 @@ import ExamTypeSelectionModal from './components/ExamTypeSelectionModal';
 import { useMusicPlayer } from './context/MusicPlayerContext';
 import FullScreenMusicPlayer from './components/FullScreenMusicPlayer';
 import PersistentMusicPlayer from './components/PersistentMusicPlayer';
+import GlobalMusicVisualizer from './components/GlobalMusicVisualizer'; // FIX: Added GlobalMusicVisualizer
 
 declare global {
   interface Window {
@@ -33,7 +33,9 @@ const App: React.FC = () => {
     const { currentUser, userRole, isLoading, isDemoMode, enterDemoMode, logout, refreshUser } = useAuth();
     const { isFullScreenPlayerOpen, currentTrack } = useMusicPlayer();
     
-    const [allStudents, setAllStudents] = useState<StudentData[]>([]);
+    const [allStudents, setAllStudents] = useState<StudentData[]>([]
+// FIX: Added animationOrigin state for modal transitions
+);
     const [allDoubts, setAllDoubts] = useState<DoubtData[]>([]);
     const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline' | 'misconfigured'>('checking');
     const [isSyncing, setIsSyncing] = useState(false);
@@ -43,6 +45,7 @@ const App: React.FC = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [deepLinkAction, setDeepLinkAction] = useState<any>(null);
     const [isExamTypeModalOpen, setIsExamTypeModalOpen] = useState(false);
+    const [animationOrigin, setAnimationOrigin] = useState<{ x: string, y: string } | undefined>(undefined);
 
 
     useEffect(() => {
@@ -444,7 +447,7 @@ const App: React.FC = () => {
         }
 
         if (isExamTypeModalOpen) {
-            return <ExamTypeSelectionModal onSelect={handleSelectExamType} />;
+            return <ExamTypeSelectionModal onClose={() => { /* no-op */ }} onSelect={handleSelectExamType} animationOrigin={animationOrigin} />;
         }
 
         if (backendStatus === 'misconfigured') {
@@ -461,9 +464,9 @@ const App: React.FC = () => {
                     <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${useToolbarLayout || currentTrack ? 'pb-24' : ''}`}>
                         <Header user={{ name: dashboardUser.fullName, id: dashboardUser.sid, profilePhoto: dashboardUser.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
                         {userRole === 'admin' ? (
-                            <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={onDeleteUser} onBroadcastTask={api.broadcastTask} />
+                            <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={onDeleteUser} onBroadcastTask={api.broadcastTask} animationOrigin={animationOrigin} setAnimationOrigin={setAnimationOrigin} />
                         ) : (
-                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateConfig={handleUpdateConfig} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportCalendar(currentUser.SCHEDULE_ITEMS, currentUser.EXAMS, currentUser.fullName)} onBatchImport={handleBatchImport} googleAuthStatus={googleAuthStatus} onGoogleSignIn={auth.handleSignIn} onGoogleSignOut={handleGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} deepLinkAction={deepLinkAction} />
+                            <StudentDashboard student={currentUser} onSaveTask={handleSaveTask} onSaveBatchTasks={handleSaveBatchTasks} onDeleteTask={handleDeleteTask} onToggleMistakeFixed={()=>{}} onUpdateConfig={handleUpdateConfig} onLogStudySession={onLogStudySession} onUpdateWeaknesses={onUpdateWeaknesses} onLogResult={onLogResult} onAddExam={onAddExam} onUpdateExam={onUpdateExam} onDeleteExam={onDeleteExam} onExportToIcs={() => exportCalendar(currentUser.SCHEDULE_ITEMS, currentUser.EXAMS, currentUser.fullName)} onBatchImport={handleBatchImport} googleAuthStatus={googleAuthStatus} onGoogleSignIn={auth.handleSignIn} onGoogleSignOut={handleGoogleSignOut} onBackupToDrive={onBackupToDrive} onRestoreFromDrive={onRestoreFromDrive} allDoubts={allDoubts} onPostDoubt={onPostDoubt} onPostSolution={onPostSolution} deepLinkAction={deepLinkAction} animationOrigin={animationOrigin} setAnimationOrigin={setAnimationOrigin} />
                         )}
                     </div>
                     {currentTrack && <PersistentMusicPlayer />}
@@ -476,7 +479,7 @@ const App: React.FC = () => {
                  <div style={{'--accent-color': '#0891b2'} as React.CSSProperties} className="safe-padding-left safe-padding-right safe-padding-top safe-padding-bottom">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                         <Header user={{ name: 'Admin', id: 'ADMIN_DEMO', profilePhoto: currentUser?.profilePhoto }} onLogout={logout} backendStatus={backendStatus} isSyncing={isSyncing} />
-                        <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={() => alert("Deletion disabled in demo mode")} onBroadcastTask={() => alert("Broadcast disabled in demo mode")} />
+                        <TeacherDashboard students={allStudents} onToggleUnacademySub={()=>{}} onDeleteUser={() => alert("Deletion disabled in demo mode")} onBroadcastTask={() => alert("Broadcast disabled in demo mode")} animationOrigin={animationOrigin} setAnimationOrigin={setAnimationOrigin} />
                     </div>
                 </div>
             );

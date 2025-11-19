@@ -17,7 +17,11 @@ const handleResponse = async (res: Response) => {
         // Handle successful but empty responses (like 204 No Content)
         return responseText ? JSON.parse(responseText) : {};
     } catch {
-        throw new Error('Failed to parse server response.');
+        // If responseText is not empty but not JSON, return as plain text or handle specifically
+        if (responseText) {
+            return { message: responseText };
+        }
+        throw new Error('Failed to parse server response or response was empty.');
     }
 };
 

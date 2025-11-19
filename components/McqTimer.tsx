@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Icon from './Icon';
 import { playNextSound, playStopSound, playMarkSound, vibrate } from '../utils/sounds';
 import { api } from '../api/apiService';
 import AnswerKeyUploadModal from './AnswerKeyUploadModal';
 import { ResultData, StudentData, HomeworkData, ScheduleItem, ScheduleCardData, PracticeQuestion } from '../types';
-import TestAnalysisReportComponent from './TestAnalysisReport'; // FIX: Renamed import
+import TestAnalysisReport from './TestAnalysisReport';
 import SpecificMistakeAnalysisModal from './SpecificMistakeAnalysisModal';
 import MusicVisualizerWidget from './widgets/MusicVisualizerWidget';
 
@@ -346,7 +345,7 @@ const McqTimer: React.FC<McqTimerProps> = (props) => {
 
                 {(practiceMode === 'jeeMains' || (questions && onLogResult)) ? (
                     testResult && testResult.analysis ? (
-                        <TestAnalysisReportComponent // FIX: Used TestAnalysisReportComponent
+                        <TestAnalysisReport // FIX: Used TestAnalysisReport
                           result={testResult} 
                           onAnalyzeMistake={(qNum) => setAnalyzingMistake(qNum)}
                         />

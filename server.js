@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
@@ -29,36 +28,49 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 
 // --- ENV & SETUP CHECK ---
-const isConfigured = process.env.DB_HOST && process.env.JWT_SECRET && process.env.DB_USER && process.env.DB_NAME && process.env.ENCRYPTION_KEY && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
+const requiredEnvVars = ['DB_HOST', 'JWT_SECRET', 'DB_USER', 'DB_NAME', 'ENCRYPTION_KEY', 'GOOGLE_CLIENT_ID'];
+const missingEnvVars = requiredEnvVars.filter(env => !process.env[env]);
+const isConfigured = missingEnvVars.length === 0;
+
 const isNextcloudMusicConfigured = !!(process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_MUSIC_SHARE_TOKEN);
 const isNextcloudStudyConfigured = !!(process.env.NEXTCLOUD_URL && process.env.NEXTCLOUD_SHARE_TOKEN);
 
 let pool = null;
 let mailer = null;
-const JWT_SECRET = process.env.JWT_SECRET; // Ensure this is always defined from process.env
 let googleClient = null;
+
+// Ensure JWT_SECRET is available immediately for middleware
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && isConfigured) { // This should ideally be caught by isConfigured check
+    console.error("CRITICAL ERROR: JWT_SECRET is not set in .env. Server will be unstable.");
+}
+
 
 // --- ENCRYPTION SETUP ---
 const ALGORITHM = 'aes-256-cbc';
-const ENCRYPTION_KEY = isConfigured && process.env.ENCRYPTION_KEY ? crypto.scryptSync(process.env.ENCRYPTION_KEY, 'salt', 32) : null;
+const ENCRYPTION_KEY_BUFFER = isConfigured && process.env.ENCRYPTION_KEY ? crypto.scryptSync(process.env.ENCRYPTION_KEY, 'salt', 32) : null;
 const IV_LENGTH = 16;
 
 const encrypt = (text) => {
-    if (!ENCRYPTION_KEY) throw new Error('Encryption key not configured.');
+    if (!ENCRYPTION_KEY_BUFFER) throw new Error('Encryption key not configured for encryption.');
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+    const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY_BUFFER, iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     return `${iv.toString('hex')}:${encrypted}`;
 };
 
 const decrypt = (text) => {
-    if (!ENCRYPTION_KEY) throw new Error('Encryption key not configured.');
+    if (!ENCRYPTION_KEY_BUFFER) {
+        console.warn('Encryption key not configured for decryption. Returning original text.');
+        return text;
+    }
     try {
         const parts = text.split(':');
+        if (parts.length !== 2) throw new Error('Invalid encrypted format.');
         const iv = Buffer.from(parts.shift(), 'hex');
         const encryptedText = Buffer.from(parts.join(':'), 'hex');
-        const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+        const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY_BUFFER, iv);
         let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
         decrypted += decipher.final('utf8');
         return decrypted;
@@ -97,7 +109,8 @@ if (isConfigured) {
         console.error("FATAL ERROR: Could not create database pool or initialize services. Check credentials.", error);
     }
 } else {
-    console.error("FATAL ERROR: Server environment variables are not configured. The server will run in a misconfigured state.");
+    console.error("FATAL ERROR: Server environment variables are not configured: ", missingEnvVars.join(', '));
+    console.error("The server will run in a misconfigured state.");
 }
 
 // --- DATABASE SCHEMA INITIALIZATION ---
@@ -405,7 +418,7 @@ const getUserData = async (userId) => {
 // PUBLIC STATUS ROUTE (no middleware)
 apiRouter.get('/status', (req, res) => {
     if (!isConfigured || !pool) {
-        return res.status(200).json({ status: 'misconfigured' });
+        return res.status(200).json({ status: 'misconfigured', missingEnvVars: missingEnvVars });
     }
     res.status(200).json({ status: 'online' });
 });
@@ -608,248 +621,3 @@ apiRouter.post('/reset-password', async (req, res) => {
         await pool.query('UPDATE users SET password = ?, password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?', [hashedPassword, user.id]);
         
         res.status(200).json({ message: 'Password has been successfully reset.' });
-    } catch (error) {
-        console.error("Reset password error:", error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// --- GOOGLE ASSISTANT FULFILLMENT ---
-apiRouter.post('/assistant-action', async (req, res) => {
-    const text = req.body.queryResult?.queryText || req.body.query;
-    if (!text) {
-        return res.status(400).json({ error: "Query text is required." });
-    }
-
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-        console.error("Google Assistant Error: Global API_KEY is not set.");
-        return res.status(500).json({ error: "AI service is not configured on the server." });
-    }
-
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-        
-        const assistantDataSchema = {
-            type: Type.OBJECT,
-            description: "The structured details for the action.",
-            properties: {
-                subject: { type: Type.STRING, description: "The academic subject (e.g., Physics, Chemistry, Math)." },
-                topic: { type: Type.STRING, description: "The specific chapter or concept (e.g., Rotational Dynamics)." },
-                date: { type: Type.STRING, description: "The target date (YYYY-MM-DD)." },
-                time: { type: Type.STRING, description: "The start time (HH:MM, 24-hour). Optional for new_schedule." },
-                task_type: { type: Type.STRING, description: "The task type (e.g., deep_dive, test_review). Optional for new_schedule." },
-                score: { type: Type.INTEGER, description: "The numeric score achieved. Optional for log_score." },
-                max_score: { type: Type.INTEGER, description: "The total possible score. Optional for log_score." },
-                details: { type: Type.STRING, description: "Specific notes (e.g., 'NCERT 1-15'). Optional." }
-            },
-            required: ["subject", "topic", "date"]
-        };
-
-        const responseSchema = {
-            type: Type.OBJECT,
-            properties: {
-                action: {
-                    type: Type.STRING,
-                    description: "The primary action: 'new_schedule', 'log_score', or 'create_homework'.",
-                    enum: ["new_schedule", "log_score", "create_homework"]
-                },
-                data: assistantDataSchema
-            },
-            required: ["action", "data"]
-        };
-        
-        const systemInstruction = `You are the JEE Scheduler Pro Fulfillment Bot. Your ONLY response must be a single, non-conversational JSON object that strictly adheres to the provided schema. DO NOT include any introductory text, Markdown formatting (e.g., \`\`\`json), explanations, or closing remarks.
-
-### MANDATORY CONSTRAINTS:
-1.  **Output:** Output MUST be a single, clean JSON object.
-2.  **Schema Adherence:** Output MUST strictly follow the JSON Schema provided in the configuration.
-3.  **Action Mapping:** The 'action' key must map the user's intent to one of the following: "new_schedule", "log_score", or "create_homework".
-4.  **Date/Time Calculation:**
-    * **Current Date Context:** Today is Monday, 2025-11-17.
-    * **Relative Dates:** Accurately calculate and convert relative times ("tomorrow," "Friday," "next week") to the required **YYYY-MM-DD** format.
-    * **Time:** Convert any time reference (e.g., "7 PM") to the **HH:MM** (24-hour) format (e.g., "19:00").
-
-### MAPPING RULES:
-* **Scheduling:** Use \`action: "new_schedule"\` for requests to set a time/date. Infer \`task_type\` (e.g., "deep_dive", "practice").
-* **Logging:** Use \`action: "log_score"\` for requests mentioning "score," "marks," or "test result."
-* **Homework/Tasks:** Use \`action: "create_homework"\` for requests mentioning "assignment" or "questions."
-
-### MISSING DATA POLICY:
-If the user's request is valid but lacks an optional field (like \`time\` or \`details\`), omit that key from the final JSON object. If a required field (\`subject\`, \`topic\`, \`date\`) is missing, include it with an empty string (\`""\`).`;
-
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: text,
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: responseSchema,
-            },
-        });
-        
-        const parsedJson = JSON.parse(response.text);
-
-        if (parsedJson && parsedJson.action && parsedJson.data) {
-            const { action, data } = parsedJson;
-            // The frontend expects the `data` object to be stringified and encoded
-            const encodedData = encodeURIComponent(JSON.stringify(data));
-            const frontendUrl = process.env.FRONTEND_URL || 'https://jee.ponsrischool.in/';
-            // The frontend reads 'action' and 'data' query params
-            const deepLink = `${frontendUrl}?action=${action}&data=${encodedData}`;
-
-            // Respond to Google Assistant with a modern fulfillment response that opens a deep link.
-            return res.json({
-                fulfillmentResponse: {
-                    messages: [{
-                        payload: {
-                            richResponse: {
-                                items: [{
-                                    simpleResponse: {
-                                        textToSpeech: "Opening JEE Scheduler Pro to complete your request."
-                                    }
-                                }, {
-                                    openUrlAction: {
-                                        url: deepLink
-                                    }
-                                }]
-                            }
-                        }
-                    }]
-                }
-            });
-
-        } else {
-            console.error("AI returned malformed JSON for Assistant:", response.text);
-            throw new Error("AI returned malformed JSON.");
-        }
-    } catch (error) {
-        console.error("Google Assistant fulfillment error:", error);
-        return res.status(500).json({ error: `Server error during AI processing: ${error.message}` });
-    }
-});
-
-// --- ASSET PROXY ---
-// This endpoint securely fetches the DJ drop without exposing the direct Nextcloud URL
-// or requiring client-side CORS configuration on Nextcloud.
-apiRouter.get('/assets/dj-drop', async (req, res) => {
-    try {
-        const { customDjDropUrl } = req.query; // Expect custom URL as query param
-        let finalDjDropUrl = 'https://nc.ponsrischool.in/index.php/s/em85Zdf2EYEkz3j/download'; // Default if not custom
-
-        if (customDjDropUrl && typeof customDjDropUrl === 'string' && customDjDropUrl.startsWith('data:audio')) {
-            // If it's a data URL, decode it and send directly
-            const base64Data = customDjDropUrl.split(',')[1];
-            const buffer = Buffer.from(base64Data, 'base64');
-            const mimeType = customDjDropUrl.split(';')[0].split(':')[1];
-            
-            res.setHeader('Content-Type', mimeType || 'audio/wav');
-            res.setHeader('Content-Length', buffer.length);
-            return res.send(buffer);
-        } else if (customDjDropUrl && typeof customDjDropUrl === 'string' && customDjDropUrl.startsWith('http')) {
-            // If it's another remote URL, attempt to proxy it
-            finalDjDropUrl = customDjDropUrl;
-        }
-
-        const response = await fetch(finalDjDropUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch asset, status: ${response.status}`);
-        }
-        res.setHeader('Content-Type', response.headers.get('content-type') || 'audio/mpeg');
-        res.setHeader('Content-Length', response.headers.get('content-length') || '0');
-        response.body.pipe(res);
-    } catch (error) {
-        console.error("Asset proxy error:", error);
-        res.status(502).json({ error: "Could not retrieve asset from source." });
-    }
-});
-
-
-// --- USER DATA ENDPOINTS ---
-apiRouter.post('/heartbeat', authMiddleware, async(req, res) => {
-    try {
-        await pool.query('UPDATE users SET last_seen = NOW() WHERE id = ?', [req.userId]);
-        res.status(200).json({ success: true });
-    } catch (error) {
-        console.error("Heartbeat update error:", error);
-        res.status(500).json({ error: "Failed to update user status." });
-    }
-});
-
-apiRouter.get('/me', authMiddleware, async (req, res) => {
-    try {
-        const user = await getUserData(req.userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-        res.json(user);
-    } catch (error) { res.status(500).json({ error: 'Server error' }); }
-});
-
-apiRouter.put('/profile', authMiddleware, async (req, res) => {
-    const { fullName, profilePhoto } = req.body; // profilePhoto is base64 data URI
-    try {
-        let query = 'UPDATE users SET';
-        const params = [];
-        if (fullName) {
-            query += ' full_name = ?';
-            params.push(fullName);
-        }
-        if (profilePhoto) {
-            if(params.length > 0) query += ',';
-            query += ' profile_photo = ?';
-            params.push(profilePhoto);
-        }
-        query += ' WHERE id = ?';
-        params.push(req.userId);
-
-        if (params.length > 1) {
-             await pool.query(query, params);
-        }
-       
-        const updatedUser = await getUserData(req.userId);
-        res.json(updatedUser);
-    } catch (error) {
-        console.error("Profile update error:", error);
-        res.status(500).json({ error: "Failed to update profile." });
-    }
-});
-
-apiRouter.post('/me/api-token', authMiddleware, async (req, res) => {
-    try {
-        const token = crypto.randomBytes(32).toString('hex');
-        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-        await pool.query('UPDATE users SET api_token = ? WHERE id = ?', [hashedToken, req.userId]);
-        res.json({ token }); // Return the plain text token ONLY once.
-    } catch (error) {
-        console.error("API Token generation error:", error);
-        res.status(500).json({ error: "Failed to generate API token." });
-    }
-});
-
-apiRouter.delete('/me/api-token', authMiddleware, async (req, res) => {
-    try {
-        await pool.query('UPDATE users SET api_token = NULL WHERE id = ?', [req.userId]);
-        res.status(200).json({ message: 'API token revoked.' });
-    } catch (error) {
-        console.error("API Token revocation error:", error);
-        res.status(500).json({ error: "Failed to revoke API token." });
-    }
-});
-
-
-apiRouter.post('/schedule-items', authMiddleware, async (req, res) => {
-    const { task } = req.body;
-    try {
-        await pool.query(
-            `INSERT INTO schedule_items (user_id, item_id_str, item_data) VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE item_data = ?`,
-            [req.userId, task.ID, JSON.stringify(task), JSON.stringify(task)]
-        );
-        res.status(201).json(task);
-    } catch (error) {
-        console.error("Error saving task:", error);
-        res.status(500).json({ error: 'Failed to save task' });
-    }
-});
-
-apiRouter.post('/schedule-items/batch', authMiddleware, async (req, res) => {

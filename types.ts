@@ -1,4 +1,3 @@
-
 export type Language = 'EN' | 'GU';
 
 export interface LocalizedString {
@@ -216,7 +215,6 @@ export interface DashboardWidgetItem {
     id: string; // Corresponds to a key in the widgetConfig map
     wide?: boolean;
     translucent?: boolean;
-    // Add any other specific widget settings here
 }
 
 // The complete, normalized user data object used throughout the frontend
@@ -249,7 +247,7 @@ export interface Config {
         dashboardFlashcardDeckIds?: string[];
         musicPlayerWidgetLayout?: 'minimal' | 'expanded';
         customDjDropUrl?: string; // URL for user-uploaded custom DJ drop
-        widgetSettings?: Record<string, any>; // FIX: Added for extensible widget configuration
+        widgetSettings?: Record<string, any>; 
     };
 }
 
@@ -273,4 +271,216 @@ export interface StudentData {
     EXAMS: ExamData[];
     STUDY_SESSIONS: StudySession[];
     DOUBTS: DoubtData[];
+}
+
+// FIX: Added onClose to the interface and made animationOrigin optional
+export interface ExamTypeSelectionModalProps {
+  onSelect: (examType: 'JEE' | 'NEET') => void;
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+// FIX: Added animationOrigin to various modal props
+export interface CreateEditTaskModalProps {
+  task: ScheduleItem | null;
+  viewOnly?: boolean;
+  onClose: () => void;
+  onSave: (task: ScheduleItem) => void;
+  decks: FlashcardDeck[];
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIParserModalProps {
+  onClose: () => void;
+  onDataReady: (data: any) => void;
+  onPracticeTestReady: (data: any) => void;
+  onOpenGuide: () => void;
+  examType?: 'JEE' | 'NEET';
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CustomPracticeModalProps {
+  onClose: () => void;
+  onSessionComplete: (duration: number, questions_solved: number, questions_skipped: number[]) => void;
+  initialTask?: HomeworkData | null;
+  aiPracticeTest?: { questions: PracticeQuestion[], answers: Record<string, string> } | null;
+  aiInitialTopic?: string | null;
+  defaultPerQuestionTime: number;
+  onLogResult: (result: ResultData) => void;
+  onUpdateWeaknesses: (weaknesses: string[]) => void;
+  student: StudentData;
+  onSaveTask: (task: ScheduleItem) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface SettingsModalProps {
+  settings: Config['settings'];
+  decks: FlashcardDeck[];
+  driveLastSync?: string;
+  isCalendarSyncEnabled?: boolean;
+  calendarLastSync?: string;
+  onClose: () => void;
+  onSave: (settings: Partial<Config['settings'] & { geminiApiKey?: string; isCalendarSyncEnabled?: boolean; customDjDropFile?: File; }>, newCustomWidgets: CustomWidget[]) => void;
+  onExportToIcs: () => void;
+  googleAuthStatus: 'signed_in' | 'signed_out' | 'loading' | 'unconfigured';
+  onGoogleSignIn: () => void;
+  onGoogleSignOut: () => void;
+  onBackupToDrive: () => void;
+  onRestoreFromDrive: () => void;
+  onApiKeySet: () => void;
+  onOpenAssistantGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onOpenAiGuide: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onClearAllSchedule: () => void;
+  studentCustomWidgets: CustomWidget[];
+  onSaveCustomWidgets: (widget: CustomWidget) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface EditWeaknessesModalProps {
+  currentWeaknesses: string[];
+  onClose: () => void;
+  onSave: (weaknesses: string[]) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface LogResultModalProps {
+  onClose: () => void;
+  onSave: (result: ResultData) => void;
+  initialScore?: string;
+  initialMistakes?: string;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CreateEditExamModalProps {
+  exam: ExamData | null;
+  onClose: () => void;
+  onSave: (exam: ExamData) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIMistakeAnalysisModalProps {
+  onClose: () => void;
+  onSaveWeakness: (weakness: string) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIDoubtSolverModalProps {
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIChatPopupProps {
+  history: { role: string; parts: { text: string }[] }[];
+  onSendMessage: (prompt: string, imageBase64?: string) => void;
+  onClose: () => void;
+  isLoading: boolean;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface TestAnalysisReportProps {
+  result: ResultData;
+  onClose: () => void;
+  student: StudentData;
+  onUpdateWeaknesses: (weaknesses: string[]) => void;
+  onSaveDeck: (deck: FlashcardDeck) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface MoveTasksModalProps {
+  onClose: () => void;
+  onConfirm: (newDate: string) => void;
+  selectedCount: number;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface MusicLibraryModalProps {
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CreateEditDeckModalProps {
+  deck: FlashcardDeck | null;
+  onClose: () => void;
+  onSave: (deck: FlashcardDeck) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIGenerateFlashcardsModalProps {
+  student: StudentData;
+  onClose: () => void;
+  onSaveDeck: (deck: FlashcardDeck) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface DeckViewModalProps {
+  deck: FlashcardDeck;
+  onClose: () => void;
+  onAddCard: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onEditCard: (card: Flashcard, event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onDeleteCard: (cardId: string) => void;
+  onStartReview: (event?: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface CreateEditFlashcardModalProps {
+  card: Flashcard | null;
+  deckId: string;
+  onClose: () => void;
+  onSave: (deckId: string, card: Flashcard) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface FlashcardReviewModalProps {
+  deck: FlashcardDeck;
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface FileViewerModalProps {
+  file: StudyMaterialItem | null;
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface GoogleAssistantGuideModalProps {
+  onClose: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface DeepLinkConfirmationModalProps {
+  data: {
+    schedules?: any[];
+    exams?: any[];
+    results?: any[];
+    weaknesses?: string[];
+  };
+  onClose: () => void;
+  onConfirm: () => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIGuideModalProps {
+  onClose: () => void;
+  examType?: 'JEE' | 'NEET';
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface MessagingModalProps {
+  student: StudentData;
+  onClose: () => void;
+  isDemoMode: boolean;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface AIGenerateAnswerKeyModalProps {
+  onClose: () => void;
+  onKeyGenerated: (keyText: string) => void;
+  animationOrigin?: { x: string, y: string };
+}
+
+export interface SpecificMistakeAnalysisModalProps {
+  questionNumber: number;
+  onClose: () => void;
+  onSaveWeakness: (weakness: string) => void;
+  animationOrigin?: { x: string, y: string };
 }

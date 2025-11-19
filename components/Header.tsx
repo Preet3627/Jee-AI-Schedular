@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocalization } from '../context/LocalizationContext';
 import Icon from './Icon';

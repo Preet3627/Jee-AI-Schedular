@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { StudentData, ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
@@ -15,26 +14,33 @@ interface TeacherDashboardProps {
     onDeleteUser: (sid: string) => void;
     onAddTeacher?: (teacherData: any) => void;
     onBroadcastTask: (task: ScheduleItem, examType: 'JEE' | 'NEET' | 'ALL') => void;
+    // FIX: Added animationOrigin and setAnimationOrigin props
+    animationOrigin?: { x: string, y: string };
+    setAnimationOrigin: React.Dispatch<React.SetStateAction<{ x: string, y: string } | undefined>>;
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleUnacademySub, onDeleteUser, onAddTeacher, onBroadcastTask }) => {
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleUnacademySub, onDeleteUser, onAddTeacher, onBroadcastTask, animationOrigin, setAnimationOrigin }) => {
     const { loginWithToken, currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState<'grid' | 'broadcast' | 'guide'>('grid');
     const [messagingStudent, setMessagingStudent] = useState<StudentData | null>(null);
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
     const [isAIBroadcastModalOpen, setIsAIBroadcastModalOpen] = useState(false);
     const [broadcastTarget, setBroadcastTarget] = useState<'ALL' | 'JEE' | 'NEET'>('ALL');
-    const [animationOrigin, setAnimationOrigin] = useState<{ x: string, y: string } | undefined>(undefined);
+    // FIX: Removed `animationOrigin` from local state, now passed as prop.
 
-    // FIX: Simplified handleModalOpenWithAnimation, removed `s` from signature, as it's not a setter.
-    const handleModalOpenWithAnimation = (setter: React.Dispatch<React.SetStateAction<boolean | StudentData>>, event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    // FIX: Simplified handleModalOpenWithAnimation, to accept a generic setter.
+    const handleModalOpenWithAnimation = useCallback(<T,>(setter: React.Dispatch<React.SetStateAction<T | null | boolean>>, event: React.MouseEvent<HTMLButtonElement | HTMLDivElement, MouseEvent>, data?: T) => {
         const rect = event.currentTarget.getBoundingClientRect();
         setAnimationOrigin({
             x: `${rect.left + rect.width / 2}px`,
             y: `${rect.top + rect.height / 2}px`
         });
-        setter(true);
-    };
+        if (data !== undefined) {
+            setter(data as SetStateAction<T>);
+        } else {
+            setter(true as SetStateAction<boolean>);
+        }
+    }, [setAnimationOrigin]);
 
 
     const TabButton: React.FC<{ tabId: string; children: React.ReactNode; }> = ({ tabId, children }) => (
@@ -156,7 +162,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ students, onToggleU
                 </nav>
             </div>
             <div className="mt-6">
-                {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={(s, e) => handleModalOpenWithAnimation(setMessagingStudent, e)} onClearData={handleClearData} onImpersonate={handleImpersonate} />}
+                {activeTab === 'grid' && <StudentGrid students={students} onToggleSub={onToggleUnacademySub} onDeleteUser={onDeleteUser} onStartMessage={(s, e) => handleModalOpenWithAnimation(setMessagingStudent, e, s)} onClearData={handleClearData} onImpersonate={handleImpersonate} />}
                 {activeTab === 'broadcast' && <BroadcastManager onOpenModal={(e) => handleModalOpenWithAnimation(setIsBroadcastModalOpen, e)} onOpenAIModal={(e) => handleModalOpenWithAnimation(setIsAIBroadcastModalOpen, e)} target={broadcastTarget} setTarget={setBroadcastTarget} />}
                 {activeTab === 'guide' && <AIGuide examType={currentUser?.CONFIG.settings.examType} />}
             </div>
