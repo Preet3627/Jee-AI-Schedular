@@ -162,6 +162,8 @@ export interface Track {
   duration: string; // in seconds
   size: string; // in bytes
   coverArtUrl?: string; // dynamically added by the player context
+  isLocal?: boolean;
+  file?: File;
 }
 
 export interface Flashcard {
@@ -200,7 +202,19 @@ export interface CustomWidget {
   content: string;
 }
 
+export interface LocalPlaylist {
+  id: string;
+  name: string;
+  trackIds: string[]; // For local files, this could be the file name or a generated ID
+}
+
 export type ActiveTab = 'dashboard' | 'schedule' | 'today' | 'planner' | 'exams' | 'performance' | 'doubts' | 'flashcards' | 'material';
+
+export interface DashboardWidgetItem {
+  id: string;
+  wide: boolean;
+  translucent: boolean;
+}
 
 // Represents the structure of the encrypted JSON blob in the `user_configs` table
 export interface Config {
@@ -216,6 +230,7 @@ export interface Config {
     flashcardDecks?: FlashcardDeck[];
     pinnedMaterials?: string[]; // Array of item paths
     customWidgets?: CustomWidget[];
+    localPlaylists?: LocalPlaylist[];
     settings: {
         accentColor: string;
         blurEnabled: boolean;
@@ -227,11 +242,12 @@ export interface Config {
         creditSaver?: boolean; // Use faster, cheaper AI models
         examType?: 'JEE' | 'NEET';
         theme?: 'default' | 'liquid-glass' | 'midnight';
-        // FIX: Changed dashboardLayout to string[] and added widgetSettings to match implementation.
+        // FIX: Changed dashboardLayout to be an array of strings (widget IDs) to match usage.
         dashboardLayout?: string[];
-        widgetSettings?: { [key: string]: { translucent?: boolean; wide?: boolean; } };
         dashboardFlashcardDeckIds?: string[];
         musicPlayerWidgetLayout?: 'minimal' | 'expanded';
+        // FIX: Added widgetSettings to support per-widget configurations.
+        widgetSettings?: Record<string, { translucent?: boolean }>;
     };
 }
 
