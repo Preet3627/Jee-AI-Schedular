@@ -8,7 +8,8 @@ import MistakeManager from './MistakeManager';
 import TodaysAgendaWidget from './widgets/TodaysAgendaWidget';
 import ReadingHoursWidget from './widgets/ReadingHoursWidget';
 import ScoreTrendWidget from './widgets/MarksAnalysisWidget';
-import CustomPracticeModal from './CustomPracticeModal';
+// FIX: Changed `CustomPracticeModal` import from default to named, as indicated by the error "Module '...' has no default export".
+import { CustomPracticeModal } from './CustomPracticeModal';
 import HomeworkWidget from './widgets/HomeworkWidget';
 import ActivityTracker from './ActivityTracker'; 
 import PerformanceMetrics from './PerformanceMetrics';

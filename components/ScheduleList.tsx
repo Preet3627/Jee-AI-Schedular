@@ -1,8 +1,7 @@
-
-
+// FIX: Changed `ScheduleCard` import from default to named, as indicated by the error "Module '...' has no default export".
+import { ScheduleCard } from './ScheduleCard';
 import React from 'react';
 import { useLocalization } from '../context/LocalizationContext';
-import ScheduleCard from './ScheduleCard';
 import { ScheduleItem, HomeworkData, ScheduleCardData } from '../types';
 import Icon from './Icon';
 
